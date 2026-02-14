@@ -1,0 +1,182 @@
+---
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import { supabase } from '../lib/supabase';
+import '../styles/global.css'; 
+
+// 1. Ambil Data Artikel
+const { data: articles, error } = await supabase
+  .from('articles')
+  .select(`
+    id, 
+    title, 
+    slug, 
+    created_at, 
+    cover_url, 
+    profiles ( full_name )
+  `)
+  .eq('status', 'published')
+  .order('created_at', { ascending: false });
+
+if (error) console.error("Error fetch news:", error);
+---
+
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEDIACIVITAS - Berita Terkini</title>
+</head>
+<body>
+
+    <Navbar />
+
+    <header class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">MEDIACIVITAS</h1>
+            <p class="hero-subtitle">Jurnalisme independen, tajam, dan terpercaya.</p>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        {articles?.length === 0 ? (
+            <div class="empty-state">
+                <h3>Belum ada berita.</h3>
+                <p>Silakan login sebagai redaksi untuk menulis.</p>
+            </div>
+        ) : (
+            <div class="news-grid">
+                {articles?.map((item) => (
+                    <a href={`/berita/${item.slug}`} class="news-card">
+                        <div class="img-container">
+                             <img 
+                                src={item.cover_url || 'https://placehold.co/600x400/111/fff?text=No+Image'} 
+                                alt={item.title} 
+                            />
+                        </div>
+
+                        <div class="card-body">
+                            <div class="meta">
+                                <span>{new Date(item.created_at).toLocaleDateString('id-ID', {
+                                    day: 'numeric', month: 'short', year: 'numeric'
+                                })}</span>
+                                <span class="divider">/</span>
+                                <span>
+                                    {item.profiles && Array.isArray(item.profiles) && item.profiles[0] 
+                                        ? item.profiles[0].full_name 
+                                        : 'Redaksi'}
+                                </span>
+                            </div>
+                            
+                            <h3 class="card-title">{item.title}</h3>
+                            
+                            <div class="read-more">Baca Artikel &rarr;</div>
+                        </div>
+                    </a>
+                ))}
+            </div>
+        )}
+
+    </main>
+
+    <Footer />
+
+</body>
+</html>
+
+<style>
+    /* HERO SECTION */
+    .hero-section {
+        padding: 80px 0;
+        text-align: center;
+        border-bottom: 1px solid var(--fg);
+        margin-bottom: 40px;
+    }
+    .hero-title {
+        font-size: 4rem;
+        font-weight: 900;
+        letter-spacing: -2px;
+        line-height: 1;
+        margin-bottom: 10px;
+    }
+    .hero-subtitle {
+        font-size: 1.2rem;
+        color: #555;
+    }
+
+    /* GRID SYSTEM */
+    .news-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 30px;
+        margin-bottom: 80px;
+    }
+
+    /* CARD DESIGN (Minimalist Bordered) */
+    .news-card {
+        border: 1px solid var(--fg);
+        background: var(--bg);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+        text-decoration: none; /* Hapus underline default link */
+        color: inherit;
+    }
+
+    .news-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 4px 4px 0px var(--fg); /* Shadow kasar */
+    }
+
+    .img-container {
+        width: 100%;
+        height: 220px;
+        border-bottom: 1px solid var(--fg);
+        overflow: hidden;
+    }
+    .img-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: filter 0.3s;
+        filter: grayscale(100%); /* Hitam putih default */
+    }
+    .news-card:hover .img-container img {
+        filter: grayscale(0%); /* Berwarna saat hover */
+    }
+
+    .card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
+    
+    .meta {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+        margin-bottom: 10px;
+        color: #666;
+    }
+    .divider { margin: 0 5px; }
+
+    .card-title {
+        font-size: 1.4rem;
+        line-height: 1.3;
+        font-weight: 700;
+        margin: 0 0 20px 0;
+    }
+
+    .read-more {
+        margin-top: auto;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    /* State Kosong */
+    .empty-state {
+        text-align: center;
+        padding: 60px;
+        color: #666;
+        border: 1px dashed #ccc;
+    }
+</style>

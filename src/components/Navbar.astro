@@ -1,0 +1,173 @@
+---
+// src/components/Navbar.astro
+import { User, LogOut, PenTool, LayoutDashboard, LogIn } from 'lucide-react';
+---
+
+<nav class="navbar">
+    <div class="container nav-container">
+        <a href="/" class="logo">
+            THE<span style="font-weight: 300;">PORTAL.</span>
+        </a>
+
+        <div class="nav-links">
+            
+            <a id="nav-tulis" href="/redaksi/tulis" class="nav-item hidden">
+                <PenTool size={16} /> <span>Tulis</span>
+            </a>
+
+            <a id="nav-dashboard" href="/admin/dashboard" class="nav-item hidden">
+                <LayoutDashboard size={16} /> <span>Admin</span>
+            </a>
+
+            <a id="btn-login" href="/login" class="btn btn-sm">
+                <LogIn size={16} /> Login
+            </a>
+
+            <div id="user-area" class="user-area hidden">
+                <div class="avatar-box">
+                    <img id="user-avatar" src="" alt="User" />
+                </div>
+                <button id="btn-logout" class="btn-icon" title="Logout">
+                    <LogOut size={18} />
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<style>
+    /* CSS Styling Navbar Minimalis */
+    .navbar {
+        border-bottom: 1px solid var(--fg);
+        background: var(--bg);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        padding: 16px 0;
+    }
+    .nav-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .logo {
+        font-size: 1.5rem;
+        font-weight: 900;
+        letter-spacing: -1px;
+        color: var(--fg);
+    }
+    .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--fg);
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+    .nav-item:hover { opacity: 1; text-decoration: underline; }
+    
+    /* Utility Class Penting */
+    .hidden { display: none !important; }
+    
+    .btn-sm { 
+        padding: 8px 16px; 
+        font-size: 0.85rem; 
+        background: var(--fg);
+        color: var(--bg);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .user-area { display: flex; align-items: center; gap: 12px; }
+    .avatar-box img { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--fg); object-fit: cover; }
+    
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 5px;
+        color: var(--fg);
+        display: flex;
+    }
+    .btn-icon:hover { color: #555; transform: scale(1.1); transition: transform 0.2s; }
+</style>
+
+<script>
+    import { supabase } from '../lib/supabase';
+
+    // Elemen DOM
+    const navTulis = document.getElementById('nav-tulis');
+    const navDashboard = document.getElementById('nav-dashboard');
+    const btnLogin = document.getElementById('btn-login');
+    const userArea = document.getElementById('user-area');
+    const userAvatar = document.getElementById('user-avatar') as HTMLImageElement;
+    const btnLogout = document.getElementById('btn-logout');
+
+    // Fungsi Update UI (Dipisah biar bisa dipanggil berulang)
+    async function updateUI(user: any) {
+        if (user) {
+            // User Login: Sembunyikan tombol login, Munculkan Avatar
+            btnLogin?.classList.add('hidden');
+            userArea?.classList.remove('hidden');
+
+            // Ambil data profile (Role & Avatar)
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role, avatar_url')
+                .eq('id', user.id)
+                .single();
+
+            // Pasang Avatar
+            if (profile?.avatar_url && userAvatar) {
+                userAvatar.src = profile.avatar_url;
+            } else if (userAvatar) {
+                // Fallback avatar kalau profile belum ke-load
+                userAvatar.src = user.user_metadata?.avatar_url || user.user_metadata?.picture || `https://ui-avatars.com/api/?name=${user.email}`;
+            }
+
+            // Atur Menu berdasarkan Role
+            if (['redaksi', 'admin'].includes(profile?.role)) {
+                navTulis?.classList.remove('hidden');
+            }
+            if (profile?.role === 'admin') {
+                navDashboard?.classList.remove('hidden');
+            }
+
+        } else {
+            // User Logout: Balikin ke default
+            btnLogin?.classList.remove('hidden');
+            userArea?.classList.add('hidden');
+            navTulis?.classList.add('hidden');
+            navDashboard?.classList.add('hidden');
+        }
+    }
+
+    // LISTENER UTAMA (Ini yang memperbaiki bug login!)
+    // Fungsi ini akan jalan otomatis SETIAP KALI status login berubah (Login, Logout, atau Refresh Token)
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user) {
+            updateUI(session.user);
+        } else {
+            updateUI(null);
+        }
+    });
+
+    // Logic Logout
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            localStorage.clear();
+            window.location.href = '/';
+        });
+    }
+</script>

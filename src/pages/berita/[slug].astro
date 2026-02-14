@@ -1,0 +1,227 @@
+---
+import Navbar from '../../components/Navbar.astro';
+import Footer from '../../components/Footer.astro'; // <--- Import ini
+import { supabase } from '../../lib/supabase';
+import { Calendar, User, ArrowLeft, Clock, Share2 } from 'lucide-react';
+import '../../styles/global.css'; // Pastikan CSS Global ter-load
+
+const { slug } = Astro.params;
+
+// 1. QUERY DATABASE
+const { data: article, error } = await supabase
+  .from('articles')
+  .select(`
+    *,
+    profiles ( full_name, role, avatar_url )
+  `)
+  .eq('slug', slug)
+  .single();
+
+// 2. HANDLE 404
+if (error || !article) {
+  return Astro.redirect('/404');
+}
+
+// Helper user
+const author = Array.isArray(article.profiles) ? article.profiles[0] : article.profiles;
+const authorName = author?.full_name || 'Redaksi';
+const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+});
+---
+
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{article.title} | The Portal</title>
+</head>
+<body>
+
+    <Navbar />
+
+    <main class="container article-container">
+        
+        <div class="nav-back">
+            <a href="/" class="btn-back">
+                <ArrowLeft size={20} /> Kembali ke Beranda
+            </a>
+        </div>
+
+        <article>
+            <header class="article-header">
+                <h1 class="title">{article.title}</h1>
+                
+                <div class="meta-wrapper">
+                    <div class="meta-item">
+                        <User size={18} />
+                        <span>{authorName}</span>
+                    </div>
+                    <div class="meta-divider"></div>
+                    <div class="meta-item">
+                        <Calendar size={18} />
+                        <span>{publishDate}</span>
+                    </div>
+                    <div class="meta-divider"></div>
+                    <div class="meta-item">
+                        <Clock size={18} />
+                        <span>5 Menit Baca</span>
+                    </div>
+                </div>
+            </header>
+
+            {article.cover_url && (
+                <div class="hero-image-wrapper">
+                    <img src={article.cover_url} alt={article.title} class="hero-image" />
+                </div>
+            )}
+
+            <div class="content-body">
+                <Fragment set:html={article.content} />
+            </div>
+
+            <div class="article-footer">
+                <p>Bagikan artikel ini:</p>
+                <div class="share-buttons">
+                    <button class="btn btn-icon"><Share2 size={20} /> Copy Link</button>
+                    </div>
+            </div>
+
+        </article>
+
+    </main>
+
+    <Footer />
+
+</body>
+</html>
+
+<style>
+    /* LAYOUT KHUSUS ARTIKEL */
+    .article-container {
+        max-width: 800px;
+        padding-top: 40px;
+        padding-bottom: 80px;
+    }
+
+    /* NAV BACK */
+    .nav-back { margin-bottom: 30px; }
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #666;
+        transition: color 0.2s;
+    }
+    .btn-back:hover { color: var(--fg); text-decoration: underline; }
+
+    /* HEADER */
+    .article-header { text-align: center; margin-bottom: 40px; }
+    
+    .title {
+        font-size: 2.5rem;
+        font-weight: 900;
+        line-height: 1.2;
+        margin-bottom: 20px;
+        letter-spacing: -0.5px;
+        /* Judul tetap font bawaan/Heading (Inter/Sans) agar tegas */
+    }
+
+    .meta-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        font-size: 0.85rem;
+        color: #555;
+        font-family: sans-serif;
+        border-top: 1px solid #eee;
+        border-bottom: 1px solid #eee;
+        padding: 15px 0;
+    }
+
+    .meta-item { display: flex; align-items: center; gap: 6px; }
+    .meta-divider { width: 1px; height: 15px; background: #ddd; }
+
+    /* IMAGE */
+    .hero-image-wrapper {
+        margin-bottom: 40px;
+        border: 1px solid var(--fg);
+        padding: 5px;
+    }
+    .hero-image {
+        width: 100%;
+        height: auto;
+        display: block;
+        filter: grayscale(100%); 
+        transition: filter 0.3s;
+    }
+    .hero-image:hover { filter: grayscale(0%); }
+
+    /* --- BAGIAN YANGDIREVISI (CONTENT BODY) --- */
+    .content-body {
+        /* Ganti ke Poppins sesuai request */
+        font-family: 'Poppins', sans-serif; 
+        font-size: 1.1rem;
+        line-height: 1.9; /* Lebih lega */
+        color: #333;
+        font-weight: 400; /* Medium-Light (Regular) */
+        margin-bottom: 60px;
+    }
+    
+    /* Styling elemen HTML di dalam konten */
+    .content-body :global(p) { margin-bottom: 1.5em; }
+
+    /* Heading di dalam artikel juga ikut Poppins biar senada */
+    .content-body :global(h2) { 
+        font-family: 'Poppins', sans-serif; 
+        font-size: 1.5rem; 
+        font-weight: 700; /* Bold */
+        margin-top: 2em; 
+        margin-bottom: 0.5em;
+        color: #111;
+    }
+    .content-body :global(h3) { 
+        font-family: 'Poppins', sans-serif;
+        font-weight: 700; 
+        margin-top: 1.5em;
+        color: #111; 
+    }
+    
+    .content-body :global(ul), .content-body :global(ol) { margin-bottom: 1.5em; padding-left: 20px; }
+    .content-body :global(blockquote) {
+        border-left: 4px solid var(--fg);
+        padding-left: 20px;
+        font-style: italic;
+        color: #555;
+        margin: 20px 0;
+    }
+    .content-body :global(img) {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+
+    /* FOOTER ARTIKEL */
+    .article-footer {
+        border-top: 1px solid var(--fg);
+        padding-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .share-buttons { display: flex; gap: 10px; }
+
+    /* Footer Umum */
+    .footer {
+        border-top: 1px solid var(--fg);
+        padding: 40px 0;
+        text-align: center;
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+</style>
