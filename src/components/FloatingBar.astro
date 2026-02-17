@@ -1,0 +1,76 @@
+---
+import { Home, Archive, Search, User } from 'lucide-react';
+---
+
+<nav class="floating-dock">
+    <div class="dock-container">
+        <a href="/" class="dock-item" aria-label="Home">
+            <Home size={24} strokeWidth={1.5} />
+        </a>
+        
+        <div class="dock-divider"></div>
+
+        <a href="/arsip" class="dock-item" aria-label="Arsip">
+            <Archive size={24} strokeWidth={1.5} />
+        </a>
+
+        <div class="dock-divider"></div>
+
+        <a href="/login" class="dock-item" aria-label="Login">
+            <User size={24} strokeWidth={1.5} />
+        </a>
+    </div>
+</nav>
+
+<style>
+    .floating-dock {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+    }
+
+    .dock-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.8); /* Glassmorphism */
+        backdrop-filter: blur(10px);
+        padding: 12px 25px;
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 50px; /* Pill shape */
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .dock-container:hover {
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .dock-item {
+        color: #111;
+        opacity: 0.6;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px;
+        border-radius: 50%;
+    }
+
+    .dock-item:hover {
+        opacity: 1;
+        background: #f0f0f0;
+        transform: scale(1.1);
+    }
+
+    .dock-divider {
+        width: 1px;
+        height: 20px;
+        background: #ccc;
+        opacity: 0.5;
+    }
+</style>

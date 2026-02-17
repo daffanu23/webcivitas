@@ -1,225 +1,30 @@
 ---
 import Navbar from '../../components/Navbar.astro';
 import Footer from '../../components/Footer.astro';
-import { LayoutDashboard, CheckCircle, Clock, Eye, Check, X as XIcon } from 'lucide-react';
+import AdminDashboardReact from '../../components/AdminDashboard.jsx'; // Panggil otak React
 import '../../styles/global.css';
+
+// Proteksi Server Side tetap di sini (Satpam Pintu Depan)
+import { supabase } from '../../lib/supabase';
+const { cookies, redirect } = Astro;
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+// Kita biarkan saja pengecekan auth detail dilakukan oleh React (Client Side)
+// agar loading state lebih mulus
 ---
 
 <html lang="id">
 <head>
-    <title>Admin Dashboard</title>
+    <title>Admin Dashboard | The Portal</title>
 </head>
 <body>
     <Navbar />
 
-    <main class="container" style="padding: 40px 20px; min-height: 80vh;">
-        
-        <header class="dash-header">
-            <div>
-                <h1 class="dash-title">Dashboard</h1>
-                <p style="font-family: 'Poppins', sans-serif; color: #666;">Kelola antrian berita masuk.</p>
-            </div>
-            <div class="dash-badge">ADMIN MODE</div>
-        </header>
-
-        <div id="loading-screen" class="loading-box">
-            <div class="spinner"></div>
-            <p>Memuat data...</p>
-        </div>
-
-        <div id="dashboard-content" style="display: none;">
-            
-            <section class="dash-section">
-                <h2 class="section-title warning">
-                    <Clock size={22} /> Menunggu Review
-                </h2>
-                
-                <div id="pending-list" class="grid-list">
-                    </div>
-                
-                <div id="pending-empty" class="empty-state-box" style="display: none;">
-                    <CheckCircle size={40} color="#ccc" />
-                    <p>Semua berita sudah di-review. Kerja bagus!</p>
-                </div>
-            </section>
-
-            <section class="dash-section">
-                <h2 class="section-title success">
-                    <CheckCircle size={22} /> Live / Terbit
-                </h2>
-                <div class="table-container">
-                    <table class="clean-table">
-                        <thead>
-                            <tr>
-                                <th>Judul</th>
-                                <th>Penulis</th>
-                                <th>Tanggal</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="published-list"></tbody>
-                    </table>
-                </div>
-            </section>
-
-        </div>
+    <main class="container" style="padding-top: 40px;">
+        <AdminDashboardReact client:only="react" />
     </main>
 
     <Footer />
-
-    <script>
-        import { supabase } from '../../lib/supabase';
-
-        // Elements
-        const loadingScreen = document.getElementById('loading-screen');
-        const dashboardContent = document.getElementById('dashboard-content');
-        const pendingList = document.getElementById('pending-list');
-        const publishedList = document.getElementById('published-list');
-        const pendingEmpty = document.getElementById('pending-empty');
-
-        async function init() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return window.location.replace('/login');
-
-            // Cek Role
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role').eq('id', session.user.id).single();
-
-            if (profile?.role !== 'admin') {
-                alert("Bukan Admin!");
-                return window.location.replace('/');
-            }
-
-            if(loadingScreen) loadingScreen.style.display = 'none';
-            if(dashboardContent) dashboardContent.style.display = 'block';
-
-            loadData();
-        }
-
-        async function loadData() {
-            // LOAD PENDING
-            const { data: pending } = await supabase.from('articles').select('*, profiles(full_name)').eq('status', 'pending').order('created_at', {ascending: false});
-            
-            if (pendingList && pending) {
-                if (pending.length === 0) {
-                    if(pendingEmpty) pendingEmpty.style.display = 'flex';
-                } else {
-                    if(pendingEmpty) pendingEmpty.style.display = 'none';
-                    // Render Cards
-                    pendingList.innerHTML = pending.map(item => `
-                        <div class="pending-card">
-                            <div class="card-image">
-                                <img src="${item.cover_url || 'https://placehold.co/300x200'}" alt="cover" />
-                                <span class="badge-pending">PENDING</span>
-                            </div>
-                            <div class="card-content">
-                                <h3 class="card-h3">${item.title}</h3>
-                                <div class="card-meta">
-                                    <span>👤 ${item.profiles?.full_name || 'Redaksi'}</span>
-                                    <span>📅 ${new Date(item.created_at).toLocaleDateString()}</span>
-                                </div>
-                                <div class="card-actions">
-                                    <a href="/berita/${item.slug}" target="_blank" class="btn-preview">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Preview
-                                    </a>
-                                    <div class="action-group">
-                                        <button class="btn-act reject" data-id="${item.id}" data-action="rejected">Tolak</button>
-                                        <button class="btn-act approve" data-id="${item.id}" data-action="published">Terbitkan</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-
-            // LOAD PUBLISHED
-            const { data: published } = await supabase.from('articles').select('*, profiles(full_name)').eq('status', 'published').order('created_at', {ascending: false}).limit(10);
-            if (publishedList && published) {
-                publishedList.innerHTML = published.map(item => `
-                    <tr>
-                        <td style="font-weight: 500;">${item.title}</td>
-                        <td>${item.profiles?.full_name || 'Redaksi'}</td>
-                        <td>${new Date(item.created_at).toLocaleDateString()}</td>
-                        <td><span class="badge-success">Live</span></td>
-                    </tr>
-                `).join('');
-            }
-        }
-
-        // Event Listener
-        document.body.addEventListener('click', async (e) => {
-            const target = e.target as HTMLElement;
-            if (target.classList.contains('btn-act')) {
-                const id = target.getAttribute('data-id');
-                const action = target.getAttribute('data-action');
-                if(!confirm(`Yakin ingin ${action === 'published' ? 'menerbitkan' : 'menolak'} berita ini?`)) return;
-
-                target.innerText = '...';
-                await supabase.from('articles').update({ status: action }).eq('id', id);
-                loadData();
-            }
-        });
-
-        init();
-    </script>
 </body>
 </html>
-
-<style>
-    /* UTAMA: Poppins Font */
-    body { font-family: 'Poppins', sans-serif; background-color: #f4f6f8; }
-
-    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-    .dash-title { font-weight: 800; font-size: 2rem; color: #1a1a1a; letter-spacing: -1px; margin: 0; }
-    .dash-badge { background: #111; color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: 700; font-size: 0.8rem; letter-spacing: 1px; }
-
-    .section-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-    .warning { color: #d97706; }
-    .success { color: #059669; }
-
-    /* CARD DESIGN (PENDING) */
-    .grid-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-    
-    .pending-card {
-        background: white; border-radius: 12px; overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.2s;
-        border: 1px solid #e5e7eb; display: flex; flex-direction: column;
-    }
-    .pending-card:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
-
-    .card-image { height: 180px; position: relative; }
-    .card-image img { width: 100%; height: 100%; object-fit: cover; }
-    .badge-pending { 
-        position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); 
-        color: #d97706; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;
-    }
-
-    .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
-    .card-h3 { margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 600; line-height: 1.4; color: #111; }
-    .card-meta { font-size: 0.85rem; color: #666; margin-bottom: 20px; display: flex; gap: 15px; }
-
-    .card-actions { margin-top: auto; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 15px; }
-    
-    .btn-preview { color: #0284c7; font-weight: 600; font-size: 0.9rem; text-decoration: none; display: flex; align-items: center; gap: 5px; }
-    .btn-preview:hover { text-decoration: underline; }
-
-    .action-group { display: flex; gap: 8px; }
-    .btn-act { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: opacity 0.2s; }
-    .btn-act:hover { opacity: 0.9; }
-    .approve { background: #059669; color: white; }
-    .reject { background: #fee2e2; color: #dc2626; }
-
-    /* TABLE (PUBLISHED) */
-    .clean-table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .clean-table th { background: #f9fafb; padding: 15px; text-align: left; font-size: 0.85rem; font-weight: 600; color: #555; text-transform: uppercase; }
-    .clean-table td { padding: 15px; border-top: 1px solid #eee; font-size: 0.95rem; }
-    .badge-success { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
-
-    /* UTILS */
-    .empty-state-box { display: flex; flex-direction: column; align-items: center; padding: 40px; color: #999; border: 2px dashed #ddd; border-radius: 12px; }
-    .loading-box { text-align: center; padding: 50px; }
-    .spinner { width: 30px; height: 30px; border: 3px solid #ccc; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-</style>

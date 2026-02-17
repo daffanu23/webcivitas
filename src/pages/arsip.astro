@@ -1,0 +1,40 @@
+---
+import Navbar from '../components/Navbar.astro'; // Nanti ini kita ganti FloatingBar
+import Footer from '../components/Footer.astro';
+import { supabase } from '../lib/supabase';
+import '../styles/global.css';
+
+// Ambil SEMUA berita
+const { data: articles } = await supabase
+  .from('articles')
+  .select(`*, profiles(full_name)`)
+  .eq('status', 'published')
+  .order('created_at', { ascending: false });
+---
+
+<html lang="id">
+<head>
+    <title>Arsip Berita - MEDIACIVITAS</title>
+</head>
+<body>
+    <div class="container" style="padding-top: 40px;">
+        <h1 style="font-weight: 900; font-size: 3rem; margin-bottom: 40px;">ARSIP BERITA</h1>
+        
+        <div class="news-grid">
+            {articles?.map((item) => (
+                <a href={`/berita/${item.slug}`} class="news-card">
+                    <div class="img-container">
+                        <img src={item.cover_url || 'https://placehold.co/600x400'} alt={item.title} />
+                    </div>
+                    <div class="card-body">
+                        <span class="meta">{new Date(item.created_at).toLocaleDateString()}</span>
+                        <h3 class="card-title">{item.title}</h3>
+                    </div>
+                </a>
+            ))}
+        </div>
+    </div>
+    
+    <Footer />
+</body>
+</html>
