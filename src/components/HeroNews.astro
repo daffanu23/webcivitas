@@ -1,0 +1,197 @@
+---
+import { User, Clock, ArrowRight } from 'lucide-react';
+
+const { article } = Astro.props;
+
+// --- LOGIC WAKTU (Time Ago) ---
+const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    const minutes = Math.floor(diffInSeconds / 60);
+    const hours = Math.floor(diffInSeconds / 3600);
+    const days = Math.floor(diffInSeconds / 86400);
+
+    if (days > 0) return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (hours > 0) return `${hours} jam yang lalu`;
+    if (minutes > 0) return `${minutes} menit yang lalu`;
+    return "Baru saja";
+};
+
+// Fallback Data
+const data = article || {
+    title: "Menunggu Berita Utama...",
+    slug: "#",
+    cover_url: "https://placehold.co/1200x600?text=No+Image",
+    content: "Belum ada berita yang dipublish. Silakan login sebagai redaksi.",
+    created_at: new Date().toISOString(),
+    profiles: { full_name: "Redaksi" }
+};
+
+// Excerpt
+const excerpt = data.content 
+    ? data.content.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..." 
+    : "";
+---
+
+<section class="hero-wrapper">
+    <div class="hero-card">
+        
+        <div class="hero-image">
+            <img src={data.cover_url} alt={data.title} />
+        </div>
+
+        <div class="hero-content">
+            
+            <h1 class="hero-title">
+                <a href={`/berita/${data.slug}`}>{data.title}</a>
+            </h1>
+
+            <div class="hero-meta">
+                <div class="meta-item">
+                    <User size={16} />
+                    <span>{data.profiles?.full_name || 'Redaksi'}</span>
+                </div>
+                <span>•</span>
+                <div class="meta-item">
+                    <Clock size={16} />
+                    <span>{getRelativeTime(data.created_at)}</span>
+                </div>
+            </div>
+
+            <p class="hero-desc">
+                {excerpt}
+            </p>
+
+            <a href={`/berita/${data.slug}`} class="btn-read">
+                Baca selengkapnya
+            </a>
+
+        </div>
+    </div>
+</section>
+
+<style>
+    .hero-wrapper {
+        width: 100%;
+        margin-bottom: 60px; /* Jarak ke Sub News */
+    }
+
+    /* KOTAK UTAMA */
+    .hero-card {
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        
+        /* STYLE BORDER TEGAS (Sesuai Gambar) */
+        border: 2px solid #111; 
+        border-radius: 10px; /* Sudut tumpul */
+        
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* Efek Hover: Naik & Shadow Kasar */
+    .hero-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 8px 8px 0px #111;
+    }
+
+    /* GAMBAR */
+    .hero-image {
+        width: 100%;
+        height: 250px; /* Default Mobile */
+        border-bottom: 2px solid #111;
+        overflow: hidden;
+    }
+
+    .hero-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        /* Filter Grayscale agar estetik (opsional, hapus jika mau full color) */
+        filter: grayscale(100%);
+        transition: filter 0.5s ease, transform 0.5s ease;
+    }
+
+    .hero-card:hover .hero-image img {
+        filter: grayscale(0%);
+        transform: scale(1.02);
+    }
+
+    /* KONTEN TEKS */
+    .hero-content {
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 600;
+        line-height: 1.1;
+        margin-bottom: 15px;
+        color: #111;
+    }
+    .hero-title a { text-decoration: none; color: inherit; }
+
+    .hero-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    .meta-item { display: flex; align-items: center; gap: 6px; }
+
+    .hero-desc {
+        font-size: 1rem;
+        color: #444;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+
+    /* TOMBOL BACA */
+    .btn-read {
+        display: inline-block;
+        padding: 10px 24px;
+        border: 1px solid #111; /* Border tipis di tombol */
+        border-radius: 5px;
+        color: #111;
+        font-weight: 600;
+        text-decoration: none;
+        width: fit-content;
+        transition: all 0.2s;
+    }
+
+    .btn-read:hover {
+        background: #111;
+        color: #fff;
+    }
+
+    /* RESPONSIVE DESKTOP (Layout Menyamping) */
+    @media (min-width: 900px) {
+        .hero-card {
+            flex-direction: row; /* Gambar Kiri, Teks Kanan */
+            min-height: 450px;
+        }
+        
+        .hero-image {
+            flex: 1.3; /* Gambar ambil 55-60% lebar */
+            height: auto; /* Ikut tinggi parent */
+            border-bottom: none;
+            border-right: 2px solid #111; /* Garis pemisah vertikal */
+        }
+        
+        .hero-content {
+            flex: 1; /* Teks ambil sisa lebar */
+            padding: 50px;
+        }
+
+        .hero-title { font-size: 2.5rem; }
+    }
+</style>

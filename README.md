@@ -1,5 +1,14 @@
 # Astro Starter Kit: Basics
 
+import { defineConfig } from 'astro/config';
+
+export default defineConfig({
+  // ... settingan lain
+  prefetch: false, // MATIKAN PREFETCHING
+});
+
+JANGAN LUPA DINYALAIN YA BABI
+
 ```sh
 npm create astro@latest -- --template basics
 ```

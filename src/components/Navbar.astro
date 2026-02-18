@@ -1,129 +1,192 @@
 ---
-import { Home, Archive } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 ---
 
-<nav class="floating-navbar" transition:persist>
-    <div class="dock-container">
+<header class="top-navbar">
+    <div class="container navbar-content">
         
-        <a href="/" class="dock-item" aria-label="Beranda">
-            <Home size={22} />
-        </a>
-        
-        <div class="dock-divider"></div>
+        <div id="nav-auth" class="nav-left">
+            <div class="auth-skeleton"></div>
+        </div>
 
-        <a href="/arsip" class="dock-item" aria-label="Arsip Berita">
-            <Archive size={22} />
-        </a>
+        <div class="nav-center">
+            <span class="brand-text">@mediacivitas</span>
+        </div>
 
-        <div id="dock-dynamic" style="display: flex; align-items: center; gap: 20px;"></div>
+        <div class="nav-right">
+            <div class="time-badge">
+                <span id="clock-time">--:--</span>
+                <span class="divider">|</span>
+                <span id="clock-date">...</span>
+            </div>
+        </div>
 
     </div>
-</nav>
-
-<style>
-    .floating-navbar {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 9999;
-        font-family: 'Poppins', sans-serif;
-    }
-
-    .dock-container {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        /* Style Brutalist Clean: Putih Solid, Border Hitam Tipis */
-        background: #ffffff; 
-        padding: 12px 30px;
-        border: 2px solid #111;
-        /* Pill Shape */
-        border-radius: 50px; 
-        box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .dock-container:hover {
-        transform: translateY(-4px);
-        box-shadow: 6px 6px 0px #000;
-    }
-
-    .dock-item {
-        color: #111;
-        opacity: 0.5;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-    }
-
-    .dock-item:hover {
-        opacity: 1;
-        transform: scale(1.2);
-        color: #000;
-    }
-
-    .dock-divider {
-        width: 2px;
-        height: 18px;
-        background: #eee;
-    }
-</style>
+</header>
 
 <script>
     import { supabase } from '../lib/supabase';
 
-    // Fungsi untuk render ikon menu tambahan berdasarkan Role
-    async function updateDock() {
-        const dynamicContainer = document.getElementById('dock-dynamic');
-        if (!dynamicContainer) return;
+    // 1. UPDATE JAM
+    function updateClock() {
+        const timeEl = document.getElementById('clock-time');
+        const dateEl = document.getElementById('clock-date');
+        
+        if (timeEl && dateEl) {
+            const now = new Date();
+            timeEl.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            dateEl.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+    }
 
-        // Reset dulu biar gak double
-        dynamicContainer.innerHTML = '';
+    // 2. LOGIC AUTH & LOGOUT
+    async function checkAuth() {
+        const authContainer = document.getElementById('nav-auth');
+        if (!authContainer) return;
 
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-            // Cek Role User
+            // --- STATE: SUDAH LOGIN ---
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('role')
+                .select('full_name, avatar_url')
                 .eq('id', session.user.id)
                 .single();
             
-            let htmlContent = `<div class="dock-divider"></div>`;
+            const name = profile?.full_name || 'User';
+            const firstName = name.split(' ')[0]; 
+            const avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${name}&background=111&color=fff`;
 
-            // A. ROLE REDAKSI & ADMIN (Bisa Tulis Berita)
-            if (profile?.role === 'redaksi' || profile?.role === 'admin') {
-                htmlContent += `
-                    <a href="/redaksi/tulis" class="dock-item" aria-label="Tulis Berita">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+            // Render: User Pill + Tombol Logout Kecil
+            authContainer.innerHTML = `
+                <div class="auth-wrapper">
+                    <a href="/profile" class="user-pill" title="Lihat Profil">
+                        <img src="${avatar}" alt="${name}" class="avatar-img" />
+                        <span class="user-name">${firstName}</span>
                     </a>
-                `;
-            }
-
-            // B. ROLE ADMIN (Bisa Akses Dashboard)
-            if (profile?.role === 'admin') {
-                htmlContent += `
-                    <a href="/admin/dashboard" class="dock-item" aria-label="Dashboard Admin">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-                    </a>
-                `;
-            }
-
-            // C. USER PROFILE (Semua yang login punya ini)
-            htmlContent += `
-                <a href="/profile" class="dock-item" aria-label="Profil User">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </a>
+                    
+                    <button id="btn-logout" class="btn-logout" title="Keluar / Logout">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                    </button>
+                </div>
             `;
 
-            dynamicContainer.innerHTML = htmlContent;
+            // Pasang Event Listener untuk Logout
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) {
+                btnLogout.addEventListener('click', async () => {
+                    if (confirm('Yakin ingin keluar?')) {
+                        await supabase.auth.signOut();
+                        window.location.reload(); // Refresh halaman biar balik ke state belum login
+                    }
+                });
+            }
+
+        } else {
+            // --- STATE: BELUM LOGIN ---
+            authContainer.innerHTML = `
+                <a href="/login" class="btn-login">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
+                    <span>Login</span>
+                </a>
+            `;
         }
     }
 
-    // Jalankan setiap kali halaman dimuat (untuk support View Transitions)
-    document.addEventListener('astro:page-load', updateDock);
+    document.addEventListener('astro:page-load', () => {
+        updateClock();
+        setInterval(updateClock, 1000);
+        checkAuth();
+    });
 </script>
+
+<style>
+    /* STICKY NAVBAR */
+    .top-navbar {
+        width: 100%;
+        padding: 15px 0;
+        position: sticky; top: 0; z-index: 100;
+        background-color: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+
+    .navbar-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 40px;
+    }
+
+    .nav-left { flex: 1; display: flex; justify-content: flex-start; align-items: center; }
+
+    /* WRAPPER LOGIN (Pill + Logout) */
+    :global(.auth-wrapper) {
+        display: flex;
+        align-items: center;
+        gap: 8px; /* Jarak antara nama dan tombol logout */
+    }
+
+    /* TOMBOL LOGIN */
+    :global(.btn-login) {
+        display: flex; align-items: center; gap: 8px;
+        text-decoration: none; color: #111; font-weight: 700; font-size: 0.95rem;
+        padding: 8px 16px; border-radius: 8px; transition: background 0.2s;
+    }
+    :global(.btn-login:hover) { background-color: #f0f0f0; }
+
+    /* USER PILL */
+    :global(.user-pill) {
+        display: flex; align-items: center; gap: 10px;
+        text-decoration: none; background: #f4f4f5; border: 1px solid #e4e4e7;
+        padding: 4px 16px 4px 4px; border-radius: 50px; transition: all 0.2s ease;
+    }
+    :global(.user-pill:hover) {
+        background: #e4e4e7; border-color: #d4d4d8; transform: translateY(-1px);
+    }
+    :global(.avatar-img) {
+        width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(0,0,0,0.1);
+    }
+    :global(.user-name) { font-weight: 600; font-size: 0.9rem; color: #333; }
+
+    /* TOMBOL LOGOUT BARU */
+    :global(.btn-logout) {
+        display: flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 50%;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    :global(.btn-logout:hover) {
+        background: #fee2e2; /* Merah muda lembut */
+        color: #ef4444; /* Merah */
+        border-color: #fecaca;
+    }
+
+    /* CENTER & RIGHT */
+    .nav-center { flex: 1; display: flex; justify-content: center; }
+    .brand-text {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500; font-style: italic; font-size: 1.1rem; color: #333; letter-spacing: -0.5px;
+    }
+
+    .nav-right { flex: 1; display: flex; justify-content: flex-end; }
+    .time-badge {
+        display: flex; align-items: center; gap: 10px;
+        background: #f4f4f5; padding: 8px 16px; border-radius: 12px;
+        font-size: 0.85rem; font-weight: 600; color: #444;
+    }
+    .divider { color: #ccc; }
+    .auth-skeleton { width: 80px; height: 30px; background: #eee; border-radius: 6px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+    @media (max-width: 600px) {
+        .nav-right { display: none; }
+        .nav-center { justify-content: flex-end; }
+    }
+</style>

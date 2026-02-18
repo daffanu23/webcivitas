@@ -1,76 +1,182 @@
 ---
-import { Home, Archive, Search, User } from 'lucide-react';
+import { Home, Archive } from 'lucide-react';
 ---
 
-<nav class="floating-dock">
+<nav class="floating-dock" transition:persist>
     <div class="dock-container">
-        <a href="/" class="dock-item" aria-label="Home">
-            <Home size={24} strokeWidth={1.5} />
+        
+        <a href="/" class="dock-item" aria-label="Beranda" data-tooltip="Beranda">
+            <Home size={24} strokeWidth={2} />
         </a>
         
-        <div class="dock-divider"></div>
-
-        <a href="/arsip" class="dock-item" aria-label="Arsip">
-            <Archive size={24} strokeWidth={1.5} />
+        <a href="/arsip" class="dock-item" aria-label="Arsip Berita" data-tooltip="Arsip">
+            <Archive size={24} strokeWidth={2} />
         </a>
 
-        <div class="dock-divider"></div>
+        <div id="floating-dynamic"></div>
 
-        <a href="/login" class="dock-item" aria-label="Login">
-            <User size={24} strokeWidth={1.5} />
-        </a>
     </div>
 </nav>
 
+<script>
+    import { supabase } from '../lib/supabase';
+
+    async function updateFloatingBar() {
+        const container = document.getElementById('floating-dynamic');
+        if (!container) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        container.innerHTML = ''; 
+
+        if (session) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
+            
+            let html = '';
+
+            // --- PENTING: SVG INI DISET AGAR SAMA PERSIS DENGAN LUCIDE ---
+            // fill="none"
+            // stroke="currentColor"
+            // stroke-width="2" (INI KUNCINYA BIAR TEBAL SAMA)
+            
+            // 1. TULIS (Redaksi/Admin) -> Ikon Fountain Pen
+            if (profile?.role === 'redaksi' || profile?.role === 'admin') {
+                html += `
+                    <a href="/redaksi/tulis" class="dock-item" aria-label="Tulis" data-tooltip="Tulis Berita">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                            <path d="M2 2l7.586 7.586"></path>
+                            <circle cx="11" cy="11" r="2"></circle>
+                        </svg>
+                    </a>
+                `;
+            }
+
+            // 2. DASHBOARD (Admin) -> Ikon Dashboard
+            if (profile?.role === 'admin') {
+                html += `
+                    <a href="/admin/dashboard" class="dock-item" aria-label="Dashboard" data-tooltip="Dashboard Admin">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+                            <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+                            <rect x="14" y="12" width="7" height="9" rx="1"></rect>
+                            <rect x="3" y="16" width="7" height="5" rx="1"></rect>
+                        </svg>
+                    </a>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+    }
+
+    document.addEventListener('astro:page-load', updateFloatingBar);
+</script>
+
 <style>
+    /* WRAPPER UTAMA */
     .floating-dock {
         position: fixed;
         bottom: 30px;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translateX(-50%); 
         z-index: 9999;
+        font-family: 'Poppins', sans-serif;
     }
 
+    /* CONTAINER KAPSUL */
     .dock-container {
         display: flex;
         align-items: center;
-        gap: 15px;
-        background: rgba(255, 255, 255, 0.8); /* Glassmorphism */
-        backdrop-filter: blur(10px);
-        padding: 12px 25px;
-        border: 1px solid rgba(0,0,0,0.1);
-        border-radius: 50px; /* Pill shape */
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        padding: 10px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+        transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* AGAR ISINYA SEJAJAR */
+    #floating-dynamic {
+        display: contents;
     }
 
     .dock-container:hover {
-        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
+        transform: translateY(-5px);
         background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
 
-    .dock-item {
-        color: #111;
-        opacity: 0.6;
-        transition: all 0.2s;
+    /* --- PERBAIKAN UTAMA DI SINI --- */
+    /* Gunakan :global() agar style ini tembus ke elemen yang dibuat JS */
+    
+    :global(.dock-item) {
+        color: #555;
+        width: 46px;
+        height: 46px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 5px;
-        border-radius: 50%;
+        border-radius: 14px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        text-decoration: none;
+        cursor: pointer;
     }
 
-    .dock-item:hover {
+    /* STYLE SVG DI DALAMNYA (Global) */
+    :global(.dock-item svg) {
+        width: 24px;
+        height: 24px;
+        /* Pastikan stroke mengikuti warna text */
+        stroke: currentColor; 
+        stroke-width: 2px;
+        fill: none;
+    }
+
+    /* EFEK HOVER (Global) */
+    :global(.dock-item:hover) {
+        background-color: #111;
+        color: #fff;
+        transform: scale(1.15);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    :global(.dock-item:active) {
+        transform: scale(0.95);
+    }
+
+    /* TOOLTIP (Global) */
+    :global(.dock-item)::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px);
+        background: #111;
+        color: #fff;
+        padding: 5px 10px;
+        font-size: 0.75rem;
+        border-radius: 6px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s;
+        pointer-events: none;
+        margin-bottom: 12px;
+        white-space: nowrap;
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    :global(.dock-item:hover)::after {
         opacity: 1;
-        background: #f0f0f0;
-        transform: scale(1.1);
-    }
-
-    .dock-divider {
-        width: 1px;
-        height: 20px;
-        background: #ccc;
-        opacity: 0.5;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
     }
 </style>

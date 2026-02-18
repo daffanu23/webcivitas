@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import Navbar from '../components/Navbar.astro';
+import FloatingBar from '../components/FloatingBar.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 
@@ -13,55 +14,65 @@ const { title = "MEDIACIVITAS" } = Astro.props;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-
     <ClientRouter />
 </head>
 <body>
     
     <Navbar />
 
-    <div class="page-wrapper">
-        <slot />
-    </div>
+    <main class="main-content" transition:animate="none">
+        <div class="animate-wrapper container">
+            <slot />
+        </div>
+    </main>
 
     <Footer />
+
+    <FloatingBar />
 
 </body>
 </html>
 
 <style is:global>
-    /* RESET & FONT DASAR */
+    /* RESET */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
         font-family: 'Poppins', sans-serif;
-        background-color: #ffffff;
-        color: #111111;
-        overflow-x: hidden; /* Mencegah scrollbar horizontal saat animasi */
-        margin: 0;
+        background-color: #FAFAFA;
+        color: #111;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
     }
 
-    /* --- ANIMASI SLIDING SEPERTI HP --- */
-    
-    /* Halaman LAMA (Keluar ke Kiri) */
-    ::view-transition-old(root) {
-        animation: slideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    /* CONTAINER GLOBAL (Penyelamat Layout) */
+    .container {
+        max-width: 1200px;      /* Batas lebar maksimal */
+        margin: 0 auto;         /* Tengah secara horizontal */
+        padding: 0 20px;        /* Jarak aman kiri-kanan (Padding) */
+        width: 100%;
     }
 
-    /* Halaman BARU (Masuk dari Kanan) */
-    ::view-transition-new(root) {
-        animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    /* ANIMASI KONTEN (Slide Up) */
+    .animate-wrapper {
+        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
     }
 
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(-20%); opacity: 0; } /* Geser dikit aja biar elegan */
+    @keyframes slideUp {
+        0% { 
+            opacity: 0;
+            transform: translateY(40px);
+        }
+        100% { 
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; } /* Masuk dari ujung kanan layar */
-        to { transform: translateX(0); opacity: 1; }
-    }
+    a { text-decoration: none; color: inherit; }
 </style>

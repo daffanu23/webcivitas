@@ -10,7 +10,6 @@ import react from '@astrojs/react';
 export default defineConfig({
   // <--- TAMBAHKAN BARIS INI
   output: 'server',
-
   adapter: vercel(),
   integrations: [db(), react()],
 });

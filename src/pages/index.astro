@@ -1,363 +1,118 @@
 ---
-
-import Navbar from '../components/Navbar.astro';
-
-import Footer from '../components/Footer.astro';
-
+import Layout from '../layouts/Layout.astro';
+import HeroNews from '../components/HeroNews.astro';
+import SubNewsCard from '../components/SubNewsCard.astro'; // Komponen Baru
 import { supabase } from '../lib/supabase';
 
-import '../styles/global.css';
-
-
-
-// 1. Ambil Data Artikel
-
+// 1. Fetch Data (1 Hero + 6 Sub News = Limit 7)
 const { data: articles, error } = await supabase
-
   .from('articles')
-
   .select(`
-
-    id,
-
-    title,
-
-    slug,
-
-    created_at,
-
-    cover_url,
-
+    id, title, slug, created_at, cover_url, content,
     profiles ( full_name )
-
   `)
-
   .eq('status', 'published')
-
-  .order('created_at', { ascending: false });
-
-
+  .order('created_at', { ascending: false })
+  .limit(7);
 
 if (error) console.error("Error fetch news:", error);
 
+// 2. Pisahkan Data
+const heroArticle = articles && articles.length > 0 ? articles[0] : null;
+const subArticles = articles && articles.length > 1 ? articles.slice(1) : [];
 ---
 
+<Layout title="MEDIACIVITAS - Berita Terkini">
 
+    <div class="section-hero">
+        <HeroNews article={heroArticle} />
+    </div>
 
-<html lang="id">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>MEDIACIVITAS - Berita Terkini</title>
-
-</head>
-
-<body>
-
-
-
-    <Navbar />
-
-
-
-    <header class="hero-section">
-
-        <div class="container">
-
-            <h1 class="hero-title">MEDIACIVITAS</h1>
-
-            <p class="hero-subtitle">Jurnalisme independen, tajam, dan terpercaya.</p>
-
-        </div>
-
-    </header>
-
-
-
-    <main class="container">
-
-       
-
-        {articles?.length === 0 ? (
-
-            <div class="empty-state">
-
-                <h3>Belum ada berita.</h3>
-
-                <p>Silakan login sebagai redaksi untuk menulis.</p>
-
+    {subArticles.length > 0 && (
+        <div class="section-latest">
+            
+            <div class="section-header">
+                <h2>Terbaru</h2>
+                <div class="line"></div>
             </div>
-
-        ) : (
 
             <div class="news-grid">
-
-                {articles?.map((item) => (
-
-                    <a href={`/berita/${item.slug}`} class="news-card">
-
-                        <div class="img-container">
-
-                             <img
-
-                                src={item.cover_url || 'https://placehold.co/600x400/111/fff?text=No+Image'}
-
-                                alt={item.title}
-
-                            />
-
-                        </div>
-
-
-
-                        <div class="card-body">
-
-                            <div class="meta">
-
-                                <span>{new Date(item.created_at).toLocaleDateString('id-ID', {
-
-                                    day: 'numeric', month: 'short', year: 'numeric'
-
-                                })}</span>
-
-                                <span class="divider">/</span>
-
-                                <span>
-
-                                    {item.profiles && Array.isArray(item.profiles) && item.profiles[0]
-
-                                        ? item.profiles[0].full_name
-
-                                        : 'Redaksi'}
-
-                                </span>
-
-                            </div>
-
-                           
-
-                            <h3 class="card-title">{item.title}</h3>
-
-                           
-
-                            <div class="read-more">Baca Artikel &rarr;</div>
-
-                        </div>
-
-                    </a>
-
+                {subArticles.map((item) => (
+                    <div class="grid-item">
+                        <SubNewsCard article={item} />
+                    </div>
                 ))}
-
+            </div>
+            
+            <div class="center-btn">
+                <a href="/arsip" class="btn-archive">Lihat Arsip Berita →</a>
             </div>
 
-        )}
+        </div>
+    )}
 
-
-
-    </main>
-
-
-
-    <Footer />
-
-
-
-</body>
-
-</html>
-
-
+</Layout>
 
 <style>
-
-    /* HERO SECTION */
-
-    .hero-section {
-
-        padding: 80px 0;
-
-        text-align: center;
-
-        border-bottom: 1px solid var(--fg);
-
-        margin-bottom: 40px;
-
+    /* SECTION SPACING */
+    .section-hero {
+        margin-top: 20px;
+        margin-bottom: 60px;
     }
 
-    .hero-title {
-
-        font-size: 4rem;
-
-        font-weight: 900;
-
-        letter-spacing: -2px;
-
-        line-height: 1;
-
-        margin-bottom: 10px;
-
+    .section-latest {
+        margin-bottom: 100px; /* Jarak bawah lega agar tidak ketutup Floating Bar */
     }
 
-    .hero-subtitle {
-
-        font-size: 1.2rem;
-
-        color: #555;
-
-    }
-
-
-
-    /* GRID SYSTEM */
-
-    .news-grid {
-
-        display: grid;
-
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-
-        gap: 30px;
-
-        margin-bottom: 80px;
-
-    }
-
-
-
-    /* CARD DESIGN (Minimalist Bordered) */
-
-    .news-card {
-
-        border: 1px solid var(--fg);
-
-        background: var(--bg);
-
-        transition: transform 0.2s, box-shadow 0.2s;
-
+    /* SECTION HEADER (Garis & Judul) */
+    .section-header {
         display: flex;
-
-        flex-direction: column;
-
-        text-decoration: none; /* Hapus underline default link */
-
-        color: inherit;
-
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 40px;
     }
-
-
-
-    .news-card:hover {
-
-        transform: translateY(-4px);
-
-        box-shadow: 4px 4px 0px var(--fg); /* Shadow kasar */
-
-    }
-
-
-
-    .img-container {
-
-        width: 100%;
-
-        height: 220px;
-
-        border-bottom: 1px solid var(--fg);
-
-        overflow: hidden;
-
-    }
-
-    .img-container img {
-
-        width: 100%;
-
-        height: 100%;
-
-        object-fit: cover;
-
-        transition: filter 0.3s;
-
-        filter: grayscale(100%); /* Hitam putih default */
-
-    }
-
-    .news-card:hover .img-container img {
-
-        filter: grayscale(0%); /* Berwarna saat hover */
-
-    }
-
-
-
-    .card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
-
-   
-
-    .meta {
-
-        font-size: 0.75rem;
-
+    .section-header h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
         text-transform: uppercase;
-
-        font-weight: bold;
-
-        letter-spacing: 0.05em;
-
-        margin-bottom: 10px;
-
-        color: #666;
-
+        letter-spacing: 1px;
+        margin: 0;
+    }
+    .line {
+        flex-grow: 1;
+        height: 2px;
+        background-color: #111;
     }
 
-    .divider { margin: 0 5px; }
+    /* GRID SYSTEM (3 Kolom) */
+    .news-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr); /* Default Desktop: 3 Kolom */
+        gap: 30px;
+        margin-bottom: 60px;
+    }
 
-
-
-    .card-title {
-
-        font-size: 1.4rem;
-
-        line-height: 1.3;
-
+    /* TOMBOL ARSIP */
+    .center-btn { text-align: center; }
+    .btn-archive {
+        display: inline-block;
+        padding: 15px 40px;
+        background: #111;
+        color: #fff;
         font-weight: 700;
-
-        margin: 0 0 20px 0;
-
+        border-radius: 50px;
+        transition: transform 0.2s, background 0.2s;
+    }
+    .btn-archive:hover {
+        background: #333;
+        transform: scale(1.05);
     }
 
-
-
-    .read-more {
-
-        margin-top: auto;
-
-        font-size: 0.9rem;
-
-        font-weight: 600;
-
-        text-decoration: underline;
-
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+        .news-grid { grid-template-columns: repeat(2, 1fr); } /* Tablet: 2 Kolom */
     }
-
-
-
-    /* State Kosong */
-
-    .empty-state {
-
-        text-align: center;
-
-        padding: 60px;
-
-        color: #666;
-
-        border: 1px dashed #ccc;
-
+    @media (max-width: 600px) {
+        .news-grid { grid-template-columns: 1fr; } /* HP: 1 Kolom */
     }
-
 </style>

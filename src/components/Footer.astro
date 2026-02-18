@@ -1,113 +1,68 @@
 ---
-import { Facebook, Twitter, Instagram, Github } from 'lucide-react';
-const currentYear = new Date().getFullYear();
+import { Instagram } from 'lucide-react';
 ---
 
-<footer class="site-footer">
+<footer class="simple-footer">
     <div class="container footer-content">
         
-        <div class="footer-brand">
-            <a href="/" class="footer-logo">MEDIA<span style="font-weight: 300;">CIVITAS.</span></a>
-            <p class="footer-desc">
-                Media independen yang menyajikan berita terkini dengan sudut pandang tajam dan berimbang.
-            </p>
-        </div>
+        <span class="copyright">
+            &copy; 2026 mediacivitas. All rights reserved.
+        </span>
 
-        <div class="footer-links">
-            <h4 class="footer-heading">Jelajahi</h4>
-            <a href="/">Beranda</a>
-            <a href="/redaksi/tulis">Redaksi</a>
-            <a href="/login">Login Admin</a>
-        </div>
+        <a href="https://instagram.com/mediacivitas" target="_blank" class="social-link">
+            <Instagram size={18} />
+            <span>@mediacivitas</span>
+        </a>
 
-        <div class="footer-social">
-            <h4 class="footer-heading">Ikuti Kami</h4>
-            <div class="social-icons">
-                <a href="#" aria-label="Twitter"><Twitter size={20} /></a>
-                <a href="#" aria-label="Facebook"><Facebook size={20} /></a>
-                <a href="#" aria-label="Instagram"><Instagram size={20} /></a>
-                <a href="https://github.com" target="_blank" aria-label="GitHub"><Github size={20} /></a>
-            </div>
-        </div>
-
-    </div>
-
-    <div class="copyright">
-        <div class="container">
-            &copy; {currentYear} @mediacivitas. All rights reserved.
-        </div>
     </div>
 </footer>
 
 <style>
-    .site-footer {
-        border-top: 2px solid var(--fg); /* Garis tegas */
-        background-color: var(--bg);
-        color: var(--fg);
-        padding-top: 60px;
-        margin-top: auto; /* Biar selalu di bawah kalau konten dikit */
+    .simple-footer {
+        width: 100%;
+        padding: 30px 0;
+        margin-top: auto; /* Dorong ke paling bawah jika konten sedikit */
+        
+        /* STYLE SESUAI GAMBAR */
+        background-color: #F9FAFB; /* Abu-abu sangat muda */
+        border-top: 1px solid #111; /* Garis pemisah tegas */
+        
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.85rem;
+        color: #111;
     }
 
     .footer-content {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr; /* Layout kolom */
-        gap: 40px;
-        padding-bottom: 60px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-
-    /* Responsive: Jadi 1 kolom di HP */
-    @media (max-width: 768px) {
-        .footer-content { grid-template-columns: 1fr; gap: 30px; text-align: center; }
-        .footer-brand { margin: 0 auto; }
-        .social-icons { justify-content: center; }
-    }
-
-    .footer-logo {
-        font-size: 1.5rem;
-        font-weight: 900;
-        letter-spacing: -1px;
-        display: block;
-        margin-bottom: 15px;
-    }
-
-    .footer-desc {
-        font-size: 0.9rem;
-        line-height: 1.6;
-        color: #555;
-        max-width: 300px;
-    }
-
-    .footer-heading {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 10px;
-        display: inline-block;
-    }
-
-    .footer-links { display: flex; flex-direction: column; gap: 10px; }
-    .footer-links a {
-        font-size: 0.95rem;
-        color: #555;
-        transition: color 0.2s;
-    }
-    .footer-links a:hover { color: var(--fg); text-decoration: underline; }
-
-    .social-icons { display: flex; gap: 15px; }
-    .social-icons a {
-        color: var(--fg);
-        transition: transform 0.2s;
-    }
-    .social-icons a:hover { transform: translateY(-3px); }
 
     .copyright {
-        border-top: 1px solid #eee;
-        padding: 20px 0;
-        text-align: center;
-        font-size: 0.8rem;
-        color: #888;
-        background: #fafafa;
+        font-weight: 500;
+        color: #444;
+    }
+
+    .social-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #111;
+        font-weight: 600;
+        transition: opacity 0.2s;
+    }
+
+    .social-link:hover {
+        opacity: 0.7;
+    }
+
+    /* RESPONSIVE MOBILE */
+    @media (max-width: 600px) {
+        .footer-content {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
     }
 </style>
