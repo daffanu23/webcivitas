@@ -5,7 +5,7 @@ import { Calendar, User, Share2 } from 'lucide-react';
 
 const { slug } = Astro.params;
 
-// 1. VALIDASI SLUG (Fix TypeScript Error: string | undefined)
+// 1. VALIDASI SLUG
 if (!slug) {
   return Astro.redirect('/404');
 }
@@ -17,7 +17,7 @@ const { data: article, error } = await supabase
     *,
     profiles ( full_name, role, avatar_url )
   `)
-  .eq('slug', slug) // Sekarang slug dijamin string
+  .eq('slug', slug)
   .single();
 
 // 3. HANDLE 404
@@ -86,9 +86,7 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
         const btn = document.getElementById('share-btn');
         if (btn) {
             btn.addEventListener('click', () => {
-                // Ambil data-url (dataset otomatis jadi string)
                 const url = btn.getAttribute('data-url'); 
-                
                 if (url) {
                     navigator.clipboard.writeText(url).then(() => {
                         const originalText = btn.innerHTML;
@@ -122,7 +120,9 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
         line-height: 1.2;
         margin-bottom: 25px;
         letter-spacing: -1px;
-        color: #111;
+        
+        /* GANTI: Warna text utama */
+        color: var(--text);
     }
 
     /* META DATA */
@@ -132,15 +132,25 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
         align-items: center;
         gap: 20px;
         padding: 15px 0;
-        border-top: 1px solid #eee;
-        border-bottom: 1px solid #eee;
+        
+        /* GANTI: Border variabel */
+        border-top: 1px solid var(--border-muted);
+        border-bottom: 1px solid var(--border-muted);
     }
 
     .meta-item { 
         display: flex; align-items: center; gap: 8px; 
-        color: #555; font-size: 0.9rem; font-weight: 500;
+        
+        /* GANTI: Warna text muted */
+        color: var(--text-muted); 
+        font-size: 0.9rem; font-weight: 500;
     }
-    .meta-divider { width: 1px; height: 20px; background: #ddd; }
+    
+    .meta-divider { 
+        width: 1px; height: 20px; 
+        /* GANTI: Warna divider */
+        background: var(--border-muted); 
+    }
 
     /* GAMBAR HERO */
     .hero-image-wrapper {
@@ -148,7 +158,8 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
         margin-bottom: 50px;
         border-radius: 16px;
         overflow: hidden;
-        border: 1px solid #eee;
+        /* GANTI: Border variabel */
+        border: 1px solid var(--border-muted);
     }
     .hero-image {
         width: 100%; height: auto; display: block;
@@ -159,31 +170,52 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
         font-family: 'Poppins', sans-serif;
         font-size: 1.125rem;
         line-height: 1.8;
-        color: #222;
+        
+        /* GANTI: Warna text isi konten */
+        color: var(--text);
+        
         font-weight: 400;
     }
 
     .content-body :global(p) { margin-bottom: 1.5em; }
+    
     .content-body :global(h2) { 
-        font-size: 1.8rem; font-weight: 700; margin-top: 2em; margin-bottom: 0.5em; color: #111;
+        font-size: 1.8rem; font-weight: 700; margin-top: 2em; margin-bottom: 0.5em; 
+        /* GANTI: Warna Heading */
+        color: var(--text);
     }
+    
     .content-body :global(h3) { 
-        font-size: 1.4rem; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; color: #111;
+        font-size: 1.4rem; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; 
+        /* GANTI: Warna Heading */
+        color: var(--text);
     }
+    
     .content-body :global(ul), .content-body :global(ol) { 
         margin-bottom: 1.5em; padding-left: 20px; 
     }
+    
+    /* BLOCKQUOTE (Kutipan) */
     .content-body :global(blockquote) {
-        border-left: 4px solid #111;
+        /* GANTI: Border samping */
+        border-left: 4px solid var(--text);
+        
         padding-left: 20px;
         font-style: italic;
         font-size: 1.2rem;
-        color: #444;
+        
+        /* GANTI: Warna text blockquote */
+        color: var(--text-muted);
+        
         margin: 30px 0;
-        background: #f9f9f9;
+        
+        /* GANTI: Background blockquote (biar ga silau di dark mode) */
+        background: var(--bg-light);
+        
         padding: 20px;
         border-radius: 0 8px 8px 0;
     }
+    
     .content-body :global(img) {
         max-width: 100%; height: auto; border-radius: 8px; margin: 30px 0;
     }
@@ -192,23 +224,38 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
     .article-footer {
         margin-top: 60px;
         padding-top: 30px;
-        border-top: 1px solid #eee;
+        /* GANTI: Border atas */
+        border-top: 1px solid var(--border-muted);
         display: flex;
         align-items: center;
         gap: 15px;
     }
-    .share-label { font-weight: 600; font-size: 0.9rem; color: #666; }
+    .share-label { 
+        font-weight: 600; font-size: 0.9rem; 
+        /* GANTI: Warna label share */
+        color: var(--text-muted); 
+    }
 
+    /* TOMBOL SHARE */
     .btn-share {
         display: flex; align-items: center; gap: 8px;
-        background: #fff; border: 1px solid #ccc;
+        
+        /* GANTI: Background tombol & Border */
+        background: var(--bg-light); 
+        border: 1px solid var(--border-muted);
+        color: var(--text);
+        
         padding: 8px 16px; border-radius: 50px;
         cursor: pointer; font-family: 'Poppins', sans-serif;
         font-weight: 600; font-size: 0.9rem;
         transition: all 0.2s;
     }
+    
     .btn-share:hover {
-        background: #111; color: #fff; border-color: #111;
+        /* GANTI: Invert saat hover */
+        background: var(--text); 
+        color: var(--bg); 
+        border-color: var(--text);
     }
 
     @media (max-width: 768px) {

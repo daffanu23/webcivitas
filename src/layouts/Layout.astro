@@ -36,24 +36,29 @@ const { title = "MEDIACIVITAS" } = Astro.props;
 </html>
 
 <style is:global>
-    /* RESET */
+    /* RESET & DASAR */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
         font-family: 'Poppins', sans-serif;
-        background-color: #FAFAFA;
-        color: #111;
+        
+        /* PENTING: Jangan tulis background-color atau color disini! */
+        /* Biarkan global.css yang mengaturnya lewat var(--bg) */
+        
         overflow-x: hidden;
         display: flex;
         flex-direction: column;
         min-height: 100vh;
+        
+        /* Transisi agar ganti tema halus */
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* CONTAINER GLOBAL (Penyelamat Layout) */
+    /* CONTAINER GLOBAL */
     .container {
-        max-width: 1200px;      /* Batas lebar maksimal */
-        margin: 0 auto;         /* Tengah secara horizontal */
-        padding: 0 20px;        /* Jarak aman kiri-kanan (Padding) */
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
         width: 100%;
     }
 
@@ -64,15 +69,10 @@ const { title = "MEDIACIVITAS" } = Astro.props;
     }
 
     @keyframes slideUp {
-        0% { 
-            opacity: 0;
-            transform: translateY(40px);
-        }
-        100% { 
-            opacity: 1;
-            transform: translateY(0);
-        }
+        0% { opacity: 0; transform: translateY(40px); }
+        100% { opacity: 1; transform: translateY(0); }
     }
 
+    /* Link Style Global */
     a { text-decoration: none; color: inherit; }
 </style>

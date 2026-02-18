@@ -93,12 +93,23 @@ import { Home, Archive } from 'lucide-react';
         display: flex;
         align-items: center;
         gap: 12px;
-        background: rgba(255, 255, 255, 0.85);
+        
+        /* GANTI: Background variable (sedikit transparan agar glass tetap jalan, menggunakan color-mix jika support, atau solid fallback) */
+        background: var(--bg-light); 
+        /* Opsi Glass modern (opsional): background: color-mix(in srgb, var(--bg-light), transparent 10%); */
+        
         backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        
         padding: 10px 20px;
-        border: 1px solid rgba(255, 255, 255, 0.6);
+        
+        /* GANTI: Border variable */
+        border: 1px solid var(--border-muted);
+        
         border-radius: 24px;
+        
+        /* GANTI: Shadow lebih soft/adaptif */
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+        
         transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     }
 
@@ -109,15 +120,18 @@ import { Home, Archive } from 'lucide-react';
 
     .dock-container:hover {
         transform: translateY(-5px);
-        background: rgba(255, 255, 255, 0.95);
+        /* GANTI: Background saat hover container */
+        background: var(--bg-light); 
+        border-color: var(--border);
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
 
     /* --- PERBAIKAN UTAMA DI SINI --- */
-    /* Gunakan :global() agar style ini tembus ke elemen yang dibuat JS */
     
     :global(.dock-item) {
-        color: #555;
+        /* GANTI: Warna icon default (Muted/Abu) */
+        color: var(--text-muted);
+        
         width: 46px;
         height: 46px;
         display: flex;
@@ -134,7 +148,6 @@ import { Home, Archive } from 'lucide-react';
     :global(.dock-item svg) {
         width: 24px;
         height: 24px;
-        /* Pastikan stroke mengikuti warna text */
         stroke: currentColor; 
         stroke-width: 2px;
         fill: none;
@@ -142,8 +155,11 @@ import { Home, Archive } from 'lucide-react';
 
     /* EFEK HOVER (Global) */
     :global(.dock-item:hover) {
-        background-color: #111;
-        color: #fff;
+        /* GANTI: Saat hover, background jadi warna Teks Utama (Kontras) */
+        background-color: var(--text);
+        /* GANTI: Icon jadi warna Background (Kebalikannya) */
+        color: var(--bg);
+        
         transform: scale(1.15);
         box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
@@ -159,8 +175,12 @@ import { Home, Archive } from 'lucide-react';
         bottom: 100%;
         left: 50%;
         transform: translateX(-50%) translateY(10px);
-        background: #111;
-        color: #fff;
+        
+        /* GANTI: Tooltip background mengikuti warna teks utama */
+        background: var(--text);
+        /* GANTI: Teks tooltip mengikuti warna background */
+        color: var(--bg);
+        
         padding: 5px 10px;
         font-size: 0.75rem;
         border-radius: 6px;

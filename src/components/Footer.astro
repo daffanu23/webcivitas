@@ -21,15 +21,16 @@ import { Instagram } from 'lucide-react';
     .simple-footer {
         width: 100%;
         padding: 30px 0;
-        margin-top: auto; /* Dorong ke paling bawah jika konten sedikit */
+        margin-top: auto; /* Dorong ke paling bawah */
         
-        /* STYLE SESUAI GAMBAR */
-        background-color: #F9FAFB; /* Abu-abu sangat muda */
-        border-top: 1px solid #111; /* Garis pemisah tegas */
+        /* GANTI: Gunakan Variabel agar adaptif */
+        background-color: var(--bg-light); 
+        border-top: 1px solid var(--border-muted);
+        color: var(--text);
         
         font-family: 'Poppins', sans-serif;
         font-size: 0.85rem;
-        color: #111;
+        transition: background-color 0.3s ease, border-color 0.3s ease;
     }
 
     .footer-content {
@@ -40,7 +41,8 @@ import { Instagram } from 'lucide-react';
 
     .copyright {
         font-weight: 500;
-        color: #444;
+        /* GANTI: Warna text muted */
+        color: var(--text-muted);
     }
 
     .social-link {
@@ -48,13 +50,18 @@ import { Instagram } from 'lucide-react';
         align-items: center;
         gap: 8px;
         text-decoration: none;
-        color: #111;
+        
+        /* GANTI: Warna text utama */
+        color: var(--text);
+        
         font-weight: 600;
         transition: opacity 0.2s;
     }
 
     .social-link:hover {
         opacity: 0.7;
+        /* Opsional: Ubah warna saat hover */
+        color: var(--highlight); 
     }
 
     /* RESPONSIVE MOBILE */

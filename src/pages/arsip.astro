@@ -54,47 +54,92 @@ const { data: articles } = await supabase
 <style>
     /* HEADER KECIL */
     .clean-header { padding: 30px 0; }
-    .brand-text { font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1rem; color: #666; }
+    .brand-text { 
+        font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1rem; 
+        /* GANTI: Warna text muted variabel */
+        color: var(--text-muted); 
+    }
 
     /* JUDUL ARSIP */
     .page-title-box {
-        border-bottom: 2px solid #111; margin-bottom: 40px; padding-bottom: 20px;
+        /* GANTI: Border variabel */
+        border-bottom: 2px solid var(--border); 
+        margin-bottom: 40px; padding-bottom: 20px;
     }
-    .page-title-box h1 { font-size: 3rem; font-weight: 900; letter-spacing: -2px; margin: 0; text-transform: uppercase; line-height: 1; }
-    .page-title-box p { margin: 10px 0 0 0; font-weight: 600; color: #666; }
+    .page-title-box h1 { 
+        font-size: 3rem; font-weight: 900; letter-spacing: -2px; margin: 0; 
+        text-transform: uppercase; line-height: 1; 
+        /* GANTI: Warna text utama */
+        color: var(--text);
+    }
+    .page-title-box p { 
+        margin: 10px 0 0 0; font-weight: 600; 
+        /* GANTI: Warna text muted */
+        color: var(--text-muted); 
+    }
 
-    /* GRID & CARD STYLE (Konsisten dengan Homepage) */
+    /* GRID & CARD STYLE */
     .news-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
         gap: 30px;
-        margin-bottom: 100px; /* Padding bawah lega agar tidak ketutup Navbar Floating */
+        margin-bottom: 100px;
     }
 
     .news-card {
-        display: flex; flex-direction: column; text-decoration: none; color: inherit;
-        border: 1px solid #e5e5e5; background: #fff;
+        display: flex; flex-direction: column; text-decoration: none; 
+        
+        /* GANTI: Background & Warna Text Adaptif */
+        background: var(--bg-light); 
+        color: var(--text);
+        
+        /* GANTI: Border Variabel */
+        border: 1px solid var(--border-muted); 
+        
+        /* Tambahkan radius agar senada dengan Homepage */
+        border-radius: 12px;
+        overflow: hidden; 
+        
         height: 100%; 
-        transition: transform 0.2s, border-color 0.2s;
+        transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
     }
+    
     .news-card:hover {
         transform: translateY(-4px);
-        border-color: #111; /* Efek hover simpel & elegan */
+        /* GANTI: Border & Shadow saat hover */
+        border-color: var(--border); 
+        box-shadow: 4px 4px 0px var(--border);
     }
 
     .img-container {
-        height: 200px; border-bottom: 1px solid #e5e5e5; overflow: hidden;
+        height: 200px; 
+        /* GANTI: Border pemisah */
+        border-bottom: 1px solid var(--border-muted); 
+        overflow: hidden;
     }
     .img-container img {
         width: 100%; height: 100%; object-fit: cover;
-        /* Grayscale effect optional di arsip, kalau mau clean bisa dihapus filter-nya */
-        filter: grayscale(100%); transition: filter 0.3s;
+        filter: grayscale(100%); transition: filter 0.3s, transform 0.3s;
     }
-    .news-card:hover img { filter: grayscale(0%); }
+    .news-card:hover img { 
+        filter: grayscale(0%); 
+        transform: scale(1.05); /* Zoom in dikit biar kece */
+    }
 
     .card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
-    .meta-small { font-size: 0.75rem; font-weight: 700; color: #888; margin-bottom: 10px; text-transform: uppercase; display: flex; gap: 5px; }
-    .card-title-small { font-size: 1.2rem; font-weight: 800; line-height: 1.3; margin: 0; }
+    
+    .meta-small { 
+        font-size: 0.75rem; font-weight: 700; 
+        /* GANTI: Warna text muted */
+        color: var(--text-muted); 
+        margin-bottom: 10px; text-transform: uppercase; display: flex; gap: 5px; 
+    }
+    
+    .card-title-small { 
+        font-size: 1.2rem; font-weight: 800; line-height: 1.3; margin: 0;
+        /* GANTI: Warna text utama */
+        color: var(--text); 
+    }
 
     /* RESPONSIVE */
     @media (max-width: 600px) {
