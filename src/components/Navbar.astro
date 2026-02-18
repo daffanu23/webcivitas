@@ -1,173 +1,129 @@
 ---
-// src/components/Navbar.astro
-import { User, LogOut, PenTool, LayoutDashboard, LogIn } from 'lucide-react';
+import { Home, Archive } from 'lucide-react';
 ---
 
-<nav class="navbar">
-    <div class="container nav-container">
-        <a href="/" class="logo">
-            THE<span style="font-weight: 300;">PORTAL.</span>
+<nav class="floating-navbar" transition:persist>
+    <div class="dock-container">
+        
+        <a href="/" class="dock-item" aria-label="Beranda">
+            <Home size={22} />
+        </a>
+        
+        <div class="dock-divider"></div>
+
+        <a href="/arsip" class="dock-item" aria-label="Arsip Berita">
+            <Archive size={22} />
         </a>
 
-        <div class="nav-links">
-            
-            <a id="nav-tulis" href="/redaksi/tulis" class="nav-item hidden">
-                <PenTool size={16} /> <span>Tulis</span>
-            </a>
+        <div id="dock-dynamic" style="display: flex; align-items: center; gap: 20px;"></div>
 
-            <a id="nav-dashboard" href="/admin/dashboard" class="nav-item hidden">
-                <LayoutDashboard size={16} /> <span>Admin</span>
-            </a>
-
-            <a id="btn-login" href="/login" class="btn btn-sm">
-                <LogIn size={16} /> Login
-            </a>
-
-            <div id="user-area" class="user-area hidden">
-                <div class="avatar-box">
-                    <img id="user-avatar" src="" alt="User" />
-                </div>
-                <button id="btn-logout" class="btn-icon" title="Logout">
-                    <LogOut size={18} />
-                </button>
-            </div>
-        </div>
     </div>
 </nav>
 
 <style>
-    /* CSS Styling Navbar Minimalis */
-    .navbar {
-        border-bottom: 1px solid var(--fg);
-        background: var(--bg);
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        padding: 16px 0;
-    }
-    .nav-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .logo {
-        font-size: 1.5rem;
-        font-weight: 900;
-        letter-spacing: -1px;
-        color: var(--fg);
-    }
-    .nav-links {
-        display: flex;
-        align-items: center;
-        gap: 24px;
-    }
-    .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: var(--fg);
-        opacity: 0.7;
-        transition: opacity 0.2s;
-    }
-    .nav-item:hover { opacity: 1; text-decoration: underline; }
-    
-    /* Utility Class Penting */
-    .hidden { display: none !important; }
-    
-    .btn-sm { 
-        padding: 8px 16px; 
-        font-size: 0.85rem; 
-        background: var(--fg);
-        color: var(--bg);
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 5px;
+    .floating-navbar {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        font-family: 'Poppins', sans-serif;
     }
 
-    .user-area { display: flex; align-items: center; gap: 12px; }
-    .avatar-box img { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--fg); object-fit: cover; }
-    
-    .btn-icon {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 5px;
-        color: var(--fg);
+    .dock-container {
         display: flex;
+        align-items: center;
+        gap: 20px;
+        /* Style Brutalist Clean: Putih Solid, Border Hitam Tipis */
+        background: #ffffff; 
+        padding: 12px 30px;
+        border: 2px solid #111;
+        /* Pill Shape */
+        border-radius: 50px; 
+        box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    .btn-icon:hover { color: #555; transform: scale(1.1); transition: transform 0.2s; }
+
+    .dock-container:hover {
+        transform: translateY(-4px);
+        box-shadow: 6px 6px 0px #000;
+    }
+
+    .dock-item {
+        color: #111;
+        opacity: 0.5;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .dock-item:hover {
+        opacity: 1;
+        transform: scale(1.2);
+        color: #000;
+    }
+
+    .dock-divider {
+        width: 2px;
+        height: 18px;
+        background: #eee;
+    }
 </style>
 
 <script>
     import { supabase } from '../lib/supabase';
 
-    // Elemen DOM
-    const navTulis = document.getElementById('nav-tulis');
-    const navDashboard = document.getElementById('nav-dashboard');
-    const btnLogin = document.getElementById('btn-login');
-    const userArea = document.getElementById('user-area');
-    const userAvatar = document.getElementById('user-avatar') as HTMLImageElement;
-    const btnLogout = document.getElementById('btn-logout');
+    // Fungsi untuk render ikon menu tambahan berdasarkan Role
+    async function updateDock() {
+        const dynamicContainer = document.getElementById('dock-dynamic');
+        if (!dynamicContainer) return;
 
-    // Fungsi Update UI (Dipisah biar bisa dipanggil berulang)
-    async function updateUI(user: any) {
-        if (user) {
-            // User Login: Sembunyikan tombol login, Munculkan Avatar
-            btnLogin?.classList.add('hidden');
-            userArea?.classList.remove('hidden');
+        // Reset dulu biar gak double
+        dynamicContainer.innerHTML = '';
 
-            // Ambil data profile (Role & Avatar)
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+            // Cek Role User
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('role, avatar_url')
-                .eq('id', user.id)
+                .select('role')
+                .eq('id', session.user.id)
                 .single();
+            
+            let htmlContent = `<div class="dock-divider"></div>`;
 
-            // Pasang Avatar
-            if (profile?.avatar_url && userAvatar) {
-                userAvatar.src = profile.avatar_url;
-            } else if (userAvatar) {
-                // Fallback avatar kalau profile belum ke-load
-                userAvatar.src = user.user_metadata?.avatar_url || user.user_metadata?.picture || `https://ui-avatars.com/api/?name=${user.email}`;
+            // A. ROLE REDAKSI & ADMIN (Bisa Tulis Berita)
+            if (profile?.role === 'redaksi' || profile?.role === 'admin') {
+                htmlContent += `
+                    <a href="/redaksi/tulis" class="dock-item" aria-label="Tulis Berita">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    </a>
+                `;
             }
 
-            // Atur Menu berdasarkan Role
-            if (['redaksi', 'admin'].includes(profile?.role)) {
-                navTulis?.classList.remove('hidden');
-            }
+            // B. ROLE ADMIN (Bisa Akses Dashboard)
             if (profile?.role === 'admin') {
-                navDashboard?.classList.remove('hidden');
+                htmlContent += `
+                    <a href="/admin/dashboard" class="dock-item" aria-label="Dashboard Admin">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    </a>
+                `;
             }
 
-        } else {
-            // User Logout: Balikin ke default
-            btnLogin?.classList.remove('hidden');
-            userArea?.classList.add('hidden');
-            navTulis?.classList.add('hidden');
-            navDashboard?.classList.add('hidden');
+            // C. USER PROFILE (Semua yang login punya ini)
+            htmlContent += `
+                <a href="/profile" class="dock-item" aria-label="Profil User">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </a>
+            `;
+
+            dynamicContainer.innerHTML = htmlContent;
         }
     }
 
-    // LISTENER UTAMA (Ini yang memperbaiki bug login!)
-    // Fungsi ini akan jalan otomatis SETIAP KALI status login berubah (Login, Logout, atau Refresh Token)
-    supabase.auth.onAuthStateChange((event, session) => {
-        if (session?.user) {
-            updateUI(session.user);
-        } else {
-            updateUI(null);
-        }
-    });
-
-    // Logic Logout
-    if (btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-            await supabase.auth.signOut();
-            localStorage.clear();
-            window.location.href = '/';
-        });
-    }
+    // Jalankan setiap kali halaman dimuat (untuk support View Transitions)
+    document.addEventListener('astro:page-load', updateDock);
 </script>
