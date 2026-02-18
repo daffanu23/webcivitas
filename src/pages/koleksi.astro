@@ -1,0 +1,179 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Bookmark } from 'lucide-react';
+---
+
+<Layout title="Koleksi Saya | MEDIACIVITAS">
+    <div class="container page-wrapper">
+        
+        <div class="page-header">
+            <Bookmark size={32} strokeWidth={1.5} />
+            <h1>Koleksi Bacaan</h1>
+        </div>
+
+        <div id="loading-state" class="state-box">
+            <div class="spinner"></div>
+            <p>Memuat koleksi anda...</p>
+        </div>
+
+        <div id="empty-state" class="state-box" style="display: none;">
+            <p>Belum ada artikel yang disimpan.</p>
+            <a href="/" class="btn-home">Cari Berita</a>
+        </div>
+
+        <div id="collection-grid" class="news-grid"></div>
+
+    </div>
+</Layout>
+
+<script>
+    import { supabase } from '../lib/supabase';
+
+    // TYPE DEFINITION (Biar rapi)
+    interface Article {
+        title: string;
+        slug: string;
+        cover_url: string;
+        profiles: { full_name: string };
+    }
+    
+    interface BookmarkItem {
+        created_at: string;
+        articles: Article;
+    }
+
+    // LOGIC UTAMA
+    async function loadCollection() {
+        const loadingEl = document.getElementById('loading-state');
+        const emptyEl = document.getElementById('empty-state');
+        const gridEl = document.getElementById('collection-grid');
+
+        // 1. CEK SESI DI BROWSER
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            // Kalau tidak login, lempar ke login
+            window.location.href = '/login';
+            return;
+        }
+
+        // 2. AMBIL DATA DARI SUPABASE
+        // Kita join table 'bookmarks' dengan 'articles'
+        const { data, error } = await supabase
+            .from('bookmarks')
+            .select(`
+                created_at,
+                articles (
+                    title,
+                    slug,
+                    cover_url,
+                    created_at,
+                    profiles ( full_name )
+                )
+            `)
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false });
+
+        // Sembunyikan Loading
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        // 3. RENDER DATA
+        if (error || !data || data.length === 0) {
+            // Tampilkan Empty State
+            if (emptyEl) emptyEl.style.display = 'block';
+        } else {
+            // Render Grid
+            if (gridEl) {
+                const bookmarks = data as unknown as BookmarkItem[];
+                
+                gridEl.innerHTML = bookmarks.map(item => {
+                    const article = item.articles;
+                    // Format Tanggal
+                    const dateStr = new Date(item.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'short', year: 'numeric'
+                    });
+
+                    return `
+                        <a href="/berita/${article.slug}" class="news-card">
+                            <div class="img-container">
+                                <img 
+                                    src="${article.cover_url || 'https://placehold.co/600x400'}" 
+                                    alt="${article.title}" 
+                                    loading="lazy" 
+                                />
+                            </div>
+                            <div class="card-body">
+                                <div class="meta-small">
+                                    <span>${dateStr}</span>
+                                    <span>•</span>
+                                    <span>Tersimpan</span>
+                                </div>
+                                <h3 class="card-title-small">${article.title}</h3>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
+            }
+        }
+    }
+
+    // Jalankan saat halaman siap
+    document.addEventListener('astro:page-load', loadCollection);
+</script>
+
+<style>
+    .page-wrapper { padding-top: 60px; padding-bottom: 100px; min-height: 80vh; }
+
+    .page-header {
+        display: flex; align-items: center; gap: 15px; margin-bottom: 40px;
+        padding-bottom: 20px; border-bottom: 2px solid var(--border);
+        color: var(--text);
+    }
+    .page-header h1 { font-size: 2rem; font-weight: 800; margin: 0; }
+
+    /* STATES (Loading / Empty) */
+    .state-box { text-align: center; padding: 60px 0; color: var(--text-muted); }
+    
+    /* Spinner Loading Sederhana */
+    .spinner {
+        width: 40px; height: 40px; border: 4px solid var(--border-muted);
+        border-top: 4px solid var(--text); border-radius: 50%;
+        margin: 0 auto 20px auto; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .btn-home {
+        display: inline-block; margin-top: 20px; padding: 10px 24px;
+        background: var(--text); color: var(--bg); border-radius: 50px; font-weight: 600;
+        text-decoration: none;
+    }
+
+    /* GRID SAMA DENGAN ARSIP (CSS Reuse) */
+    .news-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px;
+    }
+
+    /* Kita perlu pakai :global() karena HTML-nya di-inject via JS */
+    :global(.news-card) {
+        display: flex; flex-direction: column; text-decoration: none; color: inherit;
+        background: var(--bg-light); border: 1px solid var(--border-muted);
+        border-radius: 12px; overflow: hidden; height: 100%; 
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    :global(.news-card:hover) {
+        transform: translateY(-4px); box-shadow: 4px 4px 0px var(--border); border-color: var(--border);
+    }
+
+    :global(.news-card .img-container) { height: 180px; border-bottom: 1px solid var(--border-muted); overflow: hidden; }
+    :global(.news-card .img-container img) { width: 100%; height: 100%; object-fit: cover; }
+
+    :global(.news-card .card-body) { padding: 20px; flex: 1; display: flex; flex-direction: column; }
+    
+    :global(.news-card .meta-small) { 
+        font-size: 0.75rem; font-weight: 700; color: var(--text-muted); 
+        margin-bottom: 10px; text-transform: uppercase; display: flex; gap: 5px; 
+    }
+    :global(.news-card .card-title-small) { 
+        font-size: 1.1rem; font-weight: 700; line-height: 1.3; margin: 0; color: var(--text);
+    }
+</style>
