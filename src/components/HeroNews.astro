@@ -122,9 +122,16 @@ const excerpt = cleanContent.substring(0, 180) + (cleanContent.length > 180 ? ".
         border-bottom: 2px solid var(--border);
         overflow: hidden;
         flex-shrink: 0; 
+        
+        /* FIX 1: Jadikan parent relative agar bisa menampung image absolute */
+        position: relative;
     }
 
     .hero-image img {
+        /* FIX 2: Gunakan absolute & inset 0 agar dipaksa full 100% menempel ke dinding kotak */
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -208,13 +215,14 @@ const excerpt = cleanContent.substring(0, 180) + (cleanContent.length > 180 ? ".
         .hero-card {
             flex-direction: row;
             min-height: 450px;
-            max-height: 500px;
+            /* FIX 3: Hapus max-height agar tidak membatasi flex jika teks di sisi kanan sangat panjang */
         }
         
         .hero-image {
-            /* 55% Gambar */
             flex: 0 0 55%; 
-            height: 100%; /* FIX Layout Shift */
+            /* FIX 4: Biarkan height auto dan biarkan Flexbox merentangkannya dari atas ke bawah (stretch) */
+            height: auto; 
+            align-self: stretch;
             border-bottom: none;
             border-right: 2px solid var(--border);
         }

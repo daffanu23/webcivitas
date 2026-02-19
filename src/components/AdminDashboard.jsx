@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-// 1. IMPORT EDITOR MARKDOWN SEBAGAI PENGGANTI QUILL
 import MDEditor from '@uiw/react-md-editor'; 
 import { 
     Edit3, Trash2, CheckCircle, XCircle, 
@@ -209,13 +208,14 @@ export default function AdminDashboard() {
 
                             <div className="form-group">
                                 <label>Isi Konten (Markdown)</label>
-                                {/* 2. IMPLEMENTASI EDITOR MARKDOWN DI PANEL ADMIN */}
-                                <div data-color-mode="light" className="admin-markdown-wrapper">
+                                {/* HAPUS data-color-mode="light" & TAMBAHKAN className="custom-md-editor" */}
+                                <div className="admin-markdown-wrapper">
                                     <MDEditor 
                                         value={editorContent} 
                                         onChange={setEditorContent} 
                                         height={400}
                                         preview="edit" 
+                                        className="custom-md-editor"
                                     />
                                 </div>
                             </div>
@@ -290,6 +290,7 @@ export default function AdminDashboard() {
                 .icon-btn:hover { color: var(--text); }
                 .icon-btn.danger:hover { color: #ef4444; }
 
+                /* --- DRAWER --- */
                 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
                 .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
 
@@ -310,12 +311,63 @@ export default function AdminDashboard() {
 
                 .form-group { margin-bottom: 20px; }
                 .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-muted); }
-                .input-minimal { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 1rem; }
-                .input-minimal:focus { outline: none; border-color: var(--text); }
+                
+                /* --- INTERAKTIF: INPUT JUDUL DI ADMIN --- */
+                .input-minimal { 
+                    width: 100%; padding: 10px; border: 1px solid var(--border); 
+                    border-radius: 6px; background: var(--bg); color: var(--text); 
+                    font-family: 'Poppins', sans-serif; font-size: 1rem; 
+                    transition: all 0.2s ease;
+                }
+                .input-minimal:focus { 
+                    outline: none; 
+                    border-color: var(--text); 
+                    box-shadow: 0 0 0 1px var(--text); 
+                }
 
-                /* STYLE UNTUK WRAPPER MARKDOWN DI ADMIN */
-                .admin-markdown-wrapper { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+                /* --- INTERAKTIF: WRAPPER MARKDOWN DI ADMIN --- */
+                .admin-markdown-wrapper { 
+                    border-radius: 6px; overflow: hidden; 
+                    border: 1px solid var(--border); 
+                    transition: all 0.2s ease;
+                }
+                .admin-markdown-wrapper:focus-within {
+                    border-color: var(--text); 
+                    box-shadow: 0 0 0 1px var(--text);
+                }
 
+                /* --- SULAP DARK MODE & FONT MARKDOWN (COPY PASTE DARI PENULIS) --- */
+                .custom-md-editor.w-md-editor { background-color: var(--bg) !important; color: var(--text) !important; border: none !important; box-shadow: none !important; }
+                .custom-md-editor .w-md-editor-toolbar { background-color: var(--bg-light) !important; border-bottom: 1px solid var(--border) !important; }
+                .custom-md-editor .w-md-editor-toolbar li button { color: var(--text) !important; }
+                .custom-md-editor .w-md-editor-toolbar li button:hover { background-color: var(--border) !important; color: var(--text) !important; }
+                
+                /* FIX: AREA KETIK MONOSPACE AGAR KURSOR TIDAK MELESET */
+                .custom-md-editor .w-md-editor-text-input,
+                .custom-md-editor .w-md-editor-text-pre > code,
+                .custom-md-editor .w-md-editor-text-pre {
+                    color: var(--text) !important;
+                    font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; 
+                    font-size: 0.95rem !important;
+                    line-height: 1.6 !important;
+                }
+                
+                /* AREA PREVIEW: TETAP POPPINS */
+                .custom-md-editor .wmde-markdown {
+                    background-color: var(--bg) !important;
+                    color: var(--text) !important;
+                    font-family: 'Poppins', sans-serif !important;
+                    font-size: 1rem !important;
+                    line-height: 1.8 !important;
+                }
+                
+                .custom-md-editor .wmde-markdown h1,
+                .custom-md-editor .wmde-markdown h2,
+                .custom-md-editor .wmde-markdown h3 {
+                    font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important;
+                }
+
+                /* --- FOOTER BUTTONS --- */
                 .drawer-footer { padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg); display: flex; gap: 15px; }
                 .btn-decision { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
                 .btn-decision:hover { background: var(--bg-light); border-color: var(--text); }

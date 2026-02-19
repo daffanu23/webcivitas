@@ -121,7 +121,7 @@ const ArticleEditor = () => {
 
       <div className="form-group">
         <label className="label">Judul Headline</label>
-        <input type="text" className="input-title" placeholder="Judul Berita..." value={title} onChange={(e) => setTitle(e.target.value)}/>
+        <input type="text" className="input-title" placeholder="Judul Berita yang Menarik..." value={title} onChange={(e) => setTitle(e.target.value)}/>
       </div>
 
       <div className="form-group">
@@ -141,7 +141,6 @@ const ArticleEditor = () => {
 
       <div className="form-group">
         <label className="label">Isi Berita (Markdown Mode)</label>
-        {/* HAPUS data-color-mode, biarkan CSS kita yang ambil alih! */}
         <div className="markdown-wrapper">
             <MDEditor
                 value={content}
@@ -158,7 +157,6 @@ const ArticleEditor = () => {
         .editor-container { max-width: 800px; margin: 0 auto; padding: 40px 20px 100px 20px; }
         .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
         
-        /* DIET FONT WEIGHT: Dari 700/800 turun ke 500/600 */
         .page-title { font-size: 1.5rem; font-weight: 500; color: var(--text); margin: 0; }
         .save-status { font-size: 0.8rem; color: var(--text-muted); margin: 5px 0 0 0; }
         
@@ -171,61 +169,60 @@ const ArticleEditor = () => {
         .form-group { margin-bottom: 25px; }
         .label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--text-muted); }
         
-        /* DIET FONT WEIGHT PADA INPUT JUDUL */
         .input-title { 
             width: 100%; padding: 15px; font-size: 1.5rem; font-weight: 500; 
             background: var(--bg-light); border: 1px solid var(--border); color: var(--text); 
             border-radius: 12px; font-family: 'Poppins', sans-serif; 
+            transition: all 0.2s ease;
         }
-        .input-title:focus { outline: 1px solid var(--text); }
+        .input-title:focus { 
+            outline: none; border-color: var(--text); box-shadow: 0 0 0 1px var(--text); 
+        }
         
         .hidden-input { display: none; }
-        .upload-box { border: 2px dashed var(--border); border-radius: 12px; background: var(--bg-light); padding: 40px; text-align: center; cursor: pointer; color: var(--text-muted); }
+        .upload-box { 
+            border: 2px dashed var(--border); border-radius: 12px; background: var(--bg-light); 
+            padding: 40px; text-align: center; cursor: pointer; color: var(--text-muted); transition: all 0.2s ease; 
+        }
+        .upload-box:hover, .upload-box:focus-within { border-color: var(--text); color: var(--text); background: var(--bg); }
         .upload-label { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
         .preview-box { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); max-height: 400px; }
         .cover-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .btn-remove-img { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
+        .btn-remove-img { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: background 0.2s; }
+        .btn-remove-img:hover { background: #ef4444; }
 
-        /* --- SULAP DARK MODE UNTUK MARKDOWN EDITOR --- */
-        .markdown-wrapper { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .markdown-wrapper { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); transition: all 0.2s ease; }
+        .markdown-wrapper:focus-within { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
         
-        .custom-md-editor.w-md-editor {
-            background-color: var(--bg-light) !important;
-            color: var(--text) !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
+        .custom-md-editor.w-md-editor { background-color: var(--bg-light) !important; color: var(--text) !important; border: none !important; box-shadow: none !important; }
+        .custom-md-editor .w-md-editor-toolbar { background-color: var(--bg-light) !important; border-bottom: 1px solid var(--border) !important; }
+        .custom-md-editor .w-md-editor-toolbar li button { color: var(--text) !important; }
+        .custom-md-editor .w-md-editor-toolbar li button:hover { background-color: var(--border) !important; color: var(--text) !important; }
         
-        /* Toolbar (Bagian Atas Editor) */
-        .custom-md-editor .w-md-editor-toolbar {
-            background-color: var(--bg-light) !important;
-            border-bottom: 1px solid var(--border) !important;
-        }
-        .custom-md-editor .w-md-editor-toolbar li button {
+        /* --- FIX: AREA KETIK DIKEMBALIKAN KE MONOSPACE --- */
+        .custom-md-editor .w-md-editor-text-input,
+        .custom-md-editor .w-md-editor-text-pre > code,
+        .custom-md-editor .w-md-editor-text-pre {
             color: var(--text) !important;
-        }
-        .custom-md-editor .w-md-editor-toolbar li button:hover {
-            background-color: var(--border) !important;
-            color: var(--text) !important;
+            /* Font khusus koding agar kursor sejajar sempurna dengan highlight */
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; 
+            font-size: 0.95rem !important;
+            line-height: 1.6 !important;
         }
         
-        /* Area Ketik (Teksnya) */
-        .custom-md-editor .w-md-editor-text-input {
-            color: var(--text) !important;
-        }
-        
-        /* Area Preview */
+        /* --- TETAP POPPINS UNTUK AREA PREVIEW --- */
         .custom-md-editor .wmde-markdown {
             background-color: var(--bg-light) !important;
             color: var(--text) !important;
+            font-family: 'Poppins', sans-serif !important;
+            font-size: 1rem !important;
+            line-height: 1.8 !important;
         }
         
-        /* Diet Font Weight pada Preview Heading */
         .custom-md-editor .wmde-markdown h1,
         .custom-md-editor .wmde-markdown h2,
         .custom-md-editor .wmde-markdown h3 {
-            font-weight: 500 !important;
-            border-bottom: none !important; /* Hapus garis bawah bawaan agar lebih clean */
+            font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important;
         }
         
         .markdown-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
