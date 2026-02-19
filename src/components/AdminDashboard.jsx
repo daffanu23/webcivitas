@@ -1,23 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import ReactQuill from 'react-quill-new';
-import 'react-quill-new/dist/quill.snow.css';
+// 1. IMPORT EDITOR MARKDOWN SEBAGAI PENGGANTI QUILL
+import MDEditor from '@uiw/react-md-editor'; 
 import { 
     Edit3, Trash2, CheckCircle, XCircle, 
     ShieldCheck, RefreshCw, Eye, ArrowLeftCircle,
-    Inbox, Archive, FileText // Icon baru yang lebih clean
+    Inbox, Archive
 } from 'lucide-react';
-
-// KONFIGURASI TOOLBAR (Sama dengan Editor Penulis)
-const modules = {
-  toolbar: [
-    [{ 'header': [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline', 'blockquote'],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    ['link', 'image'],
-    ['clean']
-  ],
-};
 
 export default function AdminDashboard() {
     const [articles, setArticles] = useState([]);
@@ -72,7 +61,7 @@ export default function AdminDashboard() {
                 .from('articles')
                 .update({ 
                     title: editorTitle, 
-                    content: editorContent,
+                    content: editorContent, // Menyimpan format markdown
                     status: newStatus,
                     updated_at: new Date()
                 })
@@ -219,13 +208,14 @@ export default function AdminDashboard() {
                             </div>
 
                             <div className="form-group">
-                                <label>Isi Konten</label>
-                                <div className="minimal-quill">
-                                    <ReactQuill 
-                                        theme="snow" 
+                                <label>Isi Konten (Markdown)</label>
+                                {/* 2. IMPLEMENTASI EDITOR MARKDOWN DI PANEL ADMIN */}
+                                <div data-color-mode="light" className="admin-markdown-wrapper">
+                                    <MDEditor 
                                         value={editorContent} 
                                         onChange={setEditorContent} 
-                                        modules={modules} 
+                                        height={400}
+                                        preview="edit" 
                                     />
                                 </div>
                             </div>
@@ -248,62 +238,37 @@ export default function AdminDashboard() {
                 )}
             </div>
 
-            {/* CSS MINIMALIST */}
             <style>{`
                 .dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); }
                 
-                /* HEADER */
-                .dash-header { 
-                    display: flex; justify-content: space-between; align-items: end; 
-                    margin-bottom: 50px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px;
-                }
-                .badge-admin { 
-                    color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;
-                    font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;
-                }
+                .dash-header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 50px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
+                .badge-admin { color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
                 .dash-header h1 { font-size: 2rem; font-weight: 600; margin: 0; letter-spacing: -0.5px; }
                 .dash-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
                 
-                .btn-refresh { 
-                    background: transparent; border: 1px solid var(--border); padding: 8px 16px; 
-                    display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.85rem;
-                    border-radius: 6px; color: var(--text); cursor: pointer; transition: all 0.2s;
-                }
+                .btn-refresh { background: transparent; border: 1px solid var(--border); padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.85rem; border-radius: 6px; color: var(--text); cursor: pointer; transition: all 0.2s; }
                 .btn-refresh:hover { background: var(--bg-light); border-color: var(--text); }
 
-                /* SECTIONS */
                 .dashboard-section { margin-bottom: 60px; }
                 .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; color: var(--text); }
                 .section-header h2 { font-size: 1.1rem; font-weight: 500; margin: 0; }
                 .count-badge { background: var(--bg-light); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin-left: 8px; }
 
-                /* CARDS (PENDING) */
                 .card-scroller { display: flex; gap: 20px; overflow-x: auto; padding: 4px; padding-bottom: 20px; }
-                .empty-state { 
-                    padding: 40px; border: 1px dashed var(--border); border-radius: 8px; 
-                    text-align: center; color: var(--text-muted); font-size: 0.9rem;
-                }
+                .empty-state { padding: 40px; border: 1px dashed var(--border); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
 
-                .news-card {
-                    min-width: 280px; width: 280px; background: var(--bg);
-                    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
-                    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
-                }
+                .news-card { min-width: 280px; width: 280px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
                 .news-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
                 
                 .card-img-box { height: 150px; position: relative; overflow: hidden; }
                 .card-img-box img { width: 100%; height: 100%; object-fit: cover; }
-                .overlay-hover { 
-                    position: absolute; inset: 0; background: rgba(0,0,0,0.3); 
-                    display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;
-                }
+                .overlay-hover { position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
                 .news-card:hover .overlay-hover { opacity: 1; }
 
                 .card-info { padding: 15px; }
                 .card-meta { display: flex; gap: 6px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
                 .card-info h3 { font-size: 1rem; font-weight: 600; margin: 0; line-height: 1.4; color: var(--text); }
 
-                /* TABLE MINIMALIST */
                 .minimal-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
                 .minimal-table th { text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; }
                 .minimal-table td { padding: 12px 15px; border-bottom: 1px solid var(--border-muted); vertical-align: middle; }
@@ -313,32 +278,22 @@ export default function AdminDashboard() {
                 .date-text { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
                 .td-author { color: var(--text-muted); }
 
-                /* STATUS DOTS */
                 .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
                 .status-text { font-size: 0.85rem; font-weight: 500; }
-                .status-dot.published { background: #10b981; } /* Green */
-                .status-dot.pending { background: #f59e0b; } /* Amber */
-                .status-dot.rejected { background: #ef4444; } /* Red */
-                .status-dot.draft { background: #9ca3af; } /* Gray */
+                .status-dot.published { background: #10b981; } 
+                .status-dot.pending { background: #f59e0b; } 
+                .status-dot.rejected { background: #ef4444; } 
+                .status-dot.draft { background: #9ca3af; } 
 
                 .col-actions { text-align: right; }
-                .icon-btn { 
-                    padding: 6px; border: none; background: transparent; 
-                    cursor: pointer; color: var(--text-muted); transition: color 0.2s;
-                }
+                .icon-btn { padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-muted); transition: color 0.2s; }
                 .icon-btn:hover { color: var(--text); }
                 .icon-btn.danger:hover { color: #ef4444; }
 
-                /* DRAWER & FORM */
                 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
                 .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
 
-                .drawer-panel {
-                    position: fixed; top: 0; right: 0; bottom: 0; width: 800px; max-width: 90%;
-                    background: var(--bg); z-index: 999; border-left: 1px solid var(--border);
-                    transform: translateX(100%); transition: transform 0.3s ease;
-                    display: flex; flex-direction: column;
-                }
+                .drawer-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 90%; background: var(--bg); z-index: 999; border-left: 1px solid var(--border); transform: translateX(100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }
                 .drawer-panel.open { transform: translateX(0); }
 
                 .drawer-header { padding: 20px 30px; border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; }
@@ -358,27 +313,17 @@ export default function AdminDashboard() {
                 .input-minimal { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 1rem; }
                 .input-minimal:focus { outline: none; border-color: var(--text); }
 
-                .minimal-quill { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-                .minimal-quill :global(.ql-toolbar) { border: none !important; border-bottom: 1px solid var(--border) !important; background: var(--bg-light); }
-                .minimal-quill :global(.ql-container) { border: none !important; font-size: 1rem; min-height: 300px; }
+                /* STYLE UNTUK WRAPPER MARKDOWN DI ADMIN */
+                .admin-markdown-wrapper { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
 
-                .drawer-footer {
-                    padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg);
-                    display: flex; gap: 15px;
-                }
-                .btn-decision {
-                    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-                    padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
-                    background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s;
-                }
+                .drawer-footer { padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg); display: flex; gap: 15px; }
+                .btn-decision { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
                 .btn-decision:hover { background: var(--bg-light); border-color: var(--text); }
                 .publish { background: var(--text); color: var(--bg); border-color: var(--text); }
                 .publish:hover { opacity: 0.9; background: var(--text); }
                 .reject:hover { color: #ef4444; border-color: #ef4444; }
 
-                @media (max-width: 768px) {
-                    .drawer-panel { width: 100%; }
-                }
+                @media (max-width: 768px) { .drawer-panel { width: 100%; } }
             `}</style>
         </div>
     );

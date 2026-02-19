@@ -18,11 +18,12 @@
     "@tiptap/starter-kit": "^3.19.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@uiw/react-md-editor": "^4.0.11",
     "astro": "^5.17.1",
     "classnames": "^2.5.1",
     "lucide-react": "^0.564.0",
+    "marked": "^17.0.3",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-quill-new": "^3.8.3"
+    "react-dom": "^19.2.4"
   }
 }

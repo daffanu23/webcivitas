@@ -1,82 +1,57 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { supabase } from '../../lib/supabase';
-import { Calendar, User, Share2, Bookmark } from 'lucide-react';
+import { Calendar, User, Share2, Bookmark, Clock } from 'lucide-react';
+// IMPORT PENERJEMAH MARKDOWN
+import { marked } from 'marked';
 
 const { slug } = Astro.params;
-
-// 1. VALIDASI
 if (!slug) return Astro.redirect('/404');
 
-// 2. QUERY ARTIKEL
-const { data: article, error } = await supabase
-  .from('articles')
-  .select(`*, profiles ( full_name )`)
-  .eq('slug', slug)
-  .single();
-
+const { data: article, error } = await supabase.from('articles').select(`*, profiles ( full_name )`).eq('slug', slug).single();
 if (error || !article) return Astro.redirect('/404');
 
-// 3. HELPER
 const authorName = article.profiles?.full_name || 'Redaksi';
-const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-});
+const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const words = article.content ? article.content.split(/\s+/).length : 0;
+const readTime = Math.ceil(words / 200);
+
+// SULAP: UBAH MARKDOWN JADI HTML BERSIH DI SERVER
+const htmlContent = marked.parse(article.content || 'Konten tidak tersedia.');
 ---
 
 <Layout title={`${article.title} | MEDIACIVITAS`}>
 
-    <article class="article-container">
-        
-        <header class="article-header">
-            <h1 class="title">{article.title}</h1>
-            <div class="meta-wrapper">
-                <div class="meta-item">
-                    <User size={18} />
-                    <span class="meta-text">{authorName}</span>
-                </div>
-                <div class="meta-divider"></div>
-                <div class="meta-item">
-                    <Calendar size={18} />
-                    <span class="meta-text">{publishDate}</span>
-                </div>
+    <article class="article-wrapper">
+        <header class="header-section">
+            <h1 class="main-headline">{article.title}</h1>
+            <div class="meta-row">
+                <div class="meta-pill"><User size={14} /> <span>{authorName}</span></div>
+                <div class="meta-pill"><Calendar size={14} /> <span>{publishDate}</span></div>
+                <div class="meta-pill"><Clock size={14} /> <span>{readTime} menit baca</span></div>
             </div>
         </header>
 
         {article.cover_url && (
-            <div class="hero-image-wrapper">
-                <img src={article.cover_url} alt={article.title} class="hero-image" transition:name={`hero-${slug}`} />
+            <div class="featured-image">
+                <img src={article.cover_url} alt={article.title} transition:name={`hero-${slug}`} />
             </div>
         )}
 
-        <div class="content-body">
-            <Fragment set:html={article.content} />
+        {/* RENDER HTML BERSIH DARI MARKDOWN */}
+        <div class="article-content" set:html={htmlContent}></div>
+
+        <div class="footer-actions">
+            <button class="action-btn" id="share-btn" data-url={Astro.url.href}><Share2 size={18} /> <span>Bagikan</span></button>
+            <button class="action-btn" id="bookmark-btn" data-id={article.id}><Bookmark size={18} className="icon-bookmark" /> <span id="bookmark-text">Simpan</span></button>
         </div>
-
-        <div class="article-footer">
-            
-            <button class="btn-action" id="share-btn" data-url={Astro.url.href}>
-                <Share2 size={18} />
-                <span>Bagikan</span>
-            </button>
-
-            <button class="btn-action" id="bookmark-btn" data-id={article.id}>
-                <Bookmark size={18} className="icon-bookmark" />
-                <span id="bookmark-text">Simpan</span>
-            </button>
-
-        </div>
-
     </article>
 
 </Layout>
 
 <script>
     import { supabase } from '../../lib/supabase';
-
-    // LOGIC COPY LINK
     document.addEventListener('astro:page-load', async () => {
-        // --- 1. SHARE ---
         const btnShare = document.getElementById('share-btn');
         if (btnShare) {
             btnShare.addEventListener('click', () => {
@@ -84,74 +59,33 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
                 if (url) {
                     navigator.clipboard.writeText(url).then(() => {
                         const originalHTML = btnShare.innerHTML;
-                        btnShare.innerHTML = `<span style='font-size:0.9rem'>Disalin!</span>`;
+                        btnShare.innerHTML = `<span>Disalin!</span>`;
                         setTimeout(() => btnShare.innerHTML = originalHTML, 2000);
                     });
                 }
             });
         }
-
-        // --- 2. BOOKMARK ---
         const btnBookmark = document.getElementById('bookmark-btn');
         const iconBookmark = document.querySelector('.icon-bookmark');
         const textBookmark = document.getElementById('bookmark-text');
-
         if (btnBookmark && iconBookmark) {
             const articleId = btnBookmark.getAttribute('data-id');
             const { data: { session } } = await supabase.auth.getSession();
-
-            // A. CEK STATUS AWAL (Apakah sudah dibookmark?)
             if (session) {
-                const { data } = await supabase
-                    .from('bookmarks')
-                    .select('id')
-                    .eq('user_id', session.user.id)
-                    .eq('article_id', articleId)
-                    .single();
-                
+                const { data } = await supabase.from('bookmarks').select('id').eq('user_id', session.user.id).eq('article_id', articleId).single();
                 if (data) {
-                    // Sudah tersimpan: Ubah tampilan jadi solid
-                    btnBookmark.classList.add('active');
-                    iconBookmark.setAttribute('fill', 'currentColor');
-                    if(textBookmark) textBookmark.innerText = "Tersimpan";
+                    btnBookmark.classList.add('saved'); iconBookmark.setAttribute('fill', 'currentColor'); if(textBookmark) textBookmark.innerText = "Tersimpan";
                 }
             }
-
-            // B. KLIK TOMBOL
             btnBookmark.addEventListener('click', async () => {
-                if (!session) {
-                    alert('Silakan login untuk menyimpan berita!');
-                    window.location.href = '/login';
-                    return;
-                }
-
-                // Cek apakah sedang aktif (tersimpan)
-                const isActive = btnBookmark.classList.contains('active');
-
-                if (isActive) {
-                    // HAPUS BOOKMARK
-                    const { error } = await supabase
-                        .from('bookmarks')
-                        .delete()
-                        .eq('user_id', session.user.id)
-                        .eq('article_id', articleId);
-                    
-                    if (!error) {
-                        btnBookmark.classList.remove('active');
-                        iconBookmark.setAttribute('fill', 'none');
-                        if(textBookmark) textBookmark.innerText = "Simpan";
-                    }
+                if (!session) return window.location.href = '/login';
+                const isSaved = btnBookmark.classList.contains('saved');
+                if (isSaved) {
+                    const { error } = await supabase.from('bookmarks').delete().eq('user_id', session.user.id).eq('article_id', articleId);
+                    if (!error) { btnBookmark.classList.remove('saved'); iconBookmark.setAttribute('fill', 'none'); if(textBookmark) textBookmark.innerText = "Simpan"; }
                 } else {
-                    // TAMBAH BOOKMARK
-                    const { error } = await supabase
-                        .from('bookmarks')
-                        .insert({ user_id: session.user.id, article_id: articleId });
-                    
-                    if (!error) {
-                        btnBookmark.classList.add('active');
-                        iconBookmark.setAttribute('fill', 'currentColor');
-                        if(textBookmark) textBookmark.innerText = "Tersimpan";
-                    }
+                    const { error } = await supabase.from('bookmarks').insert({ user_id: session.user.id, article_id: articleId });
+                    if (!error) { btnBookmark.classList.add('saved'); iconBookmark.setAttribute('fill', 'currentColor'); if(textBookmark) textBookmark.innerText = "Tersimpan"; }
                 }
             });
         }
@@ -159,75 +93,59 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', {
 </script>
 
 <style>
-    /* CONTAINER */
-    .article-container {
-        max-width: 800px; margin: 0 auto; padding: 40px 20px 120px 20px;
+    .article-wrapper {
+        width: 100%; max-width: 800px; margin: 0 auto;
+        padding: 40px 20px 100px 20px; box-sizing: border-box;
     }
 
-    /* HEADER */
-    .article-header { text-align: center; margin-bottom: 40px; }
-    .title {
-        font-family: 'Poppins', sans-serif; font-size: 2.5rem; font-weight: 600;
-        line-height: 1.2; margin-bottom: 25px; letter-spacing: -1px; color: var(--text);
+    .header-section { text-align: center; margin-bottom: 40px; }
+    .main-headline { font-family: 'Poppins', sans-serif; font-size: 2.2rem; font-weight: 700; line-height: 1.3; color: var(--text); margin-bottom: 20px; word-break: normal; overflow-wrap: break-word; }
+    .meta-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .meta-pill { display: flex; align-items: center; gap: 6px; background: var(--bg-light); border: 1px solid var(--border-muted); padding: 6px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+
+    .featured-image { width: 100%; margin-bottom: 40px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-muted); }
+    .featured-image img { width: 100%; height: auto; display: block; }
+
+    /* CSS UNTUK KONTEN (TIDAK ADA LAGI CAMPUR TANGAN EDITOR HTML) */
+    .article-content {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.05rem; 
+        line-height: 1.8;   
+        color: var(--text);
+        
+        /* STANDAR PDF UNTUK MENCEGAH TEKS TERPOTONG & LAYOUT HANCUR */
+        word-break: normal !important;      
+        overflow-wrap: break-word !important; 
+        white-space: normal !important;     
+        hyphens: none !important;           
+        text-align: left;
     }
 
-    /* META */
-    .meta-wrapper {
-        display: flex; justify-content: center; align-items: center; gap: 20px; padding: 15px 0;
-        border-top: 1px solid var(--border-muted); border-bottom: 1px solid var(--border-muted);
+    /* KARENA MARKDOWN MENGHASILKAN HTML MURNI, KITA BISA STYLE DENGAN MUDAH */
+    .article-content :global(p) { margin-top: 0; margin-bottom: 1.5em; display: block; }
+    
+    .article-content :global(h1), 
+    .article-content :global(h2), 
+    .article-content :global(h3) { 
+        font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; line-height: 1.3; 
+        color: var(--text);
     }
-    .meta-item { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
-    .meta-divider { width: 1px; height: 20px; background: var(--border-muted); }
+    
+    .article-content :global(ul), .article-content :global(ol) { margin-bottom: 1.5em; padding-left: 20px; }
+    .article-content :global(li) { margin-bottom: 0.5em; }
+    
+    .article-content :global(blockquote) { 
+        border-left: 4px solid var(--text); padding: 15px 20px; font-style: italic; 
+        color: var(--text-muted); margin: 25px 0; background: var(--bg-light); border-radius: 4px; 
+    }
+    
+    .article-content :global(img) { max-width: 100%; height: auto; border-radius: 8px; margin: 25px 0; display: block; }
+    .article-content :global(a) { color: var(--text); text-decoration: underline; font-weight: 600; }
 
-    /* IMAGE */
-    .hero-image-wrapper {
-        width: 100%; margin-bottom: 50px; border-radius: 16px; overflow: hidden;
-        border: 1px solid var(--border-muted);
-    }
-    .hero-image { width: 100%; height: auto; display: block; }
-
-    /* CONTENT */
-    .content-body {
-        font-family: 'Poppins', sans-serif; font-size: 1.125rem; line-height: 1.8; color: var(--text); font-weight: 400;
-    }
-    .content-body :global(p) { margin-bottom: 1.5em; }
-    .content-body :global(h2), .content-body :global(h3) { 
-        font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; color: var(--text);
-    }
-    .content-body :global(h2) { font-size: 1.8rem; } .content-body :global(h3) { font-size: 1.4rem; }
-    .content-body :global(ul), .content-body :global(ol) { margin-bottom: 1.5em; padding-left: 20px; }
-    .content-body :global(blockquote) {
-        border-left: 4px solid var(--text); padding: 20px; font-style: italic; font-size: 1.2rem;
-        color: var(--text-muted); margin: 30px 0; background: var(--bg-light); border-radius: 0 8px 8px 0;
-    }
-    .content-body :global(img) { max-width: 100%; height: auto; border-radius: 8px; margin: 30px 0; }
-
-    /* FOOTER (BUTTONS) */
-    .article-footer {
-        margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--border-muted);
-        display: flex; justify-content: space-between; align-items: center; gap: 15px;
-    }
-
-    /* GENERAL BUTTON STYLE */
-    .btn-action {
-        display: flex; align-items: center; gap: 8px;
-        background: var(--bg-light); border: 1px solid var(--border-muted); color: var(--text);
-        padding: 10px 20px; border-radius: 50px; cursor: pointer;
-        font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 0.9rem;
-        transition: all 0.2s;
-    }
-    .btn-action:hover {
-        background: var(--text); color: var(--bg); border-color: var(--text);
-    }
-
-    /* ACTIVE STATE (BOOKMARK TERSIMPAN) */
-    .btn-action.active {
-        background: var(--text); color: var(--bg); border-color: var(--text);
-    }
-
-    @media (max-width: 768px) {
-        .title { font-size: 1.8rem; }
-        .article-container { padding-left: 20px; padding-right: 20px; }
-        .article-footer { justify-content: center; }
-    }
+    .footer-actions { margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--border-muted); display: flex; justify-content: center; gap: 15px; }
+    .action-btn { background: transparent; border: 1px solid var(--border); padding: 10px 20px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text); transition: all 0.2s; }
+    .action-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .action-btn.saved { background: var(--text); color: var(--bg); border-color: var(--text); }
+    
+    @media (max-width: 600px) { .article-wrapper { padding-left: 10px; padding-right: 10px; } }
 </style>

@@ -1,10 +1,11 @@
 ---
-import { User } from 'lucide-react';
+import { User, Clock } from 'lucide-react';
 
 const { article } = Astro.props;
 
-// --- LOGIC WAKTU (Time Ago) ---
+// --- 1. LOGIC WAKTU (Time Ago) ---
 const getRelativeTime = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -13,26 +14,47 @@ const getRelativeTime = (dateString: string) => {
     const hours = Math.floor(diffInSeconds / 3600);
     const days = Math.floor(diffInSeconds / 86400);
 
-    if (days > 0) return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-    if (hours > 0) return `${hours} jam yang lalu`;
-    if (minutes > 0) return `${minutes} menit yang lalu`;
+    if (days > 0) return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (hours > 0) return `${hours} jam lalu`;
+    if (minutes > 0) return `${minutes} mnt lalu`;
     return "Baru saja";
 };
 
-// Data Dummy
+// --- 2. LOGIC PEMBERSIH HTML (Strip Tags Kuat) ---
+const stripHtml = (html: string) => {
+   if (!html) return "";
+   
+   // A. Ganti tag block (<p>, <br>, <div>, </h1>) dengan SPASI agar teks tidak nempel
+   let text = html.replace(/<\/?[^>]+(>|$)/g, (match) => {
+       // Kalau tag penutup block level, kasih spasi
+       if (match.match(/<\/(p|div|h[1-6]|li|tr)>/i) || match.match(/<br\s*\/?>/i)) {
+           return ' ';
+       }
+       return ''; // Tag lain hapus aja
+   });
+   
+   // B. Decode entities sederhana
+   text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+   
+   // C. Hapus spasi berlebih
+   return text.replace(/\s+/g, ' ').trim();
+};
+
+// Data Dummy Fallback
 const data = article || {
     title: "Judul Berita Placeholder",
     slug: "#",
-    cover_url: "https://placehold.co/600x400",
-    content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+    cover_url: "https://placehold.co/600x400?text=No+Image",
+    content: "Konten belum tersedia...",
     created_at: new Date().toISOString(),
-    profiles: { full_name: "Penulis" }
+    profiles: { full_name: "Redaksi" }
 };
 
-// Excerpt
-const excerpt = data.content 
-    ? data.content.replace(/<[^>]*>?/gm, '').substring(0, 80) + "..." 
-    : "";
+// --- 3. PROSES EXCERPT ---
+const cleanContent = stripHtml(data.content || "");
+// Ambil 100 karakter pertama biar kartu tidak kepanjangan
+const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? "..." : "");
+
 ---
 
 <a href={`/berita/${data.slug}`} class="news-card">
@@ -47,12 +69,12 @@ const excerpt = data.content
         <p class="card-excerpt">{excerpt}</p>
         
         <div class="card-meta">
-            <div class="meta-item">
+            <div class="meta-item author">
                 <User size={14} />
                 <span>{data.profiles?.full_name || 'Redaksi'}</span>
             </div>
-            <span>-</span>
-            <div class="meta-item">
+            <div class="meta-item time">
+                <Clock size={14} />
                 <span>{getRelativeTime(data.created_at)}</span>
             </div>
         </div>
@@ -64,36 +86,30 @@ const excerpt = data.content
     .news-card {
         display: flex;
         flex-direction: column;
-        
-        /* GANTI: Background adaptif */
         background: var(--bg-light); 
-        
         text-decoration: none;
         color: inherit;
-        
-        /* GANTI: Border variabel */
         border: 1px solid var(--border);
         border-radius: 12px;
         overflow: hidden;
-        
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        height: 100%;
+        height: 100%; /* Pastikan tinggi seragam di Grid */
     }
 
     /* Efek Hover: Naik & Shadow */
     .news-card:hover {
         transform: translateY(-4px);
-        /* GANTI: Shadow warnanya border */
-        box-shadow: 4px 4px 0px var(--border);
+        box-shadow: 6px 6px 0px var(--border); /* Shadow Solid Brutalist */
+        border-color: var(--text);
     }
 
     /* AREA GAMBAR */
     .card-image {
         width: 100%;
-        height: 200px;
-        /* GANTI: Border pemisah */
+        height: 180px; /* Tinggi tetap biar rapi */
         border-bottom: 1px solid var(--border);
         overflow: hidden;
+        background: var(--bg-light);
     }
     
     .card-image img {
@@ -112,17 +128,17 @@ const excerpt = data.content
         padding: 20px;
         display: flex;
         flex-direction: column;
-        flex-grow: 1;
+        flex-grow: 1; /* Isi sisa ruang agar footer sejajar */
     }
 
     .card-title {
         font-size: 1.1rem;
-        font-weight: 600;
-        line-height: 1.3;
+        font-weight: 700;
+        line-height: 1.4;
         margin-bottom: 10px;
-        /* GANTI: Warna judul */
         color: var(--text);
         
+        /* Batasi judul max 2 baris */
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -131,30 +147,35 @@ const excerpt = data.content
 
     .card-excerpt {
         font-size: 0.9rem;
-        /* GANTI: Warna excerpt */
         color: var(--text-muted);
         margin-bottom: 20px;
-        line-height: 1.5;
-        flex-grow: 1;
+        line-height: 1.6;
+        
+        /* Batasi excerpt max 3 baris */
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .card-meta {
         display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: space-between; /* Penulis kiri, Waktu kanan */
         font-size: 0.8rem;
         font-weight: 600;
-        /* GANTI: Warna meta */
         color: var(--text-muted);
-        
         padding-top: 15px;
-        /* GANTI: Border putus-putus */
         border-top: 1px dashed var(--border-muted);
+        margin-top: auto; /* Dorong ke paling bawah */
     }
 
     .meta-item {
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
     }
+    
+    .author { max-width: 60%; }
+    .author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
