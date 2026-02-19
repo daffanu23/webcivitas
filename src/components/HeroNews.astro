@@ -29,10 +29,13 @@ const data = article || {
     profiles: { full_name: "Redaksi" }
 };
 
-// Excerpt
-const excerpt = data.content 
-    ? data.content.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..." 
-    : "";
+// --- LOGIC PEMBERSIH HTML (Strip Tags) ---
+// Kita ganti tag HTML dengan SPASI agar kata-kata tidak nempel
+// Contoh: <p>Halo</p><p>Dunia</p> -> "Halo Dunia" (Bukan "HaloDunia")
+const rawContent = data.content || "";
+const plainText = rawContent.replace(/<\/?[^>]+(>|$)/g, " "); 
+const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "..." : "");
+
 ---
 
 <section class="hero-wrapper">
@@ -93,7 +96,6 @@ const excerpt = data.content
         transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
-    /* Efek Hover: Naik & Shadow */
     .hero-card:hover {
         transform: translateY(-4px);
         box-shadow: 8px 8px 0px var(--border);
@@ -105,21 +107,18 @@ const excerpt = data.content
         height: 250px;
         border-bottom: 2px solid var(--border);
         overflow: hidden;
+        /* PENTING: Biar gambar ga gepeng/hilang saat teks kepanjangan */
+        flex-shrink: 0; 
     }
 
     .hero-image img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        
-        /* HAPUS: filter: grayscale(100%); */
-        /* Biarkan Full Color */
-        
         transition: transform 0.5s ease;
     }
 
     .hero-card:hover .hero-image img {
-        /* Zoom in dikit pas hover */
         transform: scale(1.02);
     }
 
@@ -129,6 +128,8 @@ const excerpt = data.content
         display: flex;
         flex-direction: column;
         justify-content: center;
+        flex: 1; /* Isi ruang sisa */
+        min-width: 0; /* Mencegah flex item overflow */
     }
 
     .hero-title {
@@ -137,6 +138,12 @@ const excerpt = data.content
         line-height: 1.1;
         margin-bottom: 15px;
         color: var(--text);
+        
+        /* Batasi judul max 3 baris biar rapi */
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
     .hero-title a { text-decoration: none; color: inherit; }
 
@@ -156,6 +163,13 @@ const excerpt = data.content
         color: var(--text-muted);
         line-height: 1.6;
         margin-bottom: 30px;
+        
+        /* --- KUNCI PENYELAMAT LAYOUT --- */
+        /* Batasi teks max 4 baris, sisanya titik-titik (...) */
+        display: -webkit-box;
+        -webkit-line-clamp: 4; 
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     /* TOMBOL BACA */
@@ -163,7 +177,7 @@ const excerpt = data.content
         display: inline-block;
         padding: 10px 24px;
         border: 1px solid var(--border);
-        border-radius: 5px;
+        border-radius: 50px; /* Saya ubah jadi rounded biar lebih modern dikit */
         color: var(--text);
         
         font-weight: 600;
@@ -178,22 +192,23 @@ const excerpt = data.content
         border-color: var(--text);
     }
 
-    /* RESPONSIVE DESKTOP */
+    /* RESPONSIVE DESKTOP (> 900px) */
     @media (min-width: 900px) {
         .hero-card {
             flex-direction: row;
             min-height: 450px;
+            max-height: 500px; /* Batasi tinggi total kartu agar tidak raksasa */
         }
         
         .hero-image {
-            flex: 1.3;
-            height: auto;
+            /* FIX: Gunakan flex-basis untuk ukuran pasti (55% gambar, 45% teks) */
+            flex: 0 0 55%; 
+            height: auto; /* Reset height mobile */
             border-bottom: none;
             border-right: 2px solid var(--border);
         }
         
         .hero-content {
-            flex: 1;
             padding: 50px;
         }
 

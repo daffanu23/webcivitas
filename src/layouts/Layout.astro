@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import Navbar from '../components/Navbar.astro';
+import DraftReminder from '../components/DraftReminder.astro';
 import FloatingBar from '../components/FloatingBar.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
@@ -21,10 +22,9 @@ const { title = "MEDIACIVITAS" } = Astro.props;
 <body>
     
     <Navbar />
-
     <main class="main-content" transition:animate="none">
         <div class="animate-wrapper container">
-            <slot />
+            <DraftReminder /> <slot />
         </div>
     </main>
 
