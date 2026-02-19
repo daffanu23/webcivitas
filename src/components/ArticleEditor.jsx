@@ -19,18 +19,15 @@ const modules = {
 };
 
 const ArticleEditor = () => {
-  // STATE UTAMA
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // STATE EDITOR
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [coverUrl, setCoverUrl] = useState(''); 
   const [status, setStatus] = useState('draft');
   const [articleId, setArticleId] = useState(null);
   
-  // STATE UI
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
@@ -62,9 +59,12 @@ const ArticleEditor = () => {
                 setCoverUrl(data.cover_url || ''); 
                 setStatus(data.status);
                 setArticleId(data.id);
+
+                // 🔥 UPDATE: HAPUS KEY SNOOZE 🔥
+                // Kalau user masuk sini, timer 5 menit langsung kita reset/hapus.
+                localStorage.removeItem(`snooze_draft_${data.id}`);
             }
         } else {
-            // Load Local Storage (Draft Baru)
             const localTitle = localStorage.getItem('draft_title');
             const localContent = localStorage.getItem('draft_content');
             if (localTitle) setTitle(localTitle);
@@ -76,7 +76,7 @@ const ArticleEditor = () => {
     initEditor();
   }, []);
 
-  // --- 2. LOGIC UPLOAD GAMBAR ---
+  // --- 2. UPLOAD GAMBAR ---
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -118,18 +118,17 @@ const ArticleEditor = () => {
     }
   }, [title, content, loading, articleId]);
 
-  // --- 4. AUTO SAVE DB (DRAFT ONLY) ---
+  // --- 4. AUTO SAVE DB ---
   useEffect(() => {
     const interval = setInterval(() => {
-        // Auto-save hanya jika user sedang ngetik dan status bukan published/pending
         if (user && title && !loading && status === 'draft') {
-             // Logic save diam-diam bisa ditaruh sini (optional)
+             // Logic silent save
         }
     }, 30000);
     return () => clearInterval(interval);
   }, [title, content, user, loading, status]);
 
-  // --- FUNGSI SIMPAN UTAMA ---
+  // --- FUNGSI SIMPAN ---
   const handleSave = async (targetStatus) => {
     if (!title) return alert("Judul tidak boleh kosong!");
     if (targetStatus === 'pending' && !content) return alert("Isi berita tidak boleh kosong sebelum dikirim!");
@@ -142,7 +141,7 @@ const ArticleEditor = () => {
         title,
         content,
         cover_url: coverUrl,
-        status: targetStatus, // 'draft' atau 'pending'
+        status: targetStatus,
         slug: articleId ? undefined : slugGen,
         author_id: user.id,
         updated_at: new Date(),
@@ -165,15 +164,14 @@ const ArticleEditor = () => {
             setLastSaved(new Date());
             setStatus(targetStatus);
             
-            // JIKA SUBMIT (PENDING) -> SELESAI
             if (targetStatus === 'pending') {
                 localStorage.removeItem('draft_title');
                 localStorage.removeItem('draft_content');
+                // Hapus snooze key juga biar bersih
+                localStorage.removeItem(`snooze_draft_${result.data.id}`);
+                
                 alert('Berita berhasil dikirim ke meja redaksi untuk diperiksa!');
                 window.location.href = '/'; 
-            } else {
-                // JIKA DRAFT -> Tetap di halaman
-                // alert('Draft disimpan.');
             }
         }
     } catch (error) {
@@ -197,46 +195,32 @@ const ArticleEditor = () => {
             <button className="btn-cancel" onClick={() => window.history.back()}>
                 <X size={18} /> Batal
             </button>
-            
-            {/* TOMBOL SAVE DRAFT */}
             <button className="btn-draft" onClick={() => handleSave('draft')} disabled={isSaving}>
-                <Save size={18} />
-                {isSaving ? 'Menyimpan...' : 'Simpan Draft'}
+                <Save size={18} /> {isSaving ? 'Menyimpan...' : 'Simpan Draft'}
             </button>
-            
-            {/* TOMBOL KIRIM KE ADMIN (PENDING) */}
             <button className="btn-submit" onClick={() => handleSave('pending')} disabled={isSaving}>
-                <Send size={18} />
-                Kirim ke Redaksi
+                <Send size={18} /> Kirim ke Redaksi
             </button>
         </div>
       </div>
 
-      {/* INPUT JUDUL */}
+      {/* INPUTS */}
       <div className="form-group">
         <label className="label">Judul Headline</label>
         <input 
-            type="text" className="input-title" placeholder="Judul Berita yang Menarik..." 
+            type="text" className="input-title" placeholder="Judul Berita..." 
             value={title} onChange={(e) => setTitle(e.target.value)}
         />
       </div>
 
-      {/* INPUT COVER IMAGE */}
       <div className="form-group">
         <label className="label">Gambar Sampul</label>
-        
         {!coverUrl ? (
             <div className="upload-box">
-                <input 
-                    type="file" accept="image/*" id="cover-upload" 
-                    onChange={handleImageUpload} disabled={isUploading} className="hidden-input"
-                />
+                <input type="file" accept="image/*" id="cover-upload" onChange={handleImageUpload} disabled={isUploading} className="hidden-input"/>
                 <label htmlFor="cover-upload" className="upload-label">
                     {isUploading ? <span>Mengupload...</span> : (
-                        <>
-                            <ImageIcon size={24} />
-                            <span>Klik untuk upload gambar sampul</span>
-                        </>
+                        <> <ImageIcon size={24} /> <span>Klik untuk upload gambar sampul</span> </>
                     )}
                 </label>
             </div>
@@ -248,7 +232,6 @@ const ArticleEditor = () => {
         )}
       </div>
 
-      {/* EDITOR */}
       <div className="form-group">
         <label className="label">Isi Berita</label>
         <div className="quill-wrapper">
@@ -279,7 +262,6 @@ const ArticleEditor = () => {
         .input-title { width: 100%; padding: 15px; font-size: 1.5rem; font-weight: 700; background: var(--bg-light); border: 1px solid var(--border); color: var(--text); border-radius: 12px; }
         .input-title:focus { outline: 2px solid var(--text); }
 
-        /* UPLOAD STYLE */
         .hidden-input { display: none; }
         .upload-box { border: 2px dashed var(--border); border-radius: 12px; background: var(--bg-light); transition: border-color 0.2s; }
         .upload-box:hover { border-color: var(--text); }
@@ -293,15 +275,12 @@ const ArticleEditor = () => {
         .ql-toolbar { background: var(--bg-light); border-bottom: 1px solid var(--border) !important; border: none !important; }
         .ql-container { border: none !important; min-height: 400px; font-size: 1.1rem; }
         .ql-editor { color: var(--text); min-height: 400px; padding: 20px; } 
-        .ql-stroke { stroke: var(--text) !important; } 
-        .ql-fill { fill: var(--text) !important; } 
-        .ql-picker { color: var(--text) !important; }
         
         @media (max-width: 600px) {
             .editor-header { flex-direction: column; align-items: flex-start; gap: 15px; }
             .action-buttons { width: 100%; justify-content: space-between; }
             .action-buttons button { flex: 1; justify-content: center; padding: 12px; }
-            .btn-draft span { display: none; } /* Hide text on mobile if needed */
+            .btn-draft span { display: none; }
         }
       `}</style>
     </div>
