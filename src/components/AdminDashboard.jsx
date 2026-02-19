@@ -1,57 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import ImageExtension from '@tiptap/extension-image';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { 
     Edit3, Trash2, CheckCircle, XCircle, 
-    Save, X, Bold, Italic, List, ShieldCheck, RefreshCw
+    ShieldCheck, RefreshCw, Eye, ArrowLeftCircle,
+    Inbox, Archive, FileText // Icon baru yang lebih clean
 } from 'lucide-react';
 
-// --- TIPTAP EDITOR ---
-const TiptapEditor = ({ content, onChange, editable }) => {
-    const editor = useEditor({
-        extensions: [StarterKit, ImageExtension],
-        content: content,
-        editable: editable,
-        onUpdate: ({ editor }) => {
-            onChange(editor.getHTML());
-        },
-    });
-
-    if (!editor) return null;
-
-    return (
-        <div className="editor-wrapper">
-            {editable && (
-                <div className="editor-toolbar">
-                    <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={editor.isActive('bold') ? 'active' : ''}><Bold size={16}/></button>
-                    <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={editor.isActive('italic') ? 'active' : ''}><Italic size={16}/></button>
-                    <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={editor.isActive('heading', { level: 2 }) ? 'active' : ''}>H2</button>
-                    <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={editor.isActive('bulletList') ? 'active' : ''}><List size={16}/></button>
-                </div>
-            )}
-            <EditorContent editor={editor} className="prose-editor" />
-        </div>
-    );
+// KONFIGURASI TOOLBAR (Sama dengan Editor Penulis)
+const modules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'blockquote'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['link', 'image'],
+    ['clean']
+  ],
 };
 
-// --- MAIN DASHBOARD ---
 export default function AdminDashboard() {
     const [articles, setArticles] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    // State Drawer
+    // State Drawer & Editor
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [editorContent, setEditorContent] = useState('');
+    const [editorTitle, setEditorTitle] = useState(''); 
 
+    // 1. FETCH DATA
     const fetchData = async () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('articles')
             .select('*, profiles(full_name)')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false }); 
         
         if (!error) setArticles(data || []);
         setLoading(false);
@@ -59,10 +43,11 @@ export default function AdminDashboard() {
 
     useEffect(() => { fetchData(); }, []);
 
-    // HANDLERS
+    // 2. PANEL REVIEW HANDLERS
     const handleOpenReview = (article) => {
         setSelectedArticle(article);
-        setEditorContent(article.content);
+        setEditorContent(article.content || '');
+        setEditorTitle(article.title || '');
         setIsPanelOpen(true);
     };
 
@@ -71,40 +56,41 @@ export default function AdminDashboard() {
         setTimeout(() => setSelectedArticle(null), 300);
     };
 
-    // Generic Status Update (Publish/Reject/Draft)
-    const handleUpdateStatus = async (newStatus, articleId = null) => {
-        const targetId = articleId || selectedArticle?.id;
-        if (!targetId) return;
+    // 3. STATUS UPDATE
+    const handleUpdateStatus = async (newStatus) => {
+        if (!selectedArticle) return;
 
         let confirmMsg = "Simpan perubahan?";
-        if (newStatus === 'published') confirmMsg = "Terbitkan berita ini?";
-        if (newStatus === 'rejected') confirmMsg = "Tolak berita ini? (Akan masuk arsip rejected)";
+        if (newStatus === 'published') confirmMsg = "Terbitkan berita ini sekarang?";
+        if (newStatus === 'draft') confirmMsg = "Kembalikan ke penulis untuk revisi?";
+        if (newStatus === 'rejected') confirmMsg = "Tolak dan arsipkan berita ini?";
 
         if (!confirm(confirmMsg)) return;
 
-        // If updating from drawer, use editor content. If from card/list, keep current content.
-        const contentToSave = (articleId) ? articles.find(a => a.id === articleId).content : editorContent;
+        try {
+            const { error } = await supabase
+                .from('articles')
+                .update({ 
+                    title: editorTitle, 
+                    content: editorContent,
+                    status: newStatus,
+                    updated_at: new Date()
+                })
+                .eq('id', selectedArticle.id);
 
-        const { error } = await supabase
-            .from('articles')
-            .update({ 
-                content: contentToSave, 
-                status: newStatus 
-            })
-            .eq('id', targetId);
+            if (error) throw error;
 
-        if (!error) {
-            alert("Berhasil!");
-            if (isPanelOpen) handleCloseReview();
-            fetchData();
-        } else {
-            alert("Gagal: " + error.message);
+            alert("Status berhasil diperbarui.");
+            handleCloseReview();
+            fetchData(); 
+
+        } catch (error) {
+            alert("Gagal update: " + error.message);
         }
     };
     
-    // Delete Permanent (Only from table)
     const handleDeletePermanent = async (id) => {
-        if(!confirm("HAPUS PERMANEN? Data tidak bisa dikembalikan!")) return;
+        if(!confirm("Hapus permanen? Data tidak bisa kembali.")) return;
         await supabase.from('articles').delete().eq('id', id);
         fetchData();
     }
@@ -114,52 +100,43 @@ export default function AdminDashboard() {
     return (
         <div className="dashboard-wrapper">
             
-            {/* HEADER */}
+            {/* HEADER DASHBOARD */}
             <header className="dash-header">
                 <div className="header-left">
-                    <h1>DASHBOARD</h1>
-                    <p>Kelola antrian berita & konten.</p>
+                    <div className="badge-admin"><ShieldCheck size={14}/> Admin Panel</div>
+                    <h1>Meja Redaksi</h1>
+                    <p>Total {articles.length} artikel terdaftar.</p>
                 </div>
-                <div className="dash-badge">
-                    <ShieldCheck size={16}/> ADMIN MODE
-                </div>
+                <button onClick={fetchData} className="btn-refresh"><RefreshCw size={16}/> Refresh</button>
             </header>
 
-            {/* HORIZONTAL SCROLL (PENDING ONLY) */}
-            <section className="horizontal-section">
-                <h2 className="section-label">🔴 MENUNGGU REVIEW</h2>
+            {/* SECTION 1: ANTRIAN PENDING */}
+            <section className="dashboard-section">
+                <div className="section-header">
+                    <Inbox size={20} strokeWidth={1.5} />
+                    <h2>Antrian Review <span className="count-badge">{pendingArticles.length}</span></h2>
+                </div>
+                
                 {pendingArticles.length === 0 ? (
-                    <div className="empty-queue">
-                        <CheckCircle size={40}/>
+                    <div className="empty-state">
+                        <CheckCircle size={32} strokeWidth={1.5} className="text-muted"/>
                         <p>Tidak ada antrian pending.</p>
                     </div>
                 ) : (
                     <div className="card-scroller">
                         {pendingArticles.map((item) => (
-                            <div key={item.id} className="news-card">
-                                {/* Gambar */}
+                            <div key={item.id} className="news-card" onClick={() => handleOpenReview(item)}>
                                 <div className="card-img-box">
                                     <img src={item.cover_url || 'https://placehold.co/400'} alt="cover" />
+                                    <div className="overlay-hover"><Eye size={24} color="white"/></div>
                                 </div>
-                                
-                                {/* Info Konten */}
                                 <div className="card-info">
-                                    {/* STRUKTUR BARU: Tanggal/Penulis DULUAN */}
-                                    <div className="card-meta-top">
-                                        <span className="timestamp">{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                        <span className="divider">/</span>
-                                        <span className="author">{item.profiles?.full_name || 'Redaksi'}</span>
+                                    <div className="card-meta">
+                                        <span>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                                        <span className="dot">•</span>
+                                        <span>{item.profiles?.full_name || 'Anonim'}</span>
                                     </div>
-                                    
-                                    {/* Judul di Bawahnya (Selalu Muncul) */}
                                     <h3>{item.title}</h3>
-                                </div>
-
-                                {/* Tombol Aksi (Slide Up inside Card) */}
-                                <div className="card-actions">
-                                    <button onClick={() => handleUpdateStatus('published', item.id)} className="btn-action approve">ACCEPT</button>
-                                    <button onClick={() => handleOpenReview(item)} className="btn-action review">REVIEW</button>
-                                    <button onClick={() => handleUpdateStatus('rejected', item.id)} className="btn-action deny">DENY</button>
                                 </div>
                             </div>
                         ))}
@@ -167,41 +144,40 @@ export default function AdminDashboard() {
                 )}
             </section>
 
-            {/* TABLE (ALL DATA - ARCHIVE) */}
-            <section className="table-section">
-                <div className="table-header">
-                    <h2 className="section-label">🗄️ ARSIP BERITA (SEMUA STATUS)</h2>
-                    <button onClick={fetchData} className="btn-refresh"><RefreshCw size={16}/> REFRESH</button>
+            {/* SECTION 2: TABEL ARSIP */}
+            <section className="dashboard-section">
+                <div className="section-header">
+                    <Archive size={20} strokeWidth={1.5} />
+                    <h2>Database Arsip</h2>
                 </div>
                 
                 <div className="table-responsive">
-                    <table className="brutalist-table">
+                    <table className="minimal-table">
                         <thead>
                             <tr>
-                                <th style={{width: '120px'}}>AKSI</th>
-                                <th>JUDUL</th>
-                                <th>PENULIS</th>
-                                <th>TANGGAL</th>
-                                <th>STATUS</th>
+                                <th>Judul Berita</th>
+                                <th>Penulis</th>
+                                <th>Status</th>
+                                <th style={{textAlign: 'right'}}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {articles.map((item) => (
-                                <tr key={item.id}>
-                                    <td className="col-actions">
-                                        {/* Edit opens Drawer */}
-                                        <button onClick={() => handleOpenReview(item)} className="icon-btn" title="Edit/Review"><Edit3 size={18} /></button>
-                                        {/* Delete Permanent */}
-                                        <button onClick={() => handleDeletePermanent(item.id)} className="icon-btn danger" title="Hapus Permanen"><Trash2 size={18} /></button>
+                                <tr key={item.id} className={item.status === 'pending' ? 'row-highlight' : ''}>
+                                    <td className="td-title">
+                                        <span className="title-text">{item.title}</span>
+                                        <span className="date-text">{new Date(item.created_at).toLocaleDateString()}</span>
                                     </td>
-                                    <td><strong>{item.title}</strong></td>
-                                    <td>{item.profiles?.full_name || 'Redaksi'}</td>
-                                    <td>{new Date(item.created_at).toLocaleDateString()}</td>
+                                    <td className="td-author">{item.profiles?.full_name || 'Redaksi'}</td>
                                     <td>
-                                        {/* Status Badge Logic */}
-                                        <span className={`status-badge ${item.status}`}>
-                                            {item.status === 'published' ? 'LIVE' : (item.status === 'rejected' ? 'DITOLAK' : 'PENDING')}
+                                        <span className={`status-dot ${item.status}`}></span>
+                                        <span className="status-text">
+                                            {item.status === 'published' ? 'Live' : (item.status === 'rejected' ? 'Ditolak' : (item.status === 'draft' ? 'Draft' : 'Pending'))}
                                         </span>
+                                    </td>
+                                    <td className="col-actions">
+                                        <button onClick={() => handleOpenReview(item)} className="icon-btn" title="Review"><Edit3 size={16} /></button>
+                                        <button onClick={() => handleDeletePermanent(item.id)} className="icon-btn danger" title="Hapus"><Trash2 size={16} /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -210,238 +186,199 @@ export default function AdminDashboard() {
                 </div>
             </section>
 
-            {/* DRAWER (SLIDE OVER) */}
+            {/* --- DRAWER EDITOR --- */}
             <div className={`drawer-backdrop ${isPanelOpen ? 'open' : ''}`} onClick={handleCloseReview}></div>
             
             <div className={`drawer-panel ${isPanelOpen ? 'open' : ''}`}>
                 {selectedArticle && (
                     <>
                         <div className="drawer-header">
-                            <h2>EDITOR REVIEW</h2>
-                            <button onClick={handleCloseReview} className="btn-close"><X size={24} /></button>
+                            <div>
+                                <h2 className="drawer-title">Editor Mode</h2>
+                            </div>
+                            <button onClick={handleCloseReview} className="btn-close"><XCircle size={24} strokeWidth={1.5} /></button>
                         </div>
 
                         <div className="drawer-content">
-                            <div className="meta-edit-box">
-                                <img src={selectedArticle.cover_url} className="meta-img" />
-                                <div className="meta-text">
-                                    <h3>{selectedArticle.title}</h3>
-                                    <p>{selectedArticle.profiles?.full_name} • {new Date(selectedArticle.created_at).toLocaleDateString()}</p>
-                                    <div style={{marginTop: '10px'}}>
-                                        Status Saat Ini: <span className={`status-badge ${selectedArticle.status}`}>{selectedArticle.status.toUpperCase()}</span>
-                                    </div>
+                            <div className="meta-compact">
+                                <img src={selectedArticle.cover_url || 'https://placehold.co/100'} className="meta-thumb" />
+                                <div className="meta-info">
+                                    <p className="author-name">{selectedArticle.profiles?.full_name || 'Redaksi'}</p>
+                                    <span className={`status-pill ${selectedArticle.status}`}>{selectedArticle.status}</span>
                                 </div>
                             </div>
-                            <div className="rich-editor-container">
-                                <TiptapEditor content={editorContent} onChange={setEditorContent} editable={true} />
+
+                            <div className="form-group">
+                                <label>Judul Headline</label>
+                                <input 
+                                    type="text" 
+                                    className="input-minimal"
+                                    value={editorTitle}
+                                    onChange={(e) => setEditorTitle(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Isi Konten</label>
+                                <div className="minimal-quill">
+                                    <ReactQuill 
+                                        theme="snow" 
+                                        value={editorContent} 
+                                        onChange={setEditorContent} 
+                                        modules={modules} 
+                                    />
+                                </div>
                             </div>
                         </div>
 
                         <div className="drawer-footer">
-                            <button onClick={() => handleUpdateStatus('published')} className="btn-save success">PUBLISH (LIVE)</button>
-                            <button onClick={() => handleUpdateStatus('rejected')} className="btn-save danger">REJECT (TOLAK)</button>
-                            <button onClick={() => handleUpdateStatus('pending')} className="btn-save warning">SIMPAN DRAFT</button>
+                            <button onClick={() => handleUpdateStatus('draft')} className="btn-decision revise">
+                                <ArrowLeftCircle size={18} /> Revisi
+                            </button>
+
+                            <button onClick={() => handleUpdateStatus('rejected')} className="btn-decision reject">
+                                <XCircle size={18} /> Tolak
+                            </button>
+
+                            <button onClick={() => handleUpdateStatus('published')} className="btn-decision publish">
+                                <CheckCircle size={18} /> Publish
+                            </button>
                         </div>
                     </>
                 )}
             </div>
 
-            {/* CSS STYLES */}
-            <style jsx="true">{`
-                .dashboard-wrapper { font-family: 'Poppins', sans-serif; padding-bottom: 100px; color: #111; }
+            {/* CSS MINIMALIST */}
+            <style>{`
+                .dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); }
                 
                 /* HEADER */
                 .dash-header { 
                     display: flex; justify-content: space-between; align-items: end; 
-                    margin-bottom: 40px; border-bottom: 1px solid #111; padding-bottom: 20px;
+                    margin-bottom: 50px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px;
                 }
-                .dash-header h1 { font-size: 3rem; font-weight: 900; line-height: 1; letter-spacing: -2px; margin: 0; text-transform: uppercase; }
-                .dash-header p { margin: 0; color: #666; font-size: 1.1rem; }
-                .dash-badge { 
-                    background: #111; color: #fff; padding: 6px 12px; 
-                    font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 8px;
+                .badge-admin { 
+                    color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;
+                    font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;
                 }
-
-                .section-label { font-size: 1rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 20px; text-transform: uppercase; border-left: 4px solid #111; padding-left: 10px; }
-
-                /* HORIZONTAL SCROLL */
-                .horizontal-section { margin-bottom: 60px; }
-                .card-scroller {
-                    display: flex; gap: 30px; overflow-x: auto;
-                    padding: 10px 10px 20px 10px;
-                    
-                    /* ANTI-JUMPING FIX */
-                    min-height: 400px; 
-                    align-items: flex-start;
-                }
-                
-                /* --- NEWS CARD (HOMEPAGE STYLE) --- */
-                .news-card {
-                    min-width: 320px; width: 320px; 
-                    height: 300px; 
-                    background: white;
-                    border: 1px solid #111; 
-                    position: relative;
-                    display: flex; flex-direction: column;
-                    transition: transform 0.2s ease, box-shadow 0.2s ease, height 0.2s ease;
-                    overflow: hidden;
-                }
-
-                .news-card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 4px 4px 0px #111; 
-                    height: 350px; 
-                    z-index: 10;
-                }
-
-                .card-img-box { 
-                    height: 160px; width: 100%; 
-                    border-bottom: 1px solid #111; 
-                    overflow: hidden; 
-                    background: #eee;
-                    flex-shrink: 0; 
-                }
-                
-                .card-img-box img { 
-                    width: 100%; height: 100%; object-fit: cover; 
-                    filter: grayscale(100%); 
-                    transition: filter 0.3s ease, transform 0.3s ease;
-                }
-                
-                .news-card:hover .card-img-box img { 
-                    filter: grayscale(0%); 
-                    transform: scale(1.03); 
-                }
-                
-                .card-info { 
-                    padding: 20px; flex: 1; background: #fff; 
-                    display: flex; flex-direction: column; justify-content: flex-start; 
-                }
-
-                .card-meta-top { 
-                    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #666; 
-                    margin-bottom: 8px; display: flex; gap: 5px;
-                }
-                
-                .card-info h3 { 
-                    font-size: 1.2rem; line-height: 1.3; font-weight: 800; margin: 0; 
-                    color: #111; display: block; 
-                    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-                }
-                
-                /* ACTION BUTTONS */
-                .card-actions {
-                    position: absolute; bottom: 0; left: 0; width: 100%;
-                    padding: 15px; 
-                    display: flex; gap: 10px; 
-                    background: #fff;
-                    border-top: 1px solid #eee;
-                    transform: translateY(100%);
-                    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                }
-                
-                .news-card:hover .card-actions { transform: translateY(0); }
-
-                .btn-action { 
-                    flex: 1; border: 1px solid #111; background: #fff; color: #111; 
-                    padding: 8px 0; font-weight: 700; cursor: pointer; 
-                    font-size: 0.7rem; text-transform: uppercase; transition: all 0.2s;
-                }
-                .btn-action:hover { background: #111; color: #fff; }
-                
-                .btn-action.approve { background: #fff; }
-                .btn-action.approve:hover { background: #22c55e; border-color: #22c55e; color: white; }
-
-                .btn-action.review { background: #fff; }
-                .btn-action.review:hover { background: #eab308; border-color: #eab308; color: white; }
-                
-                .btn-action.deny { background: #fff; }
-                .btn-action.deny:hover { background: #ef4444; border-color: #ef4444; color: white; }
-                
-                /* --- TABLE SECTION --- */
-                .table-section { border: 1px solid #111; padding: 30px; background: white; box-shadow: 4px 4px 0 rgba(0,0,0,0.1); }
-                .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+                .dash-header h1 { font-size: 2rem; font-weight: 600; margin: 0; letter-spacing: -0.5px; }
+                .dash-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
                 
                 .btn-refresh { 
-                    background: #111; color: white; border: none; padding: 10px 20px; 
-                    font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;
+                    background: transparent; border: 1px solid var(--border); padding: 8px 16px; 
+                    display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.85rem;
+                    border-radius: 6px; color: var(--text); cursor: pointer; transition: all 0.2s;
                 }
-                .btn-refresh:hover { opacity: 0.8; }
+                .btn-refresh:hover { background: var(--bg-light); border-color: var(--text); }
 
-                .brutalist-table { width: 100%; border-collapse: collapse; }
-                .brutalist-table th { text-align: left; padding: 15px; border-bottom: 2px solid #111; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.9rem; }
-                .brutalist-table td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: middle; font-weight: 500; }
-                
-                .status-badge { 
-                    padding: 4px 8px; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; border: 1px solid #111; display: inline-block;
-                }
-                .status-badge.published { background: #111; color: #fff; }
-                .status-badge.pending { background: #fff; color: #111; border-style: dashed; }
-                .status-badge.rejected { background: #fee2e2; color: #b91c1c; border-color: #b91c1c; }
-                
-                .icon-btn { background: none; border: 1px solid transparent; cursor: pointer; padding: 5px; border-radius: 4px; }
-                .icon-btn:hover { background: #eee; }
-                .icon-btn.danger:hover { background: #fee2e2; color: #b91c1c; }
+                /* SECTIONS */
+                .dashboard-section { margin-bottom: 60px; }
+                .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; color: var(--text); }
+                .section-header h2 { font-size: 1.1rem; font-weight: 500; margin: 0; }
+                .count-badge { background: var(--bg-light); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin-left: 8px; }
 
-                /* --- DRAWER --- */
-                .drawer-backdrop {
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.7); z-index: 998; 
-                    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+                /* CARDS (PENDING) */
+                .card-scroller { display: flex; gap: 20px; overflow-x: auto; padding: 4px; padding-bottom: 20px; }
+                .empty-state { 
+                    padding: 40px; border: 1px dashed var(--border); border-radius: 8px; 
+                    text-align: center; color: var(--text-muted); font-size: 0.9rem;
                 }
+
+                .news-card {
+                    min-width: 280px; width: 280px; background: var(--bg);
+                    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+                    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+                }
+                .news-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+                
+                .card-img-box { height: 150px; position: relative; overflow: hidden; }
+                .card-img-box img { width: 100%; height: 100%; object-fit: cover; }
+                .overlay-hover { 
+                    position: absolute; inset: 0; background: rgba(0,0,0,0.3); 
+                    display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;
+                }
+                .news-card:hover .overlay-hover { opacity: 1; }
+
+                .card-info { padding: 15px; }
+                .card-meta { display: flex; gap: 6px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+                .card-info h3 { font-size: 1rem; font-weight: 600; margin: 0; line-height: 1.4; color: var(--text); }
+
+                /* TABLE MINIMALIST */
+                .minimal-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+                .minimal-table th { text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; }
+                .minimal-table td { padding: 12px 15px; border-bottom: 1px solid var(--border-muted); vertical-align: middle; }
+                .row-highlight { background: var(--bg-light); }
+
+                .title-text { display: block; font-weight: 500; color: var(--text); }
+                .date-text { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+                .td-author { color: var(--text-muted); }
+
+                /* STATUS DOTS */
+                .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+                .status-text { font-size: 0.85rem; font-weight: 500; }
+                .status-dot.published { background: #10b981; } /* Green */
+                .status-dot.pending { background: #f59e0b; } /* Amber */
+                .status-dot.rejected { background: #ef4444; } /* Red */
+                .status-dot.draft { background: #9ca3af; } /* Gray */
+
+                .col-actions { text-align: right; }
+                .icon-btn { 
+                    padding: 6px; border: none; background: transparent; 
+                    cursor: pointer; color: var(--text-muted); transition: color 0.2s;
+                }
+                .icon-btn:hover { color: var(--text); }
+                .icon-btn.danger:hover { color: #ef4444; }
+
+                /* DRAWER & FORM */
+                .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
                 .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
 
                 .drawer-panel {
-                    position: fixed; top: 0; right: 0; 
-                    width: 50%; height: 100vh;
-                    background: #fff; z-index: 999;
-                    border-left: 1px solid #111; 
-                    transform: translateX(100%);
-                    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+                    position: fixed; top: 0; right: 0; bottom: 0; width: 800px; max-width: 90%;
+                    background: var(--bg); z-index: 999; border-left: 1px solid var(--border);
+                    transform: translateX(100%); transition: transform 0.3s ease;
                     display: flex; flex-direction: column;
                 }
                 .drawer-panel.open { transform: translateX(0); }
 
-                .drawer-header {
-                    padding: 20px 30px; border-bottom: 1px solid #111; display: flex; justify-content: space-between; align-items: center; background: #fff;
-                }
-                .drawer-header h2 { margin: 0; font-weight: 900; letter-spacing: -1px; font-size: 1.5rem; text-transform: uppercase; }
-                .btn-close { background: none; border: none; cursor: pointer; }
+                .drawer-header { padding: 20px 30px; border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; }
+                .drawer-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
+                .btn-close { background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
+                .btn-close:hover { color: var(--text); }
 
-                .drawer-content { padding: 40px; overflow-y: auto; flex: 1; }
-                .meta-edit-box { display: flex; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
-                .meta-img { width: 100px; height: 100px; object-fit: cover; border: 1px solid #111; }
-                .meta-text h3 { margin: 0 0 10px 0; font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+                .drawer-content { flex: 1; overflow-y: auto; padding: 30px; }
+                
+                .meta-compact { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-muted); }
+                .meta-thumb { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
+                .author-name { margin: 0; font-weight: 500; font-size: 0.95rem; }
+                .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-light); color: var(--text-muted); text-transform: uppercase; margin-top: 4px; display: inline-block; }
+
+                .form-group { margin-bottom: 20px; }
+                .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-muted); }
+                .input-minimal { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 1rem; }
+                .input-minimal:focus { outline: none; border-color: var(--text); }
+
+                .minimal-quill { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+                .minimal-quill :global(.ql-toolbar) { border: none !important; border-bottom: 1px solid var(--border) !important; background: var(--bg-light); }
+                .minimal-quill :global(.ql-container) { border: none !important; font-size: 1rem; min-height: 300px; }
 
                 .drawer-footer {
-                    padding: 20px 30px; border-top: 1px solid #111; display: flex; gap: 15px; background: #f4f4f4;
+                    padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg);
+                    display: flex; gap: 15px;
                 }
-                .btn-save { 
-                    flex: 1; border: 1px solid #111; padding: 15px; font-weight: 800; cursor: pointer; 
-                    text-transform: uppercase; font-size: 0.9rem; transition: all 0.2s;
+                .btn-decision {
+                    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+                    padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+                    background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s;
                 }
-                .btn-save:hover { background: #111; color: white; }
-                
-                .btn-save.success { background: #22c55e; border-color: #22c55e; color: white; }
-                .btn-save.success:hover { background: #166534; }
-                
-                .btn-save.warning { background: #fff; color: #111; }
-                .btn-save.danger { background: #fee2e2; color: #b91c1c; border-color: #b91c1c; }
-                .btn-save.danger:hover { background: #b91c1c; color: white; }
+                .btn-decision:hover { background: var(--bg-light); border-color: var(--text); }
+                .publish { background: var(--text); color: var(--bg); border-color: var(--text); }
+                .publish:hover { opacity: 0.9; background: var(--text); }
+                .reject:hover { color: #ef4444; border-color: #ef4444; }
 
-                /* EDITOR STYLE */
-                .editor-wrapper { border: 1px solid #111; min-height: 400px; }
-                .editor-toolbar { background: #111; padding: 8px; display: flex; gap: 8px; }
-                .editor-toolbar button { 
-                    padding: 6px 12px; background: #fff; border: 1px solid #111; cursor: pointer; font-weight: 700; 
+                @media (max-width: 768px) {
+                    .drawer-panel { width: 100%; }
                 }
-                .editor-toolbar button.active { background: #ffff00; }
-                .prose-editor { padding: 30px; outline: none; }
-                
-                .prose-editor :global(h2) { font-weight: 800; font-size: 1.5rem; margin-top: 1em; }
-                .prose-editor :global(p) { margin-bottom: 1em; line-height: 1.8; }
-
-                @media (max-width: 768px) { .drawer-panel { width: 90%; } }
             `}</style>
         </div>
     );

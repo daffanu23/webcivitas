@@ -29,12 +29,27 @@ const data = article || {
     profiles: { full_name: "Redaksi" }
 };
 
-// --- LOGIC PEMBERSIH HTML (Strip Tags) ---
-// Kita ganti tag HTML dengan SPASI agar kata-kata tidak nempel
-// Contoh: <p>Halo</p><p>Dunia</p> -> "Halo Dunia" (Bukan "HaloDunia")
-const rawContent = data.content || "";
-const plainText = rawContent.replace(/<\/?[^>]+(>|$)/g, " "); 
-const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "..." : "");
+const stripHtml = (html: string) => {
+   if (!html) return "";
+   
+   // 1. Ganti tag <br> atau </p> dengan spasi biar kalimat gak nempel
+   let text = html.replace(/<br\s*\/?>/gi, ' ').replace(/<\/p>/gi, ' ');
+   
+   // 2. Hapus semua tag HTML (<...>)
+   text = text.replace(/<[^>]+>/g, '');
+   
+   // 3. Hapus kode entities aneh (&nbsp; dll)
+   text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+   
+   // 4. Hapus spasi ganda yang berlebihan jadi satu spasi
+   text = text.replace(/\s+/g, ' ').trim();
+   
+   return text;
+};
+
+// Buat Excerpt Bersih
+const cleanContent = stripHtml(data.content);
+const excerpt = cleanContent.substring(0, 180) + (cleanContent.length > 180 ? "..." : "");
 
 ---
 
@@ -86,7 +101,6 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         display: flex;
         flex-direction: column;
         
-        /* Background & Border Variabel */
         background: var(--bg-light); 
         border: 2px solid var(--border);
         color: var(--text);
@@ -107,7 +121,6 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         height: 250px;
         border-bottom: 2px solid var(--border);
         overflow: hidden;
-        /* PENTING: Biar gambar ga gepeng/hilang saat teks kepanjangan */
         flex-shrink: 0; 
     }
 
@@ -128,8 +141,8 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         display: flex;
         flex-direction: column;
         justify-content: center;
-        flex: 1; /* Isi ruang sisa */
-        min-width: 0; /* Mencegah flex item overflow */
+        flex: 1; 
+        min-width: 0; 
     }
 
     .hero-title {
@@ -139,7 +152,6 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         margin-bottom: 15px;
         color: var(--text);
         
-        /* Batasi judul max 3 baris biar rapi */
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
@@ -164,8 +176,7 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         line-height: 1.6;
         margin-bottom: 30px;
         
-        /* --- KUNCI PENYELAMAT LAYOUT --- */
-        /* Batasi teks max 4 baris, sisanya titik-titik (...) */
+        /* Batasi teks max 4 baris */
         display: -webkit-box;
         -webkit-line-clamp: 4; 
         -webkit-box-orient: vertical;
@@ -177,7 +188,7 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         display: inline-block;
         padding: 10px 24px;
         border: 1px solid var(--border);
-        border-radius: 50px; /* Saya ubah jadi rounded biar lebih modern dikit */
+        border-radius: 50px;
         color: var(--text);
         
         font-weight: 600;
@@ -197,13 +208,13 @@ const excerpt = plainText.trim().substring(0, 200) + (plainText.length > 200 ? "
         .hero-card {
             flex-direction: row;
             min-height: 450px;
-            max-height: 500px; /* Batasi tinggi total kartu agar tidak raksasa */
+            max-height: 500px;
         }
         
         .hero-image {
-            /* FIX: Gunakan flex-basis untuk ukuran pasti (55% gambar, 45% teks) */
+            /* 55% Gambar */
             flex: 0 0 55%; 
-            height: auto; /* Reset height mobile */
+            height: 100%; /* FIX Layout Shift */
             border-bottom: none;
             border-right: 2px solid var(--border);
         }
