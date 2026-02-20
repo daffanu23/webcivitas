@@ -1,28 +1,17 @@
 ---
-import Navbar from '../components/Navbar.astro';
-import Footer from '../components/Footer.astro';
+import Layout from '../layouts/Layout.astro';
 import { ShieldCheck } from 'lucide-react';
-import '../styles/global.css';
 ---
 
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Redaksi - MEDIACIVITAS</title>
-</head>
-<body class="login-body">
-    
-    <Navbar />
-
+<Layout title="Login - MEDIACIVITAS">
     <main class="login-container">
         <div class="login-card">
             <div class="icon-header">
-                <ShieldCheck size={48} stroke-width={1.5} />
+                <ShieldCheck size={48} strokeWidth={1.5} />
             </div>
             
-            <h1 class="login-title">Akses Redaksi</h1>
-            <p class="login-desc">Silakan masuk untuk menulis berita atau mengelola konten.</p>
+            <h1 class="login-title">Masuk ke Akun Anda</h1>
+            <p class="login-desc">Silakan masuk menggunakan akun Google Anda untuk melanjutkan.</p>
 
             <button id="google-login" class="btn-google">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -35,81 +24,84 @@ import '../styles/global.css';
             </button>
         </div>
     </main>
+</Layout>
 
-    <Footer />
+<script>
+    import { supabase } from '../lib/supabase';
+    
+    const btn = document.getElementById('google-login');
+    
+    // Logika Supabase 100% AMAN DAN TIDAK BERUBAH
+    if (btn) {
+        btn.addEventListener('click', async () => {
+            try {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = 'Menghubungkan...';
+                btn.setAttribute('disabled', 'true');
 
-    <script>
-        import { supabase } from '../lib/supabase';
-        
-        const btn = document.getElementById('google-login');
-        
-        // Pengecekan null agar TypeScript tidak error
-        if (btn) {
-            btn.addEventListener('click', async () => {
-                try {
-                    // Ubah text tombol biar user tau lagi loading
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = 'Menghubungkan...';
-                    btn.setAttribute('disabled', 'true');
-
-                    const { error } = await supabase.auth.signInWithOAuth({
-                        provider: 'google',
-                        options: { redirectTo: window.location.origin }
-                    });
-                    
-                    if (error) throw error;
-                    
-                } catch (err) {
-                    console.error(err);
-                    alert("Gagal koneksi ke Google.");
-                    btn.innerHTML = 'Coba Lagi';
-                    btn.removeAttribute('disabled');
-                }
-            });
-        }
-    </script>
-</body>
-</html>
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: window.location.origin }
+                });
+                
+                if (error) throw error;
+                
+            } catch (err) {
+                console.error(err);
+                alert("Gagal koneksi ke Google.");
+                btn.innerHTML = 'Coba Lagi';
+                btn.removeAttribute('disabled');
+            }
+        });
+    }
+</script>
 
 <style>
-    .login-body { display: flex; flex-direction: column; min-height: 100vh; }
-    
     .login-container {
-        flex: 1;
+        /* Memastikan container berada di tengah layar antara Header dan Footer */
+        min-height: 75vh;
         display: flex;
         justify-content: center;
         align-items: center;
         padding: 40px 20px;
-        background-color: #fafafa; 
+        /* BACKGROUND TAMBAHAN DIHAPUS, sekarang transparan mengikuti Layout */
     }
 
     .login-card {
         background: var(--bg);
-        border: 1px solid var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
         padding: 60px 40px;
         text-align: center;
         max-width: 400px;
         width: 100%;
-        /* Shadow kasar (Brutalist Style) */
-        box-shadow: 8px 8px 0px rgba(0,0,0,0.1); 
+        box-shadow: 6px 6px 0px var(--border);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .login-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 10px 10px 0px var(--border);
     }
 
     .icon-header { 
         margin-bottom: 20px; 
         display: flex; 
-        justify-content: center; /* Pastikan icon benar-benar di tengah */
-        color: var(--fg);
+        justify-content: center; 
+        color: var(--text); 
     }
 
     .login-title {
+        font-family: 'Poppins', sans-serif;
         font-size: 1.8rem;
-        font-weight: 900;
+        font-weight: 700;
         margin-bottom: 10px;
         letter-spacing: -0.5px;
+        color: var(--text);
     }
 
     .login-desc { 
-        color: #666; 
+        color: var(--text-muted); 
         font-size: 0.95rem; 
         margin-bottom: 30px; 
         line-height: 1.5; 
@@ -122,9 +114,11 @@ import '../styles/global.css';
         align-items: center;
         gap: 12px;
         padding: 14px;
-        background: white;
-        color: #111;
-        border: 1px solid #ccc;
+        background: var(--bg-light);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: 'Poppins', sans-serif;
         font-weight: 600;
         font-size: 1rem;
         cursor: pointer;
@@ -132,10 +126,9 @@ import '../styles/global.css';
     }
 
     .btn-google:hover {
-        background: #f8f8f8;
-        border-color: #111;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        transform: translateY(-1px);
+        background: var(--bg);
+        border-color: var(--text);
+        transform: translateY(-2px);
     }
 
     .btn-google:disabled {
