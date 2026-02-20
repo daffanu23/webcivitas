@@ -13,6 +13,10 @@ const ArticleEditor = () => {
   const [status, setStatus] = useState('draft');
   const [articleId, setArticleId] = useState(null);
   
+  // STATE BARU UNTUK KATEGORI
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
@@ -22,6 +26,10 @@ const ArticleEditor = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return window.location.href = '/login';
         setUser(session.user);
+
+        // Fetch Master Kategori
+        const { data: catData } = await supabase.from('categories').select('*').order('name');
+        if (catData) setAvailableCategories(catData);
 
         const params = new URLSearchParams(window.location.search);
         const slug = params.get('slug');
@@ -35,6 +43,10 @@ const ArticleEditor = () => {
                 setStatus(data.status);
                 setArticleId(data.id);
                 localStorage.removeItem(`snooze_draft_${data.id}`);
+
+                // Fetch Kategori yang sudah dipilih sebelumnya
+                const { data: pivotData } = await supabase.from('article_categories').select('category_id').eq('article_id', data.id);
+                if (pivotData) setSelectedCategories(pivotData.map(p => p.category_id));
             }
         } else {
             const localTitle = localStorage.getItem('draft_title');
@@ -51,7 +63,6 @@ const ArticleEditor = () => {
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setIsUploading(true);
     try {
         const fileExt = file.name.split('.').pop();
@@ -66,6 +77,15 @@ const ArticleEditor = () => {
 
   const removeImage = () => setCoverUrl('');
 
+  // Handle Checkbox Kategori
+  const toggleCategory = (categoryId) => {
+      setSelectedCategories(prev => 
+          prev.includes(categoryId) 
+          ? prev.filter(id => id !== categoryId) 
+          : [...prev, categoryId]
+      );
+  };
+
   useEffect(() => {
     if (!loading && !articleId) {
         const timeout = setTimeout(() => {
@@ -79,6 +99,8 @@ const ArticleEditor = () => {
   const handleSave = async (targetStatus) => {
     if (!title) return alert("Judul wajib diisi!");
     if (targetStatus === 'pending' && !content) return alert("Konten kosong!");
+    if (targetStatus === 'pending' && selectedCategories.length === 0) return alert("Pilih minimal 1 kategori!");
+    
     setIsSaving(true);
 
     const slugGen = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now();
@@ -89,18 +111,29 @@ const ArticleEditor = () => {
     if (articleId) delete payload.slug; 
 
     try {
+        // 1. Simpan Beritanya Dulu
         let result = articleId 
             ? await supabase.from('articles').update(payload).eq('id', articleId).select().single()
             : await supabase.from('articles').insert([payload]).select().single();
 
         if (result.error) throw result.error;
-        if (result.data) {
-            setArticleId(result.data.id); setLastSaved(new Date()); setStatus(targetStatus);
-            if (targetStatus === 'pending') {
-                localStorage.removeItem('draft_title'); localStorage.removeItem('draft_content');
-                localStorage.removeItem(`snooze_draft_${result.data.id}`);
-                alert('Terkirim ke redaksi!'); window.location.href = '/'; 
+        const newArticleId = result.data.id;
+
+        // 2. Simpan Relasi Kategorinya (Hapus yang lama, insert yang baru)
+        if (newArticleId) {
+            await supabase.from('article_categories').delete().eq('article_id', newArticleId);
+            if (selectedCategories.length > 0) {
+                const pivotInserts = selectedCategories.map(catId => ({ article_id: newArticleId, category_id: catId }));
+                await supabase.from('article_categories').insert(pivotInserts);
             }
+        }
+
+        setArticleId(newArticleId); setLastSaved(new Date()); setStatus(targetStatus);
+        
+        if (targetStatus === 'pending') {
+            localStorage.removeItem('draft_title'); localStorage.removeItem('draft_content');
+            localStorage.removeItem(`snooze_draft_${newArticleId}`);
+            alert('Terkirim ke redaksi!'); window.location.href = '/'; 
         }
     } catch (error) { alert("Error: " + error.message); } 
     finally { setIsSaving(false); }
@@ -124,6 +157,23 @@ const ArticleEditor = () => {
         <input type="text" className="input-title" placeholder="Judul Berita yang Menarik..." value={title} onChange={(e) => setTitle(e.target.value)}/>
       </div>
 
+      {/* --- SECTION KATEGORI BARU --- */}
+      <div className="form-group">
+        <label className="label">Pilih Kategori (Bisa lebih dari 1)</label>
+        <div className="category-grid">
+            {availableCategories.map(cat => (
+                <label key={cat.id} className={`cat-checkbox ${selectedCategories.includes(cat.id) ? 'active' : ''}`}>
+                    <input 
+                        type="checkbox" 
+                        checked={selectedCategories.includes(cat.id)} 
+                        onChange={() => toggleCategory(cat.id)}
+                    />
+                    <span>{cat.name}</span>
+                </label>
+            ))}
+        </div>
+      </div>
+
       <div className="form-group">
         <label className="label">Gambar Sampul</label>
         {!coverUrl ? (
@@ -142,13 +192,7 @@ const ArticleEditor = () => {
       <div className="form-group">
         <label className="label">Isi Berita (Markdown Mode)</label>
         <div className="markdown-wrapper">
-            <MDEditor
-                value={content}
-                onChange={setContent}
-                height={500}
-                preview="edit"
-                className="custom-md-editor"
-            />
+            <MDEditor value={content} onChange={setContent} height={500} preview="edit" className="custom-md-editor" />
         </div>
         <p className="markdown-hint">Gunakan <b>**tebal**</b>, <i>*miring*</i>, atau <code># Judul Besar</code>. Klik logo mata di editor untuk melihat hasil.</p>
       </div>
@@ -169,21 +213,18 @@ const ArticleEditor = () => {
         .form-group { margin-bottom: 25px; }
         .label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--text-muted); }
         
-        .input-title { 
-            width: 100%; padding: 15px; font-size: 1.5rem; font-weight: 500; 
-            background: var(--bg-light); border: 1px solid var(--border); color: var(--text); 
-            border-radius: 12px; font-family: 'Poppins', sans-serif; 
-            transition: all 0.2s ease;
-        }
-        .input-title:focus { 
-            outline: none; border-color: var(--text); box-shadow: 0 0 0 1px var(--text); 
-        }
+        .input-title { width: 100%; padding: 15px; font-size: 1.5rem; font-weight: 500; background: var(--bg-light); border: 1px solid var(--border); color: var(--text); border-radius: 12px; font-family: 'Poppins', sans-serif; transition: all 0.2s ease; }
+        .input-title:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
         
+        /* CSS UNTUK KATEGORI CHECKBOX */
+        .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+        .cat-checkbox { display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.9rem; color: var(--text-muted); transition: all 0.2s ease; user-select: none; }
+        .cat-checkbox input { accent-color: var(--text); width: 16px; height: 16px; cursor: pointer; }
+        .cat-checkbox:hover { border-color: var(--text); color: var(--text); }
+        .cat-checkbox.active { border-color: var(--text); background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--text); }
+
         .hidden-input { display: none; }
-        .upload-box { 
-            border: 2px dashed var(--border); border-radius: 12px; background: var(--bg-light); 
-            padding: 40px; text-align: center; cursor: pointer; color: var(--text-muted); transition: all 0.2s ease; 
-        }
+        .upload-box { border: 2px dashed var(--border); border-radius: 12px; background: var(--bg-light); padding: 40px; text-align: center; cursor: pointer; color: var(--text-muted); transition: all 0.2s ease; }
         .upload-box:hover, .upload-box:focus-within { border-color: var(--text); color: var(--text); background: var(--bg); }
         .upload-label { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
         .preview-box { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); max-height: 400px; }
@@ -199,31 +240,9 @@ const ArticleEditor = () => {
         .custom-md-editor .w-md-editor-toolbar li button { color: var(--text) !important; }
         .custom-md-editor .w-md-editor-toolbar li button:hover { background-color: var(--border) !important; color: var(--text) !important; }
         
-        /* --- FIX: AREA KETIK DIKEMBALIKAN KE MONOSPACE --- */
-        .custom-md-editor .w-md-editor-text-input,
-        .custom-md-editor .w-md-editor-text-pre > code,
-        .custom-md-editor .w-md-editor-text-pre {
-            color: var(--text) !important;
-            /* Font khusus koding agar kursor sejajar sempurna dengan highlight */
-            font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; 
-            font-size: 0.95rem !important;
-            line-height: 1.6 !important;
-        }
-        
-        /* --- TETAP POPPINS UNTUK AREA PREVIEW --- */
-        .custom-md-editor .wmde-markdown {
-            background-color: var(--bg-light) !important;
-            color: var(--text) !important;
-            font-family: 'Poppins', sans-serif !important;
-            font-size: 1rem !important;
-            line-height: 1.8 !important;
-        }
-        
-        .custom-md-editor .wmde-markdown h1,
-        .custom-md-editor .wmde-markdown h2,
-        .custom-md-editor .wmde-markdown h3 {
-            font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important;
-        }
+        .custom-md-editor .w-md-editor-text-input, .custom-md-editor .w-md-editor-text-pre > code, .custom-md-editor .w-md-editor-text-pre { color: var(--text) !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; font-size: 0.95rem !important; line-height: 1.6 !important; }
+        .custom-md-editor .wmde-markdown { background-color: var(--bg-light) !important; color: var(--text) !important; font-family: 'Poppins', sans-serif !important; font-size: 1rem !important; line-height: 1.8 !important; }
+        .custom-md-editor .wmde-markdown h1, .custom-md-editor .wmde-markdown h2, .custom-md-editor .wmde-markdown h3 { font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important; }
         
         .markdown-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
         

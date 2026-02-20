@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import HeroNews from '../components/HeroNews.astro';
 import SubNewsCard from '../components/SubNewsCard.astro'; // Komponen Baru
 import { supabase } from '../lib/supabase';
+import CategoryNav from '../components/CategoryNav.astro';
 
 // 1. Fetch Data (1 Hero + 6 Sub News = Limit 7)
 const { data: articles, error } = await supabase
@@ -30,12 +31,8 @@ const subArticles = articles && articles.length > 1 ? articles.slice(1) : [];
 
     {subArticles.length > 0 && (
         <div class="section-latest">
+            <CategoryNav />
             
-            <div class="section-header">
-                <h2>Terbaru</h2>
-                <div class="line"></div>
-            </div>
-
             <div class="news-grid">
                 {subArticles.map((item) => (
                     <div class="grid-item">

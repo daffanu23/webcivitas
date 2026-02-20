@@ -1,0 +1,71 @@
+---
+import { supabase } from '../lib/supabase';
+
+// Menerima props 'activeSlug' untuk menandai kategori mana yang sedang diklik
+const { activeSlug = '' } = Astro.props;
+
+// Fetch semua kategori dari database, urutkan berdasarkan abjad
+const { data: categories } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name');
+---
+
+<nav class="category-nav-wrapper">
+    <a href="/arsip" class={`cat-pill ${!activeSlug ? 'active' : ''}`}>
+        Semua
+    </a>
+    
+    {categories?.map((cat) => (
+        <a 
+            href={`/arsip?kategori=${cat.slug}`} 
+            class={`cat-pill ${activeSlug === cat.slug ? 'active' : ''}`}
+        >
+            {cat.name}
+        </a>
+    ))}
+</nav>
+
+<style>
+    .category-nav-wrapper {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto; /* Bisa di-scroll menyamping di HP */
+        padding-bottom: 10px; /* Jarak untuk scrollbar */
+        margin-bottom: 25px;
+        
+        /* Sembunyikan scrollbar tapi tetap bisa digeser */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none;  /* IE and Edge */
+    }
+    .category-nav-wrapper::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+
+    /* Style mirip meta-pill di [slug].astro */
+    .cat-pill {
+        white-space: nowrap;
+        padding: 8px 18px;
+        border-radius: 50px;
+        background: var(--bg-light);
+        border: 1px solid var(--border-muted);
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .cat-pill:hover {
+        border-color: var(--text);
+        color: var(--text);
+    }
+    
+    /* State Aktif (Saat kategori itu dipilih) */
+    .cat-pill.active {
+        background: var(--text);
+        color: var(--bg);
+        border-color: var(--text);
+    }
+</style>

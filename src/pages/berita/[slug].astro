@@ -8,7 +8,15 @@ import { marked } from 'marked';
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
 
-const { data: article, error } = await supabase.from('articles').select(`*, profiles ( full_name )`).eq('slug', slug).single();
+const { data: article, error } = await supabase
+  .from('articles')
+  .select(`
+    *, 
+    profiles ( full_name ),
+    article_categories ( categories ( name, slug ) ) 
+  `)
+  .eq('slug', slug)
+  .single();
 if (error || !article) return Astro.redirect('/404');
 
 const authorName = article.profiles?.full_name || 'Redaksi';
@@ -28,7 +36,15 @@ const htmlContent = marked.parse(article.content || 'Konten tidak tersedia.');
             <div class="meta-row">
                 <div class="meta-pill"><User size={14} /> <span>{authorName}</span></div>
                 <div class="meta-pill"><Calendar size={14} /> <span>{publishDate}</span></div>
-                <div class="meta-pill"><Clock size={14} /> <span>{readTime} menit baca</span></div>
+                
+                {/* --- TAG KATEGORI MUNCUL DI SINI --- */}
+                {article.article_categories && article.article_categories.map((ac: any) => (
+                    ac.categories && (
+                        <a href={`/arsip?kategori=${ac.categories.slug}`} class="meta-pill cat-link">
+                            {ac.categories.name}
+                        </a>
+                    )
+                ))}
             </div>
         </header>
 
@@ -148,4 +164,6 @@ const htmlContent = marked.parse(article.content || 'Konten tidak tersedia.');
     .action-btn.saved { background: var(--text); color: var(--bg); border-color: var(--text); }
     
     @media (max-width: 600px) { .article-wrapper { padding-left: 10px; padding-right: 10px; } }
+    .cat-link { text-decoration: none; cursor: pointer; transition: all 0.2s; }
+    .cat-link:hover { background: var(--text) !important; color: var(--bg) !important; border-color: var(--text) !important; }
 </style>
