@@ -13,12 +13,12 @@ import { Bookmark } from 'lucide-react';
 
         <div id="loading-state" class="state-box">
             <div class="spinner"></div>
-            <p>Memuat koleksi anda...</p>
+            <p>Memuat koleksi ajaib Anda...</p>
         </div>
 
         <div id="empty-state" class="state-box" style="display: none;">
-            <p>Belum ada artikel yang disimpan.</p>
-            <a href="/" class="btn-home">Cari Berita</a>
+            <p>Belum ada artikel yang Anda simpan.</p>
+            <a href="/" class="btn-home">Eksplorasi Berita</a>
         </div>
 
         <div id="collection-grid" class="news-grid"></div>
@@ -29,43 +29,58 @@ import { Bookmark } from 'lucide-react';
 <script>
     import { supabase } from '../lib/supabase';
 
-    // TYPE DEFINITION (Biar rapi)
-    interface Article {
-        title: string;
-        slug: string;
-        cover_url: string;
-        profiles: { full_name: string };
-    }
-    
-    interface BookmarkItem {
-        created_at: string;
-        articles: Article;
-    }
+    // --- LOGIKA COPY-PASTE DARI SubNewsCard.astro ---
+    const getRelativeTime = (dateString: string) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        
+        const minutes = Math.floor(diffInSeconds / 60);
+        const hours = Math.floor(diffInSeconds / 3600);
+        const days = Math.floor(diffInSeconds / 86400);
 
-    // LOGIC UTAMA
+        if (days > 0) return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        if (hours > 0) return `${hours} jam lalu`;
+        if (minutes > 0) return `${minutes} mnt lalu`;
+        return "Baru saja";
+    };
+
+    const stripHtml = (html: string) => {
+        if (!html) return "";
+        let text = html.replace(/<\/?[^>]+(>|$)/g, (match) => {
+            if (match.match(/<\/(p|div|h[1-6]|li|tr)>/i) || match.match(/<br\s*\/?>/i)) {
+                return ' ';
+            }
+            return '';
+        });
+        text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+        return text.replace(/\s+/g, ' ').trim();
+    };
+
     async function loadCollection() {
         const loadingEl = document.getElementById('loading-state');
         const emptyEl = document.getElementById('empty-state');
         const gridEl = document.getElementById('collection-grid');
 
-        // 1. CEK SESI DI BROWSER
+        if (!loadingEl || !emptyEl || !gridEl) return;
+
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
-            // Kalau tidak login, lempar ke login
             window.location.href = '/login';
             return;
         }
 
-        // 2. AMBIL DATA DARI SUPABASE
-        // Kita join table 'bookmarks' dengan 'articles'
         const { data, error } = await supabase
             .from('bookmarks')
             .select(`
                 created_at,
                 articles (
+                    id,
                     title,
                     slug,
+                    content,
                     cover_url,
                     created_at,
                     profiles ( full_name )
@@ -74,50 +89,64 @@ import { Bookmark } from 'lucide-react';
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false });
 
-        // Sembunyikan Loading
-        if (loadingEl) loadingEl.style.display = 'none';
+        loadingEl.style.display = 'none';
 
-        // 3. RENDER DATA
         if (error || !data || data.length === 0) {
-            // Tampilkan Empty State
-            if (emptyEl) emptyEl.style.display = 'block';
-        } else {
-            // Render Grid
-            if (gridEl) {
-                const bookmarks = data as unknown as BookmarkItem[];
-                
-                gridEl.innerHTML = bookmarks.map(item => {
-                    const article = item.articles;
-                    // Format Tanggal
-                    const dateStr = new Date(item.created_at).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                    });
-
-                    return `
-                        <a href="/berita/${article.slug}" class="news-card">
-                            <div class="img-container">
-                                <img 
-                                    src="${article.cover_url || 'https://placehold.co/600x400'}" 
-                                    alt="${article.title}" 
-                                    loading="lazy" 
-                                />
-                            </div>
-                            <div class="card-body">
-                                <div class="meta-small">
-                                    <span>${dateStr}</span>
-                                    <span>•</span>
-                                    <span>Tersimpan</span>
-                                </div>
-                                <h3 class="card-title-small">${article.title}</h3>
-                            </div>
-                        </a>
-                    `;
-                }).join('');
-            }
+            emptyEl.style.display = 'block';
+            return;
         }
+
+        const validBookmarks = data.filter(item => item.articles !== null);
+        
+        if (validBookmarks.length === 0) {
+            emptyEl.style.display = 'block';
+            return;
+        }
+
+        // @ts-ignore
+        gridEl.innerHTML = validBookmarks.map((item: any) => {
+            const article = Array.isArray(item.articles) ? item.articles[0] : item.articles;
+            if (!article) return '';
+
+            const authorName = Array.isArray(article.profiles) 
+                ? (article.profiles[0]?.full_name || 'Redaksi') 
+                : (article.profiles?.full_name || 'Redaksi');
+            
+            const cleanContent = stripHtml(article.content || "");
+            const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? "..." : "");
+            const relativeTime = getRelativeTime(article.created_at);
+
+            return `
+                <div class="grid-item">
+                    <a href="/berita/${article.slug}" class="news-card">
+                        
+                        <div class="card-image">
+                            <img src="${article.cover_url || 'https://placehold.co/600x400'}" alt="${article.title}" loading="lazy" />
+                            <span class="bookmark-badge">TERSIMPAN</span>
+                        </div>
+
+                        <div class="card-content">
+                            <h3 class="card-title">${article.title}</h3>
+                            <p class="card-excerpt">${excerpt}</p>
+                            
+                            <div class="card-meta">
+                                <div class="meta-item author">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <span>${authorName}</span>
+                                </div>
+                                <div class="meta-item time">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    <span>${relativeTime}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </a>
+                </div>
+            `;
+        }).join('');
     }
 
-    // Jalankan saat halaman siap
     document.addEventListener('astro:page-load', loadCollection);
 </script>
 
@@ -126,15 +155,11 @@ import { Bookmark } from 'lucide-react';
 
     .page-header {
         display: flex; align-items: center; gap: 15px; margin-bottom: 40px;
-        padding-bottom: 20px; border-bottom: 2px solid var(--border);
-        color: var(--text);
+        padding-bottom: 20px; border-bottom: 2px solid var(--border); color: var(--text);
     }
     .page-header h1 { font-size: 2rem; font-weight: 800; margin: 0; }
 
-    /* STATES (Loading / Empty) */
     .state-box { text-align: center; padding: 60px 0; color: var(--text-muted); }
-    
-    /* Spinner Loading Sederhana */
     .spinner {
         width: 40px; height: 40px; border: 4px solid var(--border-muted);
         border-top: 4px solid var(--text); border-radius: 50%;
@@ -145,35 +170,69 @@ import { Bookmark } from 'lucide-react';
     .btn-home {
         display: inline-block; margin-top: 20px; padding: 10px 24px;
         background: var(--text); color: var(--bg); border-radius: 50px; font-weight: 600;
-        text-decoration: none;
+        text-decoration: none; transition: transform 0.2s;
     }
+    .btn-home:hover { transform: scale(1.05); }
 
-    /* GRID SAMA DENGAN ARSIP (CSS Reuse) */
     .news-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; margin-bottom: 60px;
     }
 
-    /* Kita perlu pakai :global() karena HTML-nya di-inject via JS */
+    /* --- STYLE PLEK KETIPLEK DARI SubNewsCard.astro --- */
     :global(.news-card) {
-        display: flex; flex-direction: column; text-decoration: none; color: inherit;
-        background: var(--bg-light); border: 1px solid var(--border-muted);
-        border-radius: 12px; overflow: hidden; height: 100%; 
-        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        display: flex; flex-direction: column; background: var(--bg-light); 
+        text-decoration: none; color: inherit; border: 1px solid var(--border);
+        border-radius: 12px; overflow: hidden; height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
+
     :global(.news-card:hover) {
-        transform: translateY(-4px); box-shadow: 4px 4px 0px var(--border); border-color: var(--border);
+        transform: translateY(-4px); box-shadow: 6px 6px 0px var(--border); 
+        border-color: var(--text);
     }
 
-    :global(.news-card .img-container) { height: 180px; border-bottom: 1px solid var(--border-muted); overflow: hidden; }
-    :global(.news-card .img-container img) { width: 100%; height: 100%; object-fit: cover; }
+    :global(.card-image) {
+        position: relative; width: 100%; height: 180px; border-bottom: 1px solid var(--border);
+        overflow: hidden; background: var(--bg-light);
+    }
+    :global(.card-image img) {
+        width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;
+    }
+    :global(.news-card:hover .card-image img) { transform: scale(1.05); }
 
-    :global(.news-card .card-body) { padding: 20px; flex: 1; display: flex; flex-direction: column; }
-    
-    :global(.news-card .meta-small) { 
-        font-size: 0.75rem; font-weight: 700; color: var(--text-muted); 
-        margin-bottom: 10px; text-transform: uppercase; display: flex; gap: 5px; 
+    /* Lencana Khusus Halaman Koleksi */
+    :global(.bookmark-badge) {
+        position: absolute; top: 10px; right: 10px; background: var(--text); color: var(--bg);
+        font-size: 0.65rem; font-weight: 800; padding: 4px 10px; border-radius: 50px;
+        text-transform: uppercase; border: 1px solid var(--border);
     }
-    :global(.news-card .card-title-small) { 
-        font-size: 1.1rem; font-weight: 700; line-height: 1.3; margin: 0; color: var(--text);
+
+    :global(.card-content) {
+        padding: 20px; display: flex; flex-direction: column; flex-grow: 1;
     }
+
+    :global(.card-title) {
+        font-size: 1.1rem; font-weight: 600; line-height: 1.4; margin-bottom: 10px;
+        color: var(--text); display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    :global(.card-excerpt) {
+        font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;
+        line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    :global(.card-meta) {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
+        padding-top: 15px; border-top: 1px dashed var(--border-muted); margin-top: auto;
+    }
+
+    :global(.meta-item) { display: flex; align-items: center; gap: 6px; }
+    :global(.author) { max-width: 60%; }
+    :global(.author span) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    @media (max-width: 900px) { .news-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .news-grid { grid-template-columns: 1fr; } }
 </style>
