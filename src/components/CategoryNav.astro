@@ -1,24 +1,26 @@
 ---
 import { supabase } from '../lib/supabase';
 
-// Menerima props 'activeSlug' untuk menandai kategori mana yang sedang diklik
 const { activeSlug = '' } = Astro.props;
 
-// Fetch semua kategori dari database, urutkan berdasarkan abjad
 const { data: categories } = await supabase
     .from('categories')
     .select('*')
     .order('name');
+// 1. DETEKSI LOKASI HALAMAN SAAT INI
+const currentPath = Astro.url.pathname;
+const basePath = currentPath.includes('/arsip') ? '/arsip' : '/';
 ---
 
-<nav class="category-nav-wrapper">
-    <a href="/arsip" class={`cat-pill ${!activeSlug ? 'active' : ''}`}>
+<nav class="category-nav-wrapper" id="category-filter-nav">
+    {/* 2. GUNAKAN BASEPATH AGAR LINKNYA DINAMIS */}
+    <a href={basePath} class={`cat-pill ${!activeSlug ? 'active' : ''}`}>
         Semua
     </a>
     
     {categories?.map((cat) => (
         <a 
-            href={`/arsip?kategori=${cat.slug}`} 
+            href={`${basePath}?kategori=${cat.slug}`} 
             class={`cat-pill ${activeSlug === cat.slug ? 'active' : ''}`}
         >
             {cat.name}
@@ -26,46 +28,77 @@ const { data: categories } = await supabase
     ))}
 </nav>
 
-<style>
-    .category-nav-wrapper {
-        display: flex;
-        gap: 12px;
-        overflow-x: auto; /* Bisa di-scroll menyamping di HP */
-        padding-bottom: 10px; /* Jarak untuk scrollbar */
-        margin-bottom: 25px;
-        
-        /* Sembunyikan scrollbar tapi tetap bisa digeser */
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none;  /* IE and Edge */
-    }
-    .category-nav-wrapper::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Opera */
+<script>
+    function initAjaxFilter() {
+        const nav = document.getElementById('category-filter-nav');
+        if (!nav) return;
+
+        const buttons = nav.querySelectorAll('.cat-pill');
+
+        buttons.forEach(btn => {
+            // Mencegah listener tertumpuk jika pindah halaman
+            if (btn.hasAttribute('data-ajax-ready')) return;
+            btn.setAttribute('data-ajax-ready', 'true');
+
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault(); // MATIKAN LOADING HALAMAN!
+                
+                const url = btn.getAttribute('href');
+                if (!url) return;
+
+                // 1. INSTAN: Ubah warna tombol langsung detik itu juga
+                buttons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // 2. FETCH: Ambil data dari server secara diam-diam
+                try {
+                    const response = await fetch(url);
+                    const htmlText = await response.text();
+                    
+                    // 3. PARSING: Ubah teks HTML menjadi dokumen yang bisa dibaca JS
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlText, 'text/html');
+
+                    // 4. SWAP: Tukar isi wadah dengan isi yang baru dari server
+                    const currentHero = document.getElementById('dynamic-hero-container');
+                    const newHero = doc.getElementById('dynamic-hero-container');
+                    if (currentHero && newHero) {
+                        currentHero.innerHTML = newHero.innerHTML;
+                    }
+
+                    const currentGrid = document.getElementById('dynamic-grid-container');
+                    const newGrid = doc.getElementById('dynamic-grid-container');
+                    if (currentGrid && newGrid) {
+                        currentGrid.innerHTML = newGrid.innerHTML;
+                    }
+
+                    // 5. URL: Ganti tulisan URL di atas browser tanpa me-refresh halaman
+                    window.history.pushState({}, '', url);
+
+                } catch (error) {
+                    console.error("Gagal mengambil data kategori:", error);
+                }
+            });
+        });
     }
 
-    /* Style mirip meta-pill di [slug].astro */
+    // Jalankan setiap kali halaman siap
+    document.addEventListener('astro:page-load', initAjaxFilter);
+</script>
+
+<style>
+    .category-nav-wrapper {
+        display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 25px;
+        scrollbar-width: none; -ms-overflow-style: none;  
+    }
+    .category-nav-wrapper::-webkit-scrollbar { display: none; }
+
     .cat-pill {
-        white-space: nowrap;
-        padding: 8px 18px;
-        border-radius: 50px;
-        background: var(--bg-light);
-        border: 1px solid var(--border-muted);
-        color: var(--text-muted);
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s ease;
-        font-family: 'Poppins', sans-serif;
+        white-space: nowrap; padding: 8px 18px; border-radius: 50px;
+        background: var(--bg-light); border: 1px solid var(--border-muted);
+        color: var(--text-muted); font-size: 0.85rem; font-weight: 600;
+        text-decoration: none; transition: all 0.2s ease; font-family: 'Poppins', sans-serif;
     }
-    
-    .cat-pill:hover {
-        border-color: var(--text);
-        color: var(--text);
-    }
-    
-    /* State Aktif (Saat kategori itu dipilih) */
-    .cat-pill.active {
-        background: var(--text);
-        color: var(--bg);
-        border-color: var(--text);
-    }
+    .cat-pill:hover { border-color: var(--text); color: var(--text); }
+    .cat-pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 </style>

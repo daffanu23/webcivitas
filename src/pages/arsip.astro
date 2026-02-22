@@ -1,30 +1,23 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { supabase } from '../lib/supabase';
-// Import Komponen Navigasi Kategori yang baru kita buat
 import CategoryNav from '../components/CategoryNav.astro';
-// SESUAIKAN IMPORT INI DENGAN NAMA FILE KARTU ANDA (Misal: NewsCard.astro / SubNews.astro)
 import SubNewsCard from '../components/SubNewsCard.astro';
 
-// 1. Cek apakah ada filter kategori di URL (Contoh: /arsip?kategori=sport)
 const activeCategory = Astro.url.searchParams.get('kategori');
 
 let articles = [];
 let categoryName = "Semua Berita";
 
-// 2. Logika Filter Database
 if (activeCategory) {
-    // A. Cari ID Kategori berdasarkan slug
     const { data: cat } = await supabase.from('categories').select('id, name').eq('slug', activeCategory).single();
     
     if (cat) {
         categoryName = `Kategori: ${cat.name}`;
-        // B. Cari ID Artikel yang punya Kategori tersebut di Tabel Pivot
         const { data: pivot } = await supabase.from('article_categories').select('article_id').eq('category_id', cat.id);
         
         if (pivot && pivot.length > 0) {
             const articleIds = pivot.map(p => p.article_id);
-            // C. Ambil artikelnya
             const { data } = await supabase
                 .from('articles')
                 .select('*, profiles(full_name)')
@@ -35,7 +28,6 @@ if (activeCategory) {
         }
     }
 } else {
-    // D. Jika tidak ada filter, ambil SEMUA berita
     const { data } = await supabase
         .from('articles')
         .select('*, profiles(full_name)')
@@ -48,25 +40,33 @@ if (activeCategory) {
 <Layout title="Arsip Berita | MEDIACIVITAS">
     <div class="archive-container">
         
-        <header class="archive-header">
-            <h1 class="page-title">{categoryName}</h1>
-            <p class="article-count">Total {articles.length} artikel diterbitkan.</p>
-        </header>
+        {/* COMPONENT KATEGORI KITA TARUH DI ATAS AGAR TIDAK IKUT TERTUKAR */}
+        <div style="margin-bottom: 30px;">
+            <CategoryNav activeSlug={activeCategory} />
+        </div>
 
-        {/* COMPONENT KATEGORI KITA PASANG DI SINI! */}
-        <CategoryNav activeSlug={activeCategory} />
+        {/* --- WADAH DINAMIS AJAX --- */}
+        {/* Header dan Grid dibungkus agar judulnya ikut berubah saat klik kategori! */}
+        <div id="dynamic-grid-container">
+            <header class="archive-header">
+                <h1 class="page-title">{categoryName}</h1>
+                <p class="article-count">Total {articles.length} artikel ditemukan.</p>
+            </header>
 
-        {articles.length === 0 ? (
-            <div class="empty-state">
-                <p>Belum ada berita di kategori ini.</p>
-            </div>
-        ) : (
-            <div class="news-grid">
-                {articles.map((article) => (
-                    <SubNewsCard article={article} />
-                ))}
-            </div>
-        )}
+            {articles.length === 0 ? (
+                <div class="empty-state">
+                    <p>Belum ada berita di kategori ini.</p>
+                </div>
+            ) : (
+                <div class="news-grid">
+                    {articles.map((article) => (
+                        <div class="grid-item">
+                            <SubNewsCard article={article} />
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
 
     </div>
 </Layout>
@@ -85,7 +85,7 @@ if (activeCategory) {
     .page-title {
         font-family: 'Poppins', sans-serif;
         font-size: 2.5rem;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--text);
         margin-bottom: 10px;
     }
