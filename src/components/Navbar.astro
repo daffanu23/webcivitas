@@ -30,31 +30,45 @@ import { LogIn, Sun, Moon } from 'lucide-react';
     </div>
 </header>
 
-<script is:inline>
-    // 1. LOGIC TEMA (Jalan Instan sebelum page load biar ga kedip)
-    const theme = (() => {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
-            return localStorage.getItem('theme');
-        }
-        if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-            return 'light';
-        }
-        return 'dark'; // Default Dark
-    })();
-
-    if (theme === 'light') {
-        document.body.classList.add('light');
-    } else {
-        document.body.classList.remove('light');
-    }
-
-    window.localStorage.setItem('theme', theme);
-</script>
-
 <script>
     import { supabase } from '../lib/supabase';
 
-    // 2. LOGIC JAM
+    // 1. LOGIC TEMA (Dipanggil tiap pindah halaman & sebelum render)
+    function applyTheme() {
+        const theme = (() => {
+            if (typeof localStorage !== 'undefined') {
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) return savedTheme; 
+            }
+            if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+                return 'light';
+            }
+            return 'dark'; 
+        })();
+
+        if (theme === 'light') {
+            document.body.classList.add('light');
+        } else {
+            document.body.classList.remove('light');
+        }
+
+        window.localStorage.setItem('theme', theme);
+    }
+
+    // 2. LOGIC TOMBOL TEMA (Event Listener)
+    function handleThemeToggle() {
+        const btn = document.getElementById('theme-toggle');
+        
+        if (btn && !btn.hasAttribute('data-listener')) { 
+            btn.setAttribute('data-listener', 'true');
+            btn.addEventListener('click', () => {
+                const isLight = document.body.classList.toggle('light');
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        }
+    }
+
+    // 3. LOGIC JAM
     function updateClock() {
         const timeEl = document.getElementById('clock-time');
         const dateEl = document.getElementById('clock-date');
@@ -66,7 +80,7 @@ import { LogIn, Sun, Moon } from 'lucide-react';
         }
     }
 
-    // 3. LOGIC AUTH
+    // 4. LOGIC AUTH
     async function checkAuth() {
         const authContainer = document.getElementById('nav-auth');
         if (!authContainer) return;
@@ -116,32 +130,39 @@ import { LogIn, Sun, Moon } from 'lucide-react';
         }
     }
 
-    // 4. LOGIC TOMBOL TEMA (Event Listener)
-    function handleThemeToggle() {
-        const btn = document.getElementById('theme-toggle');
-        
-        // Update Icon State berdasarkan body class saat ini
-        const updateIcon = () => {
-            // Kita pakai CSS class logic, tapi js juga bisa bantu
-        };
+    // --- PERBAIKAN TYPESCRIPT ---
+    // Memberi tahu TypeScript secara pasti bahwa ini adalah interval pengatur waktu
+    let clockInterval: ReturnType<typeof setInterval> | undefined;
 
-        if (btn) {
-            btn.addEventListener('click', () => {
-                const element = document.body;
-                element.classList.toggle('light');
-
-                const isLight = element.classList.contains('light');
-                localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            });
+    // --- OBAT ANTI-KEDIP TINGKAT DEWA (MENCEGAT HTML BARU) ---
+    document.addEventListener('astro:before-swap', (e) => {
+        // e.newDocument adalah HTML halaman selanjutnya yang baru didownload
+        // Kita pakaikan tema yang sama persis dengan halaman saat ini SEBELUM ditukar!
+        if (document.body.classList.contains('light')) {
+            e.newDocument.body.classList.add('light');
+        } else {
+            e.newDocument.body.classList.remove('light');
         }
-    }
-
-    document.addEventListener('astro:page-load', () => {
-        updateClock();
-        setInterval(updateClock, 1000);
-        checkAuth();
-        handleThemeToggle();
     });
+
+    // EKSEKUSI SEMUA SAAT HALAMAN DIBUKA / PINDAH HALAMAN
+    document.addEventListener('astro:page-load', () => {
+        applyTheme(); 
+        handleThemeToggle();
+        
+        updateClock();
+        if (clockInterval) clearInterval(clockInterval);
+        clockInterval = setInterval(updateClock, 1000);
+        
+        checkAuth();
+    });
+</script>
+
+{/* --- SCRIPT IS:INLINE UNTUK MENCEGAH KEDIP SAAT PERTAMA KALI MUAT (REFRESH) --- */}
+<script is:inline>
+    if (localStorage.getItem('theme') === 'light' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.body.classList.add('light');
+    }
 </script>
 
 <style>
@@ -224,25 +245,21 @@ import { LogIn, Sun, Moon } from 'lucide-react';
     .theme-btn:hover {
         background-color: var(--bg-light);
         color: var(--highlight);
-        transform: rotate(15deg); /* Efek putar dikit pas hover */
+        transform: rotate(15deg); 
     }
 
     /* LOGIC ICON SWAP */
-    /* Default (Dark Mode): Tampilkan Matahari, Sembunyikan Bulan */
     .icon-sun { display: block; }
     .icon-moon { display: none; }
 
-    /* Saat Light Mode Aktif (body.light): Tampilkan Bulan, Sembunyikan Matahari */
     :global(body.light) .icon-sun { display: none; }
     :global(body.light) .icon-moon { display: block; }
-
 
     .auth-skeleton { width: 80px; height: 30px; background: var(--bg-light); border-radius: 6px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
     @media (max-width: 600px) {
-        /* Di HP, sembunyikan jam tapi TETAPKAN tombol tema */
         .time-badge { display: none; }
-        .nav-right { flex: 0; } /* Biar ga makan tempat */
+        .nav-right { flex: 0; } 
     }
 </style>

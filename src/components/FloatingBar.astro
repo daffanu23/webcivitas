@@ -1,211 +1,207 @@
 ---
-import { Home, Archive } from 'lucide-react';
+import { Home, FolderOpen } from 'lucide-react';
 ---
 
-<nav class="floating-dock" transition:persist>
-    <div class="dock-container">
+<div class="floating-wrapper" transition:persist="floating-bar">
+    <nav class="floating-bar">
         
-        <a href="/" class="dock-item" aria-label="Beranda" data-tooltip="Beranda">
-            <Home size={24} strokeWidth={2} />
+        {/* --- MENU STATIS --- */}
+        <a href="/" class="nav-item" aria-label="Beranda">
+            <Home size={20} />
+            <span class="nav-label">Beranda</span>
         </a>
         
-        <a href="/arsip" class="dock-item" aria-label="Arsip Berita" data-tooltip="Arsip">
-            <Archive size={24} strokeWidth={2} />
+        <a href="/arsip" class="nav-item" aria-label="Arsip Berita">
+            <FolderOpen size={20} />
+            <span class="nav-label">Arsip</span>
         </a>
 
-        <div id="floating-dynamic"></div>
+        {/* --- WADAH MENU DINAMIS --- */}
+        <div id="dynamic-nav-items" style="display: contents;">
+            {/* Fallback sementara sebelum JS jalan */}
+            <a href="/login" class="nav-item placeholder-login">
+                <span class="nav-label">Memuat...</span>
+            </a>
+        </div>
 
-    </div>
-</nav>
+    </nav>
+</div>
 
 <script>
     import { supabase } from '../lib/supabase';
 
     async function updateFloatingBar() {
-        const container = document.getElementById('floating-dynamic');
-        if (!container) return;
+        const container = document.getElementById('dynamic-nav-items');
+        const currentPath = window.location.pathname;
 
-        const { data: { session } } = await supabase.auth.getSession();
-        container.innerHTML = ''; 
-
-        if (session) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', session.user.id)
-                .single();
-            
+        // 1. RENDER MENU DINAMIS DARI SUPABASE
+        if (container) {
+            const { data: { session } } = await supabase.auth.getSession();
             let html = '';
 
-            // --- PENTING: SVG INI DISET AGAR SAMA PERSIS DENGAN LUCIDE ---
-            // fill="none"
-            // stroke="currentColor"
-            // stroke-width="2" (INI KUNCINYA BIAR TEBAL SAMA)
-            
-            // 1. TULIS (Redaksi/Admin) -> Ikon Fountain Pen
-
-            html += `
-                <a href="/koleksi" class="dock-item" aria-label="Koleksi" data-tooltip="Koleksi">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                </a>
-            `;
-
-            if (profile?.role === 'redaksi' || profile?.role === 'admin') {
+            if (session) {
+                const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+                
+                // Koleksi (Semua user login)
                 html += `
-                    <a href="/redaksi/tulis" class="dock-item" aria-label="Tulis" data-tooltip="Tulis Berita">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                            <path d="M2 2l7.586 7.586"></path>
-                            <circle cx="11" cy="11" r="2"></circle>
+                    <a href="/koleksi" class="nav-item" aria-label="Koleksi">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                         </svg>
+                        <span class="nav-label">Koleksi</span>
+                    </a>
+                `;
+
+                // Tulis (Redaksi / Admin)
+                if (profile?.role === 'redaksi' || profile?.role === 'admin') {
+                    html += `
+                        <a href="/redaksi/tulis" class="nav-item" aria-label="Tulis">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                                <path d="M2 2l7.586 7.586"></path>
+                                <circle cx="11" cy="11" r="2"></circle>
+                            </svg>
+                            <span class="nav-label">Tulis</span>
+                        </a>
+                    `;
+                }
+
+                // Dashboard (Hanya Admin)
+                if (profile?.role === 'admin') {
+                    html += `
+                        <a href="/admin/dashboard" class="nav-item" aria-label="Admin">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="9" rx="1"></rect>
+                                <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+                                <rect x="14" y="12" width="7" height="9" rx="1"></rect>
+                                <rect x="3" y="16" width="7" height="5" rx="1"></rect>
+                            </svg>
+                            <span class="nav-label">Admin</span>
+                        </a>
+                    `;
+                }
+                container.innerHTML = html;
+            } else {
+                // Belum Login
+                container.innerHTML = `
+                    <a href="/login" class="nav-item" aria-label="Akses Redaksi">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        <span class="nav-label">Login</span>
                     </a>
                 `;
             }
-
-            // 2. DASHBOARD (Admin) -> Ikon Dashboard
-            if (profile?.role === 'admin') {
-                html += `
-                    <a href="/admin/dashboard" class="dock-item" aria-label="Dashboard" data-tooltip="Dashboard Admin">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="7" height="9" rx="1"></rect>
-                            <rect x="14" y="3" width="7" height="5" rx="1"></rect>
-                            <rect x="14" y="12" width="7" height="9" rx="1"></rect>
-                            <rect x="3" y="16" width="7" height="5" rx="1"></rect>
-                        </svg>
-                    </a>
-                `;
-            }
-
-            container.innerHTML = html;
         }
+
+        // 2. LOGIKA BLOK AKTIF (Dijalankan untuk SEMUA tombol setelah di-render)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const href = item.getAttribute('href');
+            
+            // --- TAMBAHKAN BARIS INI UNTUK MENENANGKAN TYPESCRIPT ---
+            if (!href) return; 
+
+            item.classList.remove('active'); // Reset semua dulu
+            
+            if (href === '/' && currentPath === '/') {
+                item.classList.add('active');
+            } else if (href !== '/' && currentPath.startsWith(href)) {
+                item.classList.add('active');
+            }
+        });
     }
 
+    // Eksekusi tiap pindah halaman tanpa nunggu loading ulang
     document.addEventListener('astro:page-load', updateFloatingBar);
 </script>
 
 <style>
-    /* WRAPPER UTAMA */
-    .floating-dock {
+    .floating-wrapper {
         position: fixed;
         bottom: 30px;
         left: 50%;
-        transform: translateX(-50%); 
+        transform: translateX(-50%);
         z-index: 9999;
+        pointer-events: none; 
         font-family: 'Poppins', sans-serif;
     }
 
-    /* CONTAINER KAPSUL */
-    .dock-container {
+    .floating-bar {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 6px;
+        padding: 8px;
         
-        /* GANTI: Background variable (sedikit transparan agar glass tetap jalan, menggunakan color-mix jika support, atau solid fallback) */
-        background: var(--bg-light); 
-        /* Opsi Glass modern (opsional): background: color-mix(in srgb, var(--bg-light), transparent 10%); */
-        
-        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        
+        background: var(--bg); 
+        border: 1px solid var(--border);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 2px 10px rgba(0, 0, 0, 0.05);
+        border-radius: 50px;
+        pointer-events: auto; 
+    }
+
+    .placeholder-login { display: none; }
+
+    :global(.nav-item) {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         padding: 10px 20px;
+        border-radius: 50px;
         
-        /* GANTI: Border variable */
-        border: 1px solid var(--border-muted);
+        color: var(--text);
+        opacity: 0.65;
         
-        border-radius: 24px;
-        
-        /* GANTI: Shadow lebih soft/adaptif */
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
-        
-        transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-    }
-
-    /* AGAR ISINYA SEJAJAR */
-    #floating-dynamic {
-        display: contents;
-    }
-
-    .dock-container:hover {
-        transform: translateY(-5px);
-        /* GANTI: Background saat hover container */
-        background: var(--bg-light); 
-        border-color: var(--border);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-
-    /* --- PERBAIKAN UTAMA DI SINI --- */
-    
-    :global(.dock-item) {
-        /* GANTI: Warna icon default (Muted/Abu) */
-        color: var(--text-muted);
-        
-        width: 46px;
-        height: 46px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 14px;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
         text-decoration: none;
+        font-weight: 600; 
+        font-size: 0.9rem;
+        
+        /* TRANSISI KLIK SUPER KILAT (0.05s) */
+        transition: all 0.15s ease, transform 0.05s ease;
+        -webkit-tap-highlight-color: transparent; 
         cursor: pointer;
     }
 
-    /* STYLE SVG DI DALAMNYA (Global) */
-    :global(.dock-item svg) {
-        width: 24px;
-        height: 24px;
-        stroke: currentColor; 
-        stroke-width: 2px;
-        fill: none;
+    /* PENGATURAN KETEBALAN ICON VIA CSS AGAR KONSISTEN */
+    :global(.nav-item svg) {
+        stroke-width: 2px !important;
+        transition: stroke-width 0.15s ease;
     }
 
-    /* EFEK HOVER (Global) */
-    :global(.dock-item:hover) {
-        /* GANTI: Saat hover, background jadi warna Teks Utama (Kontras) */
-        background-color: var(--text);
-        /* GANTI: Icon jadi warna Background (Kebalikannya) */
-        color: var(--bg);
-        
-        transform: scale(1.15);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
-    
-    :global(.dock-item:active) {
-        transform: scale(0.95);
-    }
-
-    /* TOOLTIP (Global) */
-    :global(.dock-item)::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%) translateY(10px);
-        
-        /* GANTI: Tooltip background mengikuti warna teks utama */
-        background: var(--text);
-        /* GANTI: Teks tooltip mengikuti warna background */
-        color: var(--bg);
-        
-        padding: 5px 10px;
-        font-size: 0.75rem;
-        border-radius: 6px;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.2s;
-        pointer-events: none;
-        margin-bottom: 12px;
-        white-space: nowrap;
-        font-weight: 600;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    :global(.dock-item:hover)::after {
+    :global(.nav-item:hover) {
         opacity: 1;
-        visibility: visible;
-        transform: translateX(-50%) translateY(0);
+        background-color: var(--bg-light);
+    }
+
+    /* ANTI-BUDEK: Animasi saat ditekan */
+    :global(.nav-item:active) {
+        transform: scale(0.92);
+    }
+
+    /* STATE AKTIF (Blok Konsisten) */
+    :global(.nav-item.active) {
+        opacity: 1;
+        background-color: var(--text);
+        color: var(--bg);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    :global(.nav-item.active svg) {
+        stroke-width: 2.5px !important; /* Otomatis menebal saat aktif */
+    }
+
+    @media (max-width: 600px) {
+        .floating-bar {
+            bottom: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+        :global(.nav-item) {
+            padding: 12px 18px; 
+        }
+        :global(.nav-label) {
+            display: none;
+        }
     }
 </style>
