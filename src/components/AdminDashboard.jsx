@@ -1,50 +1,45 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom'; // <-- KITA IMPORT JURUS PORTAL DI SINI
 import { supabase } from '../lib/supabase';
 import MDEditor from '@uiw/react-md-editor'; 
 import { Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye, ArrowLeftCircle, Inbox, Archive } from 'lucide-react';
 
-export default function AdminDashboard() {
-    const [articles, setArticles] = useState([]);
-    const [loading, setLoading] = useState(true);
-    
-    // State Kategori
-    const [availableCategories, setAvailableCategories] = useState([]);
-    const [selectedCategories, setSelectedCategories] = useState([]);
+export default function AdminDashboard({ serverCategories, serverArticles }) {
+    // State Mount untuk memastikan Portal hanya berjalan di Browser (bukan di Server)
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
 
+    const [articles, setArticles] = useState(serverArticles || []);
+    const [availableCategories] = useState(serverCategories || []);
+    
+    const [selectedCategories, setSelectedCategories] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [editorContent, setEditorContent] = useState('');
     const [editorTitle, setEditorTitle] = useState(''); 
 
     const fetchData = async () => {
-        setLoading(true);
-        // FETCH KATEGORI MASTER
-        const { data: catData } = await supabase.from('categories').select('*').order('name');
-        if(catData) setAvailableCategories(catData);
-
-        // FETCH ARTICLES BERSAMAAN DENGAN KATEGORINYA (Pivot Join)
         const { data, error } = await supabase
             .from('articles')
             .select('*, profiles(full_name), article_categories(category_id)')
             .order('created_at', { ascending: false }); 
-        
         if (!error) setArticles(data || []);
-        setLoading(false);
     };
-
-    useEffect(() => { fetchData(); }, []);
 
     const handleOpenReview = (article) => {
         setSelectedArticle(article);
         setEditorContent(article.content || '');
         setEditorTitle(article.title || '');
-        // Set array Kategori yang sudah ada di artikel tsb
         setSelectedCategories(article.article_categories ? article.article_categories.map(ac => ac.category_id) : []);
         setIsPanelOpen(true);
+        // Matikan scroll di background
+        document.body.style.overflow = 'hidden'; 
     };
 
     const handleCloseReview = () => {
         setIsPanelOpen(false);
+        // Nyalakan scroll di background
+        document.body.style.overflow = 'auto';
         setTimeout(() => setSelectedArticle(null), 300);
     };
 
@@ -64,13 +59,11 @@ export default function AdminDashboard() {
         if (!confirm(confirmMsg)) return;
 
         try {
-            // 1. Update Artikel
             const { error } = await supabase.from('articles').update({ 
                 title: editorTitle, content: editorContent, status: newStatus, updated_at: new Date()
             }).eq('id', selectedArticle.id);
             if (error) throw error;
 
-            // 2. Update Kategori Pivot
             await supabase.from('article_categories').delete().eq('article_id', selectedArticle.id);
             if (selectedCategories.length > 0) {
                 const pivotInserts = selectedCategories.map(catId => ({ article_id: selectedArticle.id, category_id: catId }));
@@ -146,67 +139,75 @@ export default function AdminDashboard() {
                 </div>
             </section>
 
-            <div className={`drawer-backdrop ${isPanelOpen ? 'open' : ''}`} onClick={handleCloseReview}></div>
-            <div className={`drawer-panel ${isPanelOpen ? 'open' : ''}`}>
-                {selectedArticle && (
-                    <>
-                        <div className="drawer-header"><div><h2 className="drawer-title">Editor Mode</h2></div><button onClick={handleCloseReview} className="btn-close"><XCircle size={24} strokeWidth={1.5} /></button></div>
-                        <div className="drawer-content">
-                            <div className="meta-compact">
-                                <img src={selectedArticle.cover_url || 'https://placehold.co/100'} className="meta-thumb" />
-                                <div className="meta-info"><p className="author-name">{selectedArticle.profiles?.full_name || 'Redaksi'}</p><span className={`status-pill ${selectedArticle.status}`}>{selectedArticle.status}</span></div>
-                            </div>
+            {/* KITA BUNGKUS PANEL DENGAN PORTAL AGAR LEPAS DARI KUTUKAN HALAMAN PANJANG! */}
+            {mounted && createPortal(
+                <>
+                    <div className={`drawer-backdrop ${isPanelOpen ? 'open' : ''}`} onClick={handleCloseReview}></div>
+                    <div className={`drawer-panel ${isPanelOpen ? 'open' : ''}`}>
+                        {selectedArticle && (
+                            <div className="drawer-container-flex">
+                                
+                                <div className="drawer-header sticky-header">
+                                    <div><h2 className="drawer-title">Editor Mode</h2></div>
+                                    <button onClick={handleCloseReview} className="btn-close"><XCircle size={24} strokeWidth={1.5} /></button>
+                                </div>
+                                
+                                <div className="drawer-content scrollable-content">
+                                    <div className="meta-compact">
+                                        <img src={selectedArticle.cover_url || 'https://placehold.co/100'} className="meta-thumb" />
+                                        <div className="meta-info"><p className="author-name">{selectedArticle.profiles?.full_name || 'Redaksi'}</p><span className={`status-pill ${selectedArticle.status}`}>{selectedArticle.status}</span></div>
+                                    </div>
 
-                            <div className="form-group">
-                                <label>Judul Headline</label>
-                                <input type="text" className="input-minimal" value={editorTitle} onChange={(e) => setEditorTitle(e.target.value)} />
-                            </div>
+                                    <div className="form-group">
+                                        <label>Judul Headline</label>
+                                        <input type="text" className="input-minimal" value={editorTitle} onChange={(e) => setEditorTitle(e.target.value)} />
+                                    </div>
 
-                            {/* KATEGORI DI ADMIN */}
-                            <div className="form-group">
-                                <label>Tag Kategori</label>
-                                <div className="category-grid">
-                                    {availableCategories.map(cat => (
-                                        <label key={cat.id} className={`cat-checkbox ${selectedCategories.includes(cat.id) ? 'active' : ''}`}>
-                                            <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} />
-                                            <span>{cat.name}</span>
-                                        </label>
-                                    ))}
+                                    <div className="form-group">
+                                        <label>Tag Kategori</label>
+                                        <div className="category-grid">
+                                            {availableCategories.map(cat => (
+                                                <label key={cat.id} className={`cat-checkbox ${selectedCategories.includes(cat.id) ? 'active' : ''}`}>
+                                                    <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} />
+                                                    <span>{cat.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Isi Konten (Markdown)</label>
+                                        <div className="admin-markdown-wrapper">
+                                            <MDEditor value={editorContent} onChange={setEditorContent} height={400} preview="edit" className="custom-md-editor" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="drawer-footer sticky-footer">
+                                    <button onClick={() => handleUpdateStatus('draft')} className="btn-decision revise"><ArrowLeftCircle size={18} /> Revisi</button>
+                                    <button onClick={() => handleUpdateStatus('rejected')} className="btn-decision reject"><XCircle size={18} /> Tolak</button>
+                                    <button onClick={() => handleUpdateStatus('published')} className="btn-decision publish"><CheckCircle size={18} /> Publish</button>
                                 </div>
                             </div>
-
-                            <div className="form-group">
-                                <label>Isi Konten (Markdown)</label>
-                                <div className="admin-markdown-wrapper">
-                                    <MDEditor value={editorContent} onChange={setEditorContent} height={400} preview="edit" className="custom-md-editor" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="drawer-footer">
-                            <button onClick={() => handleUpdateStatus('draft')} className="btn-decision revise"><ArrowLeftCircle size={18} /> Revisi</button>
-                            <button onClick={() => handleUpdateStatus('rejected')} className="btn-decision reject"><XCircle size={18} /> Tolak</button>
-                            <button onClick={() => handleUpdateStatus('published')} className="btn-decision publish"><CheckCircle size={18} /> Publish</button>
-                        </div>
-                    </>
-                )}
-            </div>
+                        )}
+                    </div>
+                </>,
+                document.body // <-- Teleportasi langsung ke ujung Body HTML
+            )}
 
             <style>{`
+                /* CSS SAMA PERSIS 100% */
                 .dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); }
                 .dash-header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 50px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
                 .badge-admin { color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
                 .dash-header h1 { font-size: 2rem; font-weight: 600; margin: 0; letter-spacing: -0.5px; }
                 .dash-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
-                
                 .btn-refresh { background: transparent; border: 1px solid var(--border); padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.85rem; border-radius: 6px; color: var(--text); cursor: pointer; transition: all 0.2s; }
                 .btn-refresh:hover { background: var(--bg-light); border-color: var(--text); }
-
                 .dashboard-section { margin-bottom: 60px; }
                 .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; color: var(--text); }
                 .section-header h2 { font-size: 1.1rem; font-weight: 500; margin: 0; }
                 .count-badge { background: var(--bg-light); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; margin-left: 8px; }
-
                 .card-scroller { display: flex; gap: 20px; overflow-x: auto; padding: 4px; padding-bottom: 20px; }
                 .empty-state { padding: 40px; border: 1px dashed var(--border); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
                 .news-card { min-width: 280px; width: 280px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
@@ -218,7 +219,6 @@ export default function AdminDashboard() {
                 .card-info { padding: 15px; }
                 .card-meta { display: flex; gap: 6px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
                 .card-info h3 { font-size: 1rem; font-weight: 600; margin: 0; line-height: 1.4; color: var(--text); }
-
                 .minimal-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
                 .minimal-table th { text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; }
                 .minimal-table td { padding: 12px 15px; border-bottom: 1px solid var(--border-muted); vertical-align: middle; }
@@ -233,47 +233,46 @@ export default function AdminDashboard() {
                 .icon-btn { padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-muted); transition: color 0.2s; }
                 .icon-btn:hover { color: var(--text); }
                 .icon-btn.danger:hover { color: #ef4444; }
-
+                
                 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
                 .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+                
                 .drawer-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 90%; background: var(--bg); z-index: 999; border-left: 1px solid var(--border); transform: translateX(100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }
                 .drawer-panel.open { transform: translateX(0); }
-                .drawer-header { padding: 20px 30px; border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; }
+                
+                .drawer-container-flex { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+                
+                .drawer-header.sticky-header { padding: 20px 30px; border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; background: var(--bg); flex-shrink: 0; }
                 .drawer-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
                 .btn-close { background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
                 .btn-close:hover { color: var(--text); }
-                .drawer-content { flex: 1; overflow-y: auto; padding: 30px; }
+                
+                .drawer-content.scrollable-content { flex: 1; overflow-y: auto; padding: 30px; }
                 
                 .meta-compact { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-muted); }
                 .meta-thumb { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
                 .author-name { margin: 0; font-weight: 500; font-size: 0.95rem; }
                 .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-light); color: var(--text-muted); text-transform: uppercase; margin-top: 4px; display: inline-block; }
-
                 .form-group { margin-bottom: 20px; }
                 .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-muted); }
                 .input-minimal { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; font-size: 1rem; transition: all 0.2s ease; }
                 .input-minimal:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
-
-                /* CSS KATEGORI DI ADMIN */
                 .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
                 .cat-checkbox { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted); transition: all 0.2s ease; user-select: none; }
                 .cat-checkbox input { accent-color: var(--text); cursor: pointer; width: 14px; height: 14px; }
                 .cat-checkbox:hover { border-color: var(--text); color: var(--text); }
                 .cat-checkbox.active { border-color: var(--text); background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--text); }
-
                 .admin-markdown-wrapper { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); transition: all 0.2s ease; }
                 .admin-markdown-wrapper:focus-within { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
-
                 .custom-md-editor.w-md-editor { background-color: var(--bg) !important; color: var(--text) !important; border: none !important; box-shadow: none !important; }
                 .custom-md-editor .w-md-editor-toolbar { background-color: var(--bg-light) !important; border-bottom: 1px solid var(--border) !important; }
                 .custom-md-editor .w-md-editor-toolbar li button { color: var(--text) !important; }
                 .custom-md-editor .w-md-editor-toolbar li button:hover { background-color: var(--border) !important; color: var(--text) !important; }
-                
                 .custom-md-editor .w-md-editor-text-input, .custom-md-editor .w-md-editor-text-pre > code, .custom-md-editor .w-md-editor-text-pre { color: var(--text) !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; font-size: 0.95rem !important; line-height: 1.6 !important; }
                 .custom-md-editor .wmde-markdown { background-color: var(--bg) !important; color: var(--text) !important; font-family: 'Poppins', sans-serif !important; font-size: 1rem !important; line-height: 1.8 !important; }
                 .custom-md-editor .wmde-markdown h1, .custom-md-editor .wmde-markdown h2, .custom-md-editor .wmde-markdown h3 { font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important; }
-
-                .drawer-footer { padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg); display: flex; gap: 15px; }
+                
+                .drawer-footer.sticky-footer { padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg); display: flex; gap: 15px; flex-shrink: 0; }
                 .btn-decision { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
                 .btn-decision:hover { background: var(--bg-light); border-color: var(--text); }
                 .publish { background: var(--text); color: var(--bg); border-color: var(--text); }

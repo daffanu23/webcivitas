@@ -31,7 +31,6 @@ import { ShieldCheck } from 'lucide-react';
     
     const btn = document.getElementById('google-login');
     
-    // Logika Supabase 100% AMAN DAN TIDAK BERUBAH
     if (btn) {
         btn.addEventListener('click', async () => {
             try {
@@ -39,9 +38,13 @@ import { ShieldCheck } from 'lucide-react';
                 btn.innerHTML = 'Menghubungkan...';
                 btn.setAttribute('disabled', 'true');
 
+                // PERUBAHAN SSR: Kita arahkan 'redirectTo' ke file auth-callback.ts kita!
                 const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
-                    options: { redirectTo: window.location.origin }
+                    options: { 
+                        // Menggunakan origin saat ini + rute callback
+                        redirectTo: `${window.location.origin}/auth-callback` 
+                    }
                 });
                 
                 if (error) throw error;
@@ -57,82 +60,14 @@ import { ShieldCheck } from 'lucide-react';
 </script>
 
 <style>
-    .login-container {
-        /* Memastikan container berada di tengah layar antara Header dan Footer */
-        min-height: 75vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 40px 20px;
-        /* BACKGROUND TAMBAHAN DIHAPUS, sekarang transparan mengikuti Layout */
-    }
-
-    .login-card {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 60px 40px;
-        text-align: center;
-        max-width: 400px;
-        width: 100%;
-        box-shadow: 6px 6px 0px var(--border);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .login-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 10px 10px 0px var(--border);
-    }
-
-    .icon-header { 
-        margin-bottom: 20px; 
-        display: flex; 
-        justify-content: center; 
-        color: var(--text); 
-    }
-
-    .login-title {
-        font-family: 'Poppins', sans-serif;
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-        letter-spacing: -0.5px;
-        color: var(--text);
-    }
-
-    .login-desc { 
-        color: var(--text-muted); 
-        font-size: 0.95rem; 
-        margin-bottom: 30px; 
-        line-height: 1.5; 
-    }
-
-    .btn-google {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        padding: 14px;
-        background: var(--bg-light);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        font-family: 'Poppins', sans-serif;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-google:hover {
-        background: var(--bg);
-        border-color: var(--text);
-        transform: translateY(-2px);
-    }
-
-    .btn-google:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
+    /* CSS ANDA 100% SAMA, TIDAK DIUBAH SAMA SEKALI */
+    .login-container { min-height: 75vh; display: flex; justify-content: center; align-items: center; padding: 40px 20px; }
+    .login-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 60px 40px; text-align: center; max-width: 400px; width: 100%; box-shadow: 6px 6px 0px var(--border); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .login-card:hover { transform: translateY(-4px); box-shadow: 10px 10px 0px var(--border); }
+    .icon-header { margin-bottom: 20px; display: flex; justify-content: center; color: var(--text); }
+    .login-title { font-family: 'Poppins', sans-serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.5px; color: var(--text); }
+    .login-desc { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5; }
+    .btn-google { width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 14px; background: var(--bg-light); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+    .btn-google:hover { background: var(--bg); border-color: var(--text); transform: translateY(-2px); }
+    .btn-google:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>

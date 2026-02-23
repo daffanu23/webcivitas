@@ -1,44 +1,33 @@
 <div id="draft-reminder-container"></div>
 
 <script>
-    import { supabase } from '../lib/supabase';
-
-    // SVG ICONS
     const iconPen = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
     const iconArrow = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
     const iconX = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
 
     async function checkDrafts() {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-            // Ambil Draft Terbaru
-            const { data } = await supabase
-                .from('articles')
-                .select('id, title, slug, updated_at, content') 
-                .eq('author_id', session.user.id)
-                .eq('status', 'draft')
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .single();
+        try {
+            // PANGGIL API LOKAL KITA (Aman, tidak butuh API Key!)
+            const response = await fetch('/api/user/draft');
+            if (!response.ok) return; // Keluar jika belum login (401)
+            
+            const { data } = await response.json();
             
             if (data) {
-                // --- LOGIC BARU: SNOOZE 5 MENIT ---
+                // LOGIKA SNOOZE (Tetap menggunakan localStorage)
                 const storageKey = `snooze_draft_${data.id}`;
                 const lastDismissed = localStorage.getItem(storageKey);
                 
                 if (lastDismissed) {
                     const now = Date.now();
                     const diff = now - parseInt(lastDismissed);
-                    const fiveMinutes = 5 * 60 * 1000; // 5 Menit dalam milidetik
+                    const fiveMinutes = 5 * 60 * 1000;
 
-                    // Jika belum 5 menit sejak ditutup, JANGAN TAMPILKAN (Return)
                     if (diff < fiveMinutes) {
-                        return; 
+                        return; // Sembunyikan jika belum 5 menit
                     }
                 }
 
-                // Render HTML
                 const container = document.getElementById('draft-reminder-container');
                 const plainText = data.content ? data.content.replace(/<[^>]+>/g, '') : '';
                 const snippet = plainText.substring(0, 80) + (plainText.length > 80 ? '...' : '');
@@ -66,63 +55,36 @@
                         </div>
                     `;
 
-                    // --- HANDLER CLOSE: SET TIMESTAMP ---
                     document.getElementById('btn-dismiss-draft')?.addEventListener('click', () => {
-                        // Simpan WAKTU SEKARANG saat diclose
                         localStorage.setItem(storageKey, Date.now().toString());
-                        
-                        // Hapus dari layar
                         container.innerHTML = '';
-                        console.log("Draft disembunyikan selama 5 menit.");
                     });
                 }
             }
+        } catch (error) {
+            console.error("Gagal mengecek draft:", error);
         }
     }
 
-    checkDrafts();
+    // Jalankan setiap kali halaman siap
     document.addEventListener('astro:page-load', checkDrafts);
 </script>
 
 <style is:global>
-    @keyframes slideDownFade {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
+    /* CSS ANDA SAMA PERSIS, TIDAK DIUBAH SAMA SEKALI */
+    @keyframes slideDownFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     .fade-in { animation: slideDownFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-    .draft-alert {
-        display: flex; justify-content: space-between; align-items: center;
-        background: var(--bg-light); border: 1px solid var(--border);
-        border-left: 5px solid #f59e0b;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        flex-wrap: wrap; gap: 20px;
-
-        /* MARGIN AGAR TIDAK NEMPEL NAVBAR */
-        margin-top: 30px; 
-        margin-bottom: 40px; 
-    }
-
+    .draft-alert { display: flex; justify-content: space-between; align-items: center; background: var(--bg-light); border: 1px solid var(--border); border-left: 5px solid #f59e0b; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); flex-wrap: wrap; gap: 20px; margin-top: 30px; margin-bottom: 40px; }
     .draft-left { display: flex; align-items: flex-start; gap: 15px; flex: 1; min-width: 280px; }
     .icon-box { background: #fef3c7; color: #d97706; padding: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .draft-text { display: flex; flex-direction: column; }
     .draft-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; color: #d97706; margin-bottom: 4px; }
     .draft-title { font-family: 'Poppins', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 5px 0; line-height: 1.3; }
     .draft-snippet { font-size: 0.9rem; color: var(--text-muted); margin: 0; line-height: 1.4; }
-
     .draft-right { display: flex; align-items: center; gap: 10px; }
     .btn-resume { display: flex; align-items: center; gap: 8px; background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: transform 0.2s, opacity 0.2s; white-space: nowrap; }
     .btn-resume:hover { transform: translateY(-2px); opacity: 0.9; }
-
     .btn-dismiss { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
     .btn-dismiss:hover { background: rgba(0,0,0,0.05); color: var(--text); }
-
-    @media (max-width: 600px) {
-        .draft-alert { flex-direction: column; align-items: flex-start; }
-        .draft-right { width: 100%; justify-content: space-between; }
-        .btn-resume { flex: 1; justify-content: center; }
-    }
+    @media (max-width: 600px) { .draft-alert { flex-direction: column; align-items: flex-start; } .draft-right { width: 100%; justify-content: space-between; } .btn-resume { flex: 1; justify-content: center; } }
 </style>

@@ -1,110 +1,91 @@
 ---
-import { Home, FolderOpen } from 'lucide-react';
+import { Home, FolderOpen, Bookmark, Edit, LayoutDashboard, LogIn } from 'lucide-react';
+import { getSupabaseServer } from '../lib/supabase';
+
+// UPGRADE KE getUser()
+const supabase = getSupabaseServer(Astro.cookies);
+const { data: { user } } = await supabase.auth.getUser();
+
+let userRole = null;
+
+if (user) {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    
+    userRole = profile?.role;
+}
+
+const currentPath = Astro.url.pathname;
+const isActive = (path: string) => {
+    if (path === '/' && currentPath === '/') return 'active';
+    if (path !== '/' && currentPath.startsWith(path)) return 'active';
+    return '';
+};
 ---
 
 <div class="floating-wrapper" transition:persist="floating-bar">
     <nav class="floating-bar">
         
-        {/* --- MENU STATIS --- */}
-        <a href="/" class="nav-item" aria-label="Beranda">
+        {/* --- MENU SELALU ADA --- */}
+        <a href="/" class={`nav-item ${isActive('/')}`} aria-label="Beranda">
             <Home size={20} />
             <span class="nav-label">Beranda</span>
         </a>
         
-        <a href="/arsip" class="nav-item" aria-label="Arsip Berita">
+        <a href="/arsip" class={`nav-item ${isActive('/arsip')}`} aria-label="Arsip Berita">
             <FolderOpen size={20} />
             <span class="nav-label">Arsip</span>
         </a>
 
-        {/* --- WADAH MENU DINAMIS --- */}
-        <div id="dynamic-nav-items" style="display: contents;">
-            {/* Fallback sementara sebelum JS jalan */}
-            <a href="/login" class="nav-item placeholder-login">
-                <span class="nav-label">Memuat...</span>
+        {/* --- MENU DINAMIS (DI-RENDER OLEH SERVER) --- */}
+        {user ? (
+            <>
+                <a href="/koleksi" class={`nav-item ${isActive('/koleksi')}`} aria-label="Koleksi">
+                    <Bookmark size={20} />
+                    <span class="nav-label">Koleksi</span>
+                </a>
+
+                {(userRole === 'redaksi' || userRole === 'admin') && (
+                    <a href="/redaksi/tulis" class={`nav-item ${isActive('/redaksi/tulis')}`} aria-label="Tulis">
+                        <Edit size={20} />
+                        <span class="nav-label">Tulis</span>
+                    </a>
+                )}
+
+                {userRole === 'admin' && (
+                    <a href="/admin/dashboard" class={`nav-item ${isActive('/admin/dashboard')}`} aria-label="Admin">
+                        <LayoutDashboard size={20} />
+                        <span class="nav-label">Admin</span>
+                    </a>
+                )}
+            </>
+        ) : (
+            <a href="/login" class={`nav-item ${isActive('/login')}`} aria-label="Login">
+                <LogIn size={20} />
+                <span class="nav-label">Login</span>
             </a>
-        </div>
+        )}
 
     </nav>
 </div>
 
 <script>
-    import { supabase } from '../lib/supabase';
-
-    async function updateFloatingBar() {
-        const container = document.getElementById('dynamic-nav-items');
+    // SCRIPT JS KITA KOSONGKAN HAMPIR SEPENUHNYA!
+    // Astro sudah menangani 'active' state di server via Astro.url.pathname,
+    // tapi kalau Anda pakai ViewTransitions (pindah halaman tanpa reload),
+    // kita perlu sedikit bantuan JS untuk menggeser class .active
+    
+    document.addEventListener('astro:page-load', () => {
         const currentPath = window.location.pathname;
-
-        // 1. RENDER MENU DINAMIS DARI SUPABASE
-        if (container) {
-            const { data: { session } } = await supabase.auth.getSession();
-            let html = '';
-
-            if (session) {
-                const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-                
-                // Koleksi (Semua user login)
-                html += `
-                    <a href="/koleksi" class="nav-item" aria-label="Koleksi">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <span class="nav-label">Koleksi</span>
-                    </a>
-                `;
-
-                // Tulis (Redaksi / Admin)
-                if (profile?.role === 'redaksi' || profile?.role === 'admin') {
-                    html += `
-                        <a href="/redaksi/tulis" class="nav-item" aria-label="Tulis">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                                <path d="M2 2l7.586 7.586"></path>
-                                <circle cx="11" cy="11" r="2"></circle>
-                            </svg>
-                            <span class="nav-label">Tulis</span>
-                        </a>
-                    `;
-                }
-
-                // Dashboard (Hanya Admin)
-                if (profile?.role === 'admin') {
-                    html += `
-                        <a href="/admin/dashboard" class="nav-item" aria-label="Admin">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="7" height="9" rx="1"></rect>
-                                <rect x="14" y="3" width="7" height="5" rx="1"></rect>
-                                <rect x="14" y="12" width="7" height="9" rx="1"></rect>
-                                <rect x="3" y="16" width="7" height="5" rx="1"></rect>
-                            </svg>
-                            <span class="nav-label">Admin</span>
-                        </a>
-                    `;
-                }
-                container.innerHTML = html;
-            } else {
-                // Belum Login
-                container.innerHTML = `
-                    <a href="/login" class="nav-item" aria-label="Akses Redaksi">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                            <polyline points="10 17 15 12 10 7"></polyline>
-                            <line x1="15" y1="12" x2="3" y2="12"></line>
-                        </svg>
-                        <span class="nav-label">Login</span>
-                    </a>
-                `;
-            }
-        }
-
-        // 2. LOGIKA BLOK AKTIF (Dijalankan untuk SEMUA tombol setelah di-render)
+        
         document.querySelectorAll('.nav-item').forEach(item => {
             const href = item.getAttribute('href');
+            if (!href) return;
             
-            // --- TAMBAHKAN BARIS INI UNTUK MENENANGKAN TYPESCRIPT ---
-            if (!href) return; 
-
-            item.classList.remove('active'); // Reset semua dulu
+            item.classList.remove('active');
             
             if (href === '/' && currentPath === '/') {
                 item.classList.add('active');
@@ -112,96 +93,44 @@ import { Home, FolderOpen } from 'lucide-react';
                 item.classList.add('active');
             }
         });
-    }
-
-    // Eksekusi tiap pindah halaman tanpa nunggu loading ulang
-    document.addEventListener('astro:page-load', updateFloatingBar);
+    });
 </script>
 
 <style>
     .floating-wrapper {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 9999;
-        pointer-events: none; 
-        font-family: 'Poppins', sans-serif;
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        z-index: 9999; pointer-events: none; font-family: 'Poppins', sans-serif;
     }
 
     .floating-bar {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px;
-        
-        background: var(--bg); 
-        border: 1px solid var(--border);
+        display: flex; align-items: center; gap: 6px; padding: 8px;
+        background: var(--bg); border: 1px solid var(--border);
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 2px 10px rgba(0, 0, 0, 0.05);
-        border-radius: 50px;
-        pointer-events: auto; 
+        border-radius: 50px; pointer-events: auto; 
     }
 
-    .placeholder-login { display: none; }
-
-    :global(.nav-item) {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        border-radius: 50px;
-        
-        color: var(--text);
-        opacity: 0.65;
-        
-        text-decoration: none;
-        font-weight: 600; 
-        font-size: 0.9rem;
-        
-        /* TRANSISI KLIK SUPER KILAT (0.05s) */
+    .nav-item {
+        display: flex; align-items: center; gap: 8px; padding: 10px 20px;
+        border-radius: 50px; color: var(--text); opacity: 0.65;
+        text-decoration: none; font-weight: 600; font-size: 0.9rem;
         transition: all 0.15s ease, transform 0.05s ease;
-        -webkit-tap-highlight-color: transparent; 
-        cursor: pointer;
+        -webkit-tap-highlight-color: transparent; cursor: pointer;
     }
 
-    /* PENGATURAN KETEBALAN ICON VIA CSS AGAR KONSISTEN */
-    :global(.nav-item svg) {
-        stroke-width: 2px !important;
-        transition: stroke-width 0.15s ease;
-    }
+    :global(.nav-item svg) { stroke-width: 2px !important; transition: stroke-width 0.15s ease; }
+    .nav-item:hover { opacity: 1; background-color: var(--bg-light); }
+    .nav-item:active { transform: scale(0.92); }
 
-    :global(.nav-item:hover) {
-        opacity: 1;
-        background-color: var(--bg-light);
-    }
-
-    /* ANTI-BUDEK: Animasi saat ditekan */
-    :global(.nav-item:active) {
-        transform: scale(0.92);
-    }
-
-    /* STATE AKTIF (Blok Konsisten) */
-    :global(.nav-item.active) {
-        opacity: 1;
-        background-color: var(--text);
-        color: var(--bg);
+    .nav-item.active {
+        opacity: 1; background-color: var(--text); color: var(--bg);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
 
-    :global(.nav-item.active svg) {
-        stroke-width: 2.5px !important; /* Otomatis menebal saat aktif */
-    }
+    :global(.nav-item.active svg) { stroke-width: 2.5px !important; }
 
     @media (max-width: 600px) {
-        .floating-bar {
-            bottom: 20px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-        }
-        :global(.nav-item) {
-            padding: 12px 18px; 
-        }
-        :global(.nav-label) {
-            display: none;
-        }
+        .floating-bar { bottom: 20px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15); }
+        .nav-item { padding: 12px 18px; }
+        .nav-label { display: none; }
     }
 </style>

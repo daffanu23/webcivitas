@@ -1,12 +1,53 @@
 ---
 import { LogIn, Sun, Moon } from 'lucide-react';
+import { getSupabaseServer } from '../lib/supabase';
+
+// UPGRADE KE getUser()
+const supabase = getSupabaseServer(Astro.cookies);
+const { data: { user } } = await supabase.auth.getUser();
+
+let name = 'User';
+let avatar = '';
+let firstName = 'User';
+
+if (user) {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .single();
+    
+    name = profile?.full_name || 'User';
+    firstName = name.split(' ')[0]; 
+    avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${name}&background=111&color=fff`;
+}
 ---
 
 <header class="top-navbar">
     <div class="container navbar-content">
         
-        <div id="nav-auth" class="nav-left">
-            <div class="auth-skeleton"></div>
+        <div class="nav-left">
+            {/* HTML LANGSUNG RENDER PROFIL ATAU TOMBOL LOGIN! TIDAK ADA LOADING KEDIP! */}
+            {user ? (
+                <div class="auth-wrapper">
+                    <a href="/profile" class="user-pill" title="Lihat Profil">
+                        <img src={avatar} alt={name} class="avatar-img" />
+                        <span class="user-name">{firstName}</span>
+                    </a>
+                    
+                    {/* Tombol Logout sekarang diarahkan ke API Server */}
+                    <form action="/api/auth/logout" method="POST" style="margin: 0;">
+                        <button type="submit" class="btn-logout" title="Keluar">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        </button>
+                    </form>
+                </div>
+            ) : (
+                <a href="/login" class="btn-login">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
+                    <span>Login</span>
+                </a>
+            )}
         </div>
 
         <div class="nav-center">
@@ -14,12 +55,10 @@ import { LogIn, Sun, Moon } from 'lucide-react';
         </div>
 
         <div class="nav-right">
-            
             <button id="theme-toggle" class="theme-btn" aria-label="Ganti Tema">
                 <Sun className="icon-sun" size={20} strokeWidth={2} />
                 <Moon className="icon-moon" size={20} strokeWidth={2} />
             </button>
-
             <div class="time-badge">
                 <span id="clock-time">--:--</span>
                 <span class="divider">|</span>
@@ -31,34 +70,25 @@ import { LogIn, Sun, Moon } from 'lucide-react';
 </header>
 
 <script>
-    import { supabase } from '../lib/supabase';
-
-    // 1. LOGIC TEMA (Dipanggil tiap pindah halaman & sebelum render)
+    // SCRIPT SEKARANG SANGAT RINGAN! HANYA MENGURUS TEMA & JAM!
     function applyTheme() {
         const theme = (() => {
             if (typeof localStorage !== 'undefined') {
                 const savedTheme = localStorage.getItem('theme');
                 if (savedTheme) return savedTheme; 
             }
-            if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-                return 'light';
-            }
+            if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
             return 'dark'; 
         })();
 
-        if (theme === 'light') {
-            document.body.classList.add('light');
-        } else {
-            document.body.classList.remove('light');
-        }
-
+        if (theme === 'light') document.body.classList.add('light');
+        else document.body.classList.remove('light');
+        
         window.localStorage.setItem('theme', theme);
     }
 
-    // 2. LOGIC TOMBOL TEMA (Event Listener)
     function handleThemeToggle() {
         const btn = document.getElementById('theme-toggle');
-        
         if (btn && !btn.hasAttribute('data-listener')) { 
             btn.setAttribute('data-listener', 'true');
             btn.addEventListener('click', () => {
@@ -68,11 +98,9 @@ import { LogIn, Sun, Moon } from 'lucide-react';
         }
     }
 
-    // 3. LOGIC JAM
     function updateClock() {
         const timeEl = document.getElementById('clock-time');
         const dateEl = document.getElementById('clock-date');
-        
         if (timeEl && dateEl) {
             const now = new Date();
             timeEl.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -80,85 +108,19 @@ import { LogIn, Sun, Moon } from 'lucide-react';
         }
     }
 
-    // 4. LOGIC AUTH
-    async function checkAuth() {
-        const authContainer = document.getElementById('nav-auth');
-        if (!authContainer) return;
-
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('full_name, avatar_url')
-                .eq('id', session.user.id)
-                .single();
-            
-            const name = profile?.full_name || 'User';
-            const firstName = name.split(' ')[0]; 
-            const avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${name}&background=111&color=fff`;
-
-            authContainer.innerHTML = `
-                <div class="auth-wrapper">
-                    <a href="/profile" class="user-pill" title="Lihat Profil">
-                        <img src="${avatar}" alt="${name}" class="avatar-img" />
-                        <span class="user-name">${firstName}</span>
-                    </a>
-                    
-                    <button id="btn-logout" class="btn-logout" title="Keluar">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                    </button>
-                </div>
-            `;
-
-            const btnLogout = document.getElementById('btn-logout');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', async () => {
-                    if (confirm('Yakin ingin keluar?')) {
-                        await supabase.auth.signOut();
-                        window.location.reload();
-                    }
-                });
-            }
-        } else {
-            authContainer.innerHTML = `
-                <a href="/login" class="btn-login">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
-                    <span>Login</span>
-                </a>
-            `;
-        }
-    }
-
-    // --- PERBAIKAN TYPESCRIPT ---
-    // Memberi tahu TypeScript secara pasti bahwa ini adalah interval pengatur waktu
     let clockInterval: ReturnType<typeof setInterval> | undefined;
 
-    // --- OBAT ANTI-KEDIP TINGKAT DEWA (MENCEGAT HTML BARU) ---
-    document.addEventListener('astro:before-swap', (e) => {
-        // e.newDocument adalah HTML halaman selanjutnya yang baru didownload
-        // Kita pakaikan tema yang sama persis dengan halaman saat ini SEBELUM ditukar!
-        if (document.body.classList.contains('light')) {
-            e.newDocument.body.classList.add('light');
-        } else {
-            e.newDocument.body.classList.remove('light');
-        }
-    });
+    document.addEventListener('astro:after-swap', applyTheme);
 
-    // EKSEKUSI SEMUA SAAT HALAMAN DIBUKA / PINDAH HALAMAN
     document.addEventListener('astro:page-load', () => {
         applyTheme(); 
         handleThemeToggle();
-        
         updateClock();
         if (clockInterval) clearInterval(clockInterval);
         clockInterval = setInterval(updateClock, 1000);
-        
-        checkAuth();
     });
 </script>
 
-{/* --- SCRIPT IS:INLINE UNTUK MENCEGAH KEDIP SAAT PERTAMA KALI MUAT (REFRESH) --- */}
 <script is:inline>
     if (localStorage.getItem('theme') === 'light' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: light)').matches)) {
         document.body.classList.add('light');
@@ -166,100 +128,32 @@ import { LogIn, Sun, Moon } from 'lucide-react';
 </script>
 
 <style>
-    /* STICKY NAVBAR */
-    .top-navbar {
-        width: 100%;
-        padding: 15px 0;
-        position: sticky; top: 0; z-index: 100;
-        background-color: var(--bg);
-        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-        border-bottom: 1px solid var(--border-muted);
-        transition: all 0.3s ease;
-    }
-
-    .navbar-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        height: 40px;
-    }
-
+    /* STYLE SAMA PERSIS SEPERTI SEBELUMNYA - TIDAK ADA YG BERUBAH */
+    .top-navbar { width: 100%; padding: 15px 0; position: sticky; top: 0; z-index: 100; background-color: var(--bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-muted); transition: all 0.3s ease; }
+    .navbar-content { display: flex; justify-content: space-between; align-items: center; height: 40px; }
     .nav-left { flex: 1; display: flex; justify-content: flex-start; align-items: center; }
-
-    /* AUTH & LOGIN */
-    :global(.auth-wrapper) { display: flex; align-items: center; gap: 8px; }
-    :global(.btn-login) {
-        display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text);
-        font-weight: 700; font-size: 0.95rem; padding: 8px 16px; border-radius: 8px; transition: background 0.2s;
-    }
-    :global(.btn-login:hover) { background-color: var(--bg-light); }
-    :global(.user-pill) {
-        display: flex; align-items: center; gap: 10px; text-decoration: none;
-        background: var(--bg-light); border: 1px solid var(--border-muted);
-        padding: 4px 16px 4px 4px; border-radius: 50px; transition: all 0.2s ease;
-    }
-    :global(.user-pill:hover) {
-        background: var(--border-muted); border-color: var(--border); transform: translateY(-1px);
-    }
-    :global(.avatar-img) {
-        width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-muted);
-    }
-    :global(.user-name) { font-weight: 600; font-size: 0.9rem; color: var(--text); }
-    :global(.btn-logout) {
-        display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;
-        border: 1px solid transparent; background: transparent; border-radius: 50%; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
-    }
-    :global(.btn-logout:hover) {
-        background: var(--bg-light); color: var(--danger); border-color: var(--border-muted);
-    }
-
-    /* CENTER */
-    .nav-center { flex: 1; display: flex; justify-content: center; }
-    .brand-text {
-        font-family: 'Poppins', sans-serif; font-weight: 500; font-style: italic; font-size: 1.1rem; color: var(--text); letter-spacing: -0.5px;
-    }
-
-    /* RIGHT SECTION (THEME + CLOCK) */
-    .nav-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
     
-    .time-badge {
-        display: flex; align-items: center; gap: 10px;
-        background: var(--bg-light); color: var(--text-muted); border: 1px solid var(--border-muted);
-        padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;
-    }
+    .auth-wrapper { display: flex; align-items: center; gap: 8px; }
+    .btn-login { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); font-weight: 700; font-size: 0.95rem; padding: 8px 16px; border-radius: 8px; transition: background 0.2s; }
+    .btn-login:hover { background-color: var(--bg-light); }
+    .user-pill { display: flex; align-items: center; gap: 10px; text-decoration: none; background: var(--bg-light); border: 1px solid var(--border-muted); padding: 4px 16px 4px 4px; border-radius: 50px; transition: all 0.2s ease; }
+    .user-pill:hover { background: var(--border-muted); border-color: var(--border); transform: translateY(-1px); }
+    .avatar-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-muted); }
+    .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+    .btn-logout { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid transparent; background: transparent; border-radius: 50%; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+    .btn-logout:hover { background: var(--bg-light); color: var(--danger); border-color: var(--border-muted); }
+
+    .nav-center { flex: 1; display: flex; justify-content: center; }
+    .brand-text { font-family: 'Poppins', sans-serif; font-weight: 500; font-style: italic; font-size: 1.1rem; color: var(--text); letter-spacing: -0.5px; }
+
+    .nav-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+    .time-badge { display: flex; align-items: center; gap: 10px; background: var(--bg-light); color: var(--text-muted); border: 1px solid var(--border-muted); padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; }
     .divider { color: var(--border); }
     
-    /* --- TOMBOL TOGGLE THEME --- */
-    .theme-btn {
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        color: var(--text);
-        padding: 8px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-    .theme-btn:hover {
-        background-color: var(--bg-light);
-        color: var(--highlight);
-        transform: rotate(15deg); 
-    }
-
-    /* LOGIC ICON SWAP */
-    .icon-sun { display: block; }
-    .icon-moon { display: none; }
-
-    :global(body.light) .icon-sun { display: none; }
-    :global(body.light) .icon-moon { display: block; }
-
-    .auth-skeleton { width: 80px; height: 30px; background: var(--bg-light); border-radius: 6px; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-
-    @media (max-width: 600px) {
-        .time-badge { display: none; }
-        .nav-right { flex: 0; } 
-    }
+    .theme-btn { background: transparent; border: none; cursor: pointer; color: var(--text); padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .theme-btn:hover { background-color: var(--bg-light); color: var(--highlight); transform: rotate(15deg); }
+    .icon-sun { display: block; } .icon-moon { display: none; }
+    :global(body.light) .icon-sun { display: none; } :global(body.light) .icon-moon { display: block; }
+    
+    @media (max-width: 600px) { .time-badge { display: none; } .nav-right { flex: 0; } }
 </style>
