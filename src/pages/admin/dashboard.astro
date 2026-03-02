@@ -3,7 +3,6 @@ import Layout from '../../layouts/Layout.astro';
 import AdminDashboardReact from '../../components/AdminDashboard'; 
 import { getSupabaseServer } from '../../lib/supabase';
 
-// UPGRADE KE getUser()
 const supabase = getSupabaseServer(Astro.cookies);
 const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -27,15 +26,21 @@ const { data: articles } = await supabase
     .from('articles')
     .select('*, profiles(full_name), article_categories(category_id)')
     .order('created_at', { ascending: false }); 
+
+// --- 🌟 TAMBAHAN BARU: Tarik data promo Instagram ---
+const { data: promos } = await supabase
+    .from('ig_promos')
+    .select('*')
+    .order('slot_number', { ascending: true });
 ---
 
 <Layout title="Admin Dashboard | MEDIACIVITAS">
     <div class="admin-view-container">
-        {/* Lempar data Server langsung ke React! */}
         <AdminDashboardReact 
             client:only="react" 
             serverCategories={categories || []}
             serverArticles={articles || []}
+            serverPromos={promos || []} 
         />
     </div>
 </Layout>

@@ -1,0 +1,117 @@
+---
+import { getSupabaseServer } from '../lib/supabase';
+
+const supabase = getSupabaseServer(Astro.cookies);
+const { data: promos } = await supabase
+    .from('ig_promos')
+    .select('*')
+    .order('slot_number', { ascending: true });
+
+const slots = promos || [];
+
+const IgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>`;
+---
+
+<section class="ig-promo-section">
+    <div class="container">
+        <div class="ig-box-rounded">
+            <div class="ig-header">
+                <h2 class="ig-title">Kunjungi akun instagram kami!</h2>
+                <h3 class="ig-subtitle">Dapatkan update terbaru kami di <span class="text-highlight">@mediacivitas</span></h3>
+            </div>
+
+            <div class="ig-grid">
+                {slots.map((item) => (
+                    <a href={item.link_url} target="_blank" rel="noopener noreferrer" class="ig-card">
+                        <div class="ig-img-wrapper">
+                            <img src={item.image_url} alt={`Instagram Promo Slot ${item.slot_number}`} loading="lazy" />
+                            <div class="ig-overlay">
+                                <div class="overlay-content">
+                                    <div class="icon-wrapper" set:html={IgIcon} />
+                                    {/* MUNCULKAN CAPTION JIKA ADA */}
+                                    {item.caption && (
+                                        <p class="ig-caption">{item.caption}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                ))}
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .ig-promo-section { padding: 0 0 80px 0; font-family: 'Poppins', sans-serif; }
+    .ig-box-rounded { background-color: var(--bg-light); padding: 60px 50px; border-radius: 24px; color: var(--text); border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.04); transition: all 0.3s ease; }
+    :global([data-theme="dark"]) .ig-box-rounded { background-color: #080808; border-color: #1a1a1a; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); }
+    .ig-header { text-align: center; margin-bottom: 40px; }
+    .ig-title { font-size: 1.8rem; font-weight: 500; margin: 0; letter-spacing: 0.5px; }
+    .ig-subtitle { font-size: 1rem; font-weight: 300; margin: 8px 0 0 0; color: var(--text-muted); letter-spacing: 0.5px; }
+    .text-highlight { font-weight: 500; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .ig-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    /* RASIO INSTAGRAM PORTRAIT SEJATI 4:5 */
+    .ig-card {
+        display: block; width: 100%; text-decoration: none;
+        overflow: hidden; border-radius: 12px; 
+        background: var(--bg); border: 1px solid var(--border); 
+        position: relative; transition: border-color 0.3s ease;
+        aspect-ratio: 4 / 5; 
+    }
+    :global([data-theme="dark"]) .ig-card { background: #111; border-color: #222; }
+
+    .ig-img-wrapper { width: 100%; height: 100%; position: relative; }
+    .ig-img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* OVERLAY & CAPTION CSS */
+    .ig-overlay {
+        position: absolute; inset: 0; 
+        background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.4) 100%);
+        display: flex; align-items: flex-end; /* Supaya teks ada di bawah */
+        justify-content: center;
+        opacity: 0; transition: opacity 0.3s ease;
+        padding: 25px 20px;
+    }
+    
+    .overlay-content { 
+        color: white; 
+        text-align: center;
+        transform: translateY(20px); 
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+        width: 100%;
+    }
+    
+    .icon-wrapper { margin-bottom: 12px; }
+    
+    .ig-caption {
+        margin: 0;
+        font-size: 0.85rem;
+        font-weight: 300;
+        line-height: 1.4;
+        color: #f0f0f0;
+        /* Memotong teks jika terlalu panjang (Maks 3 baris) */
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ig-card:hover .ig-img-wrapper img { transform: scale(1.04); }
+    .ig-card:hover .ig-overlay { opacity: 1; }
+    .ig-card:hover .overlay-content { transform: translateY(0); }
+
+    @media (max-width: 900px) {
+        .ig-box-rounded { padding: 40px 30px; }
+        .ig-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+        .ig-box-rounded { padding: 30px 20px; border-radius: 20px; }
+        .ig-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } 
+        .ig-title { font-size: 1.5rem; }
+        .ig-caption { -webkit-line-clamp: 2; /* Di HP maksimal 2 baris aja */ font-size: 0.8rem; }
+    }
+</style>

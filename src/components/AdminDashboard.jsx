@@ -1,17 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom'; // <-- KITA IMPORT JURUS PORTAL DI SINI
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import MDEditor from '@uiw/react-md-editor'; 
-import { Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye, ArrowLeftCircle, Inbox, Archive } from 'lucide-react';
+import { Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye, ArrowLeftCircle, Inbox, Archive, Instagram, Upload } from 'lucide-react';
 
-export default function AdminDashboard({ serverCategories, serverArticles }) {
-    // State Mount untuk memastikan Portal hanya berjalan di Browser (bukan di Server)
+export default function AdminDashboard({ serverCategories, serverArticles, serverPromos }) {
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
     const [articles, setArticles] = useState(serverArticles || []);
     const [availableCategories] = useState(serverCategories || []);
     
+    // --- STATE PROMO IG ---
+    const initialPromoState = [1, 2, 3, 4].reduce((acc, slot) => {
+        const existing = (serverPromos || []).find(p => p.slot_number === slot);
+        acc[slot] = {
+            image_url: existing?.image_url || '',
+            link_url: existing?.link_url || '',
+            caption: existing?.caption || '', // Tambahan state caption
+            file: null
+        };
+        return acc;
+    }, {});
+
+    const [promoForm, setPromoForm] = useState(initialPromoState);
+    const [uploadingSlot, setUploadingSlot] = useState(null);
+    const [saveStatus, setSaveStatus] = useState({}); // Untuk animasi tombol "Tersimpan! ✅"
+
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedArticle, setSelectedArticle] = useState(null);
@@ -26,19 +41,71 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
         if (!error) setArticles(data || []);
     };
 
+    // --- FUNGSI PROMO IG ---
+    const handlePromoChange = (slot, field, value) => {
+        setPromoForm(prev => ({ ...prev, [slot]: { ...prev[slot], [field]: value } }));
+    };
+
+    const handlePromoImageChange = (slot, e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const previewUrl = URL.createObjectURL(file);
+        setPromoForm(prev => ({ ...prev, [slot]: { ...prev[slot], file, image_url: previewUrl } }));
+    };
+
+    const savePromo = async (slot) => {
+        setUploadingSlot(slot);
+        setSaveStatus(prev => ({ ...prev, [slot]: null })); // Reset status
+        try {
+            let finalImageUrl = promoForm[slot].image_url;
+            const file = promoForm[slot].file;
+
+            if (file) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `promo-slot-${slot}-${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('news-images').upload(fileName, file);
+                if (uploadError) throw uploadError;
+
+                const { data } = supabase.storage.from('news-images').getPublicUrl(fileName);
+                finalImageUrl = data.publicUrl;
+            }
+
+            const { error } = await supabase.from('ig_promos').update({
+                image_url: finalImageUrl,
+                link_url: promoForm[slot].link_url,
+                caption: promoForm[slot].caption, // Simpan caption
+                updated_at: new Date()
+            }).eq('slot_number', slot);
+
+            if (error) throw error;
+
+            // Sukses tanpa alert! Ubah state tombol
+            setPromoForm(prev => ({ ...prev, [slot]: { ...prev[slot], file: null, image_url: finalImageUrl } }));
+            setSaveStatus(prev => ({ ...prev, [slot]: 'success' }));
+            
+            // Kembalikan tombol ke semula setelah 3 detik
+            setTimeout(() => {
+                setSaveStatus(prev => ({ ...prev, [slot]: null }));
+            }, 3000);
+
+        } catch (error) {
+            alert('Gagal update promo: ' + error.message); // Alert hanya jika error (penting)
+        } finally {
+            setUploadingSlot(null);
+        }
+    };
+
     const handleOpenReview = (article) => {
         setSelectedArticle(article);
         setEditorContent(article.content || '');
         setEditorTitle(article.title || '');
         setSelectedCategories(article.article_categories ? article.article_categories.map(ac => ac.category_id) : []);
         setIsPanelOpen(true);
-        // Matikan scroll di background
         document.body.style.overflow = 'hidden'; 
     };
 
     const handleCloseReview = () => {
         setIsPanelOpen(false);
-        // Nyalakan scroll di background
         document.body.style.overflow = 'auto';
         setTimeout(() => setSelectedArticle(null), 300);
     };
@@ -50,26 +117,17 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
     const handleUpdateStatus = async (newStatus) => {
         if (!selectedArticle) return;
         if (newStatus === 'published' && selectedCategories.length === 0) return alert("Berita yang dipublish wajib punya kategori!");
-
-        let confirmMsg = "Simpan perubahan?";
-        if (newStatus === 'published') confirmMsg = "Terbitkan berita ini sekarang?";
-        if (newStatus === 'draft') confirmMsg = "Kembalikan ke penulis untuk revisi?";
-        if (newStatus === 'rejected') confirmMsg = "Tolak dan arsipkan berita ini?";
-
+        let confirmMsg = newStatus === 'published' ? "Terbitkan berita ini sekarang?" : newStatus === 'draft' ? "Kembalikan ke penulis untuk revisi?" : "Tolak dan arsipkan berita ini?";
         if (!confirm(confirmMsg)) return;
 
         try {
-            const { error } = await supabase.from('articles').update({ 
-                title: editorTitle, content: editorContent, status: newStatus, updated_at: new Date()
-            }).eq('id', selectedArticle.id);
+            const { error } = await supabase.from('articles').update({ title: editorTitle, content: editorContent, status: newStatus, updated_at: new Date() }).eq('id', selectedArticle.id);
             if (error) throw error;
-
             await supabase.from('article_categories').delete().eq('article_id', selectedArticle.id);
             if (selectedCategories.length > 0) {
                 const pivotInserts = selectedCategories.map(catId => ({ article_id: selectedArticle.id, category_id: catId }));
                 await supabase.from('article_categories').insert(pivotInserts);
             }
-
             alert("Status berhasil diperbarui.");
             handleCloseReview();
             fetchData(); 
@@ -117,6 +175,67 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                 )}
             </section>
 
+            {/* --- ETALASE INSTAGRAM DIPINDAH KE ATAS SINI --- */}
+            <section className="dashboard-section">
+                <div className="section-header">
+                    <Instagram size={20} strokeWidth={1.5} />
+                    <h2>Pengaturan Etalase Instagram</h2>
+                </div>
+                
+                <div className="promo-grid">
+                    {[1, 2, 3, 4].map(slot => {
+                        const data = promoForm[slot];
+                        const isSuccess = saveStatus[slot] === 'success';
+                        
+                        return (
+                            <div key={slot} className="promo-card">
+                                <div className="promo-card-header">
+                                    <h3>Slot {slot}</h3>
+                                </div>
+                                <div className="promo-img-preview">
+                                    <img src={data.image_url} alt={`Slot ${slot}`} />
+                                    <label className="upload-overlay">
+                                        <input type="file" accept="image/*" onChange={(e) => handlePromoImageChange(slot, e)} hidden />
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                            <Upload size={24} />
+                                            <span>Ganti Foto</span>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div className="promo-inputs">
+                                    <div className="input-group">
+                                        <label>Caption / Kutipan</label>
+                                        <textarea 
+                                            value={data.caption} 
+                                            onChange={(e) => handlePromoChange(slot, 'caption', e.target.value)} 
+                                            placeholder="Tulis cuplikan caption di sini..."
+                                            rows="2"
+                                        ></textarea>
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Link Postingan IG</label>
+                                        <input 
+                                            type="text" 
+                                            value={data.link_url} 
+                                            onChange={(e) => handlePromoChange(slot, 'link_url', e.target.value)} 
+                                            placeholder="https://instagram.com/p/..." 
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => savePromo(slot)} 
+                                        disabled={uploadingSlot === slot} 
+                                        className={`btn-save-promo ${isSuccess ? 'success' : ''}`}
+                                    >
+                                        {uploadingSlot === slot ? 'Menyimpan...' : isSuccess ? 'Tersimpan! ✅' : `Simpan Slot ${slot}`}
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </section>
+
+            {/* --- DATABASE ARSIP SEKARANG DI BAWAH --- */}
             <section className="dashboard-section">
                 <div className="section-header"><Archive size={20} strokeWidth={1.5} /><h2>Database Arsip</h2></div>
                 <div className="table-responsive">
@@ -139,50 +258,19 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                 </div>
             </section>
 
-            {/* KITA BUNGKUS PANEL DENGAN PORTAL AGAR LEPAS DARI KUTUKAN HALAMAN PANJANG! */}
             {mounted && createPortal(
                 <>
                     <div className={`drawer-backdrop ${isPanelOpen ? 'open' : ''}`} onClick={handleCloseReview}></div>
                     <div className={`drawer-panel ${isPanelOpen ? 'open' : ''}`}>
                         {selectedArticle && (
                             <div className="drawer-container-flex">
-                                
-                                <div className="drawer-header sticky-header">
-                                    <div><h2 className="drawer-title">Editor Mode</h2></div>
-                                    <button onClick={handleCloseReview} className="btn-close"><XCircle size={24} strokeWidth={1.5} /></button>
-                                </div>
-                                
+                                <div className="drawer-header sticky-header"><div><h2 className="drawer-title">Editor Mode</h2></div><button onClick={handleCloseReview} className="btn-close"><XCircle size={24} strokeWidth={1.5} /></button></div>
                                 <div className="drawer-content scrollable-content">
-                                    <div className="meta-compact">
-                                        <img src={selectedArticle.cover_url || 'https://placehold.co/100'} className="meta-thumb" />
-                                        <div className="meta-info"><p className="author-name">{selectedArticle.profiles?.full_name || 'Redaksi'}</p><span className={`status-pill ${selectedArticle.status}`}>{selectedArticle.status}</span></div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Judul Headline</label>
-                                        <input type="text" className="input-minimal" value={editorTitle} onChange={(e) => setEditorTitle(e.target.value)} />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Tag Kategori</label>
-                                        <div className="category-grid">
-                                            {availableCategories.map(cat => (
-                                                <label key={cat.id} className={`cat-checkbox ${selectedCategories.includes(cat.id) ? 'active' : ''}`}>
-                                                    <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} />
-                                                    <span>{cat.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label>Isi Konten (Markdown)</label>
-                                        <div className="admin-markdown-wrapper">
-                                            <MDEditor value={editorContent} onChange={setEditorContent} height={400} preview="edit" className="custom-md-editor" />
-                                        </div>
-                                    </div>
+                                    <div className="meta-compact"><img src={selectedArticle.cover_url || 'https://placehold.co/100'} className="meta-thumb" /><div className="meta-info"><p className="author-name">{selectedArticle.profiles?.full_name || 'Redaksi'}</p><span className={`status-pill ${selectedArticle.status}`}>{selectedArticle.status}</span></div></div>
+                                    <div className="form-group"><label>Judul Headline</label><input type="text" className="input-minimal" value={editorTitle} onChange={(e) => setEditorTitle(e.target.value)} /></div>
+                                    <div className="form-group"><label>Tag Kategori</label><div className="category-grid">{availableCategories.map(cat => (<label key={cat.id} className={`cat-checkbox ${selectedCategories.includes(cat.id) ? 'active' : ''}`}><input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} /><span>{cat.name}</span></label>))}</div></div>
+                                    <div className="form-group"><label>Isi Konten (Markdown)</label><div className="admin-markdown-wrapper"><MDEditor value={editorContent} onChange={setEditorContent} height={400} preview="edit" className="custom-md-editor" /></div></div>
                                 </div>
-
                                 <div className="drawer-footer sticky-footer">
                                     <button onClick={() => handleUpdateStatus('draft')} className="btn-decision revise"><ArrowLeftCircle size={18} /> Revisi</button>
                                     <button onClick={() => handleUpdateStatus('rejected')} className="btn-decision reject"><XCircle size={18} /> Tolak</button>
@@ -191,12 +279,11 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                             </div>
                         )}
                     </div>
-                </>,
-                document.body // <-- Teleportasi langsung ke ujung Body HTML
+                </>, document.body
             )}
 
             <style>{`
-                /* CSS SAMA PERSIS 100% */
+                /* CSS DASHBOARD (DIPOTONG AGAR RAPI, SAMA PERSIS) */
                 .dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); }
                 .dash-header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 50px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
                 .badge-admin { color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
@@ -233,22 +320,16 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                 .icon-btn { padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--text-muted); transition: color 0.2s; }
                 .icon-btn:hover { color: var(--text); }
                 .icon-btn.danger:hover { color: #ef4444; }
-                
                 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
                 .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
-                
                 .drawer-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 90%; background: var(--bg); z-index: 999; border-left: 1px solid var(--border); transform: translateX(100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }
                 .drawer-panel.open { transform: translateX(0); }
-                
                 .drawer-container-flex { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-                
                 .drawer-header.sticky-header { padding: 20px 30px; border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; background: var(--bg); flex-shrink: 0; }
                 .drawer-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
                 .btn-close { background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
                 .btn-close:hover { color: var(--text); }
-                
                 .drawer-content.scrollable-content { flex: 1; overflow-y: auto; padding: 30px; }
-                
                 .meta-compact { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-muted); }
                 .meta-thumb { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
                 .author-name { margin: 0; font-weight: 500; font-size: 0.95rem; }
@@ -271,7 +352,6 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                 .custom-md-editor .w-md-editor-text-input, .custom-md-editor .w-md-editor-text-pre > code, .custom-md-editor .w-md-editor-text-pre { color: var(--text) !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; font-size: 0.95rem !important; line-height: 1.6 !important; }
                 .custom-md-editor .wmde-markdown { background-color: var(--bg) !important; color: var(--text) !important; font-family: 'Poppins', sans-serif !important; font-size: 1rem !important; line-height: 1.8 !important; }
                 .custom-md-editor .wmde-markdown h1, .custom-md-editor .wmde-markdown h2, .custom-md-editor .wmde-markdown h3 { font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important; }
-                
                 .drawer-footer.sticky-footer { padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg); display: flex; gap: 15px; flex-shrink: 0; }
                 .btn-decision { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
                 .btn-decision:hover { background: var(--bg-light); border-color: var(--text); }
@@ -279,6 +359,32 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                 .publish:hover { opacity: 0.9; background: var(--text); }
                 .reject:hover { color: #ef4444; border-color: #ef4444; }
                 @media (max-width: 768px) { .drawer-panel { width: 100%; } }
+
+                /* --- CSS PROMO IG (REVISI RASIO 4:5 & ANIMASI TOMBOL) --- */
+                .promo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+                .promo-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow 0.2s; }
+                .promo-card:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+                .promo-card-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: var(--bg); }
+                .promo-card-header h3 { margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--text); }
+                
+                /* RAHASIA PREVIEW 4:5 */
+                .promo-img-preview { position: relative; width: 100%; aspect-ratio: 4 / 5; background: #000; overflow: hidden; border-bottom: 1px solid var(--border); }
+                .promo-img-preview img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; transition: opacity 0.3s; }
+                .upload-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); color: white; opacity: 0; transition: opacity 0.2s; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+                .promo-img-preview:hover .upload-overlay { opacity: 1; }
+                .promo-img-preview:hover img { opacity: 0.5; }
+                
+                .promo-inputs { padding: 20px; display: flex; flex-direction: column; gap: 15px; flex: 1; justify-content: space-between; }
+                .input-group label { display: block; font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; }
+                .input-group input, .input-group textarea { width: 100%; padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.9rem; transition: border-color 0.2s; resize: vertical; }
+                .input-group input:focus, .input-group textarea:focus { outline: none; border-color: var(--text); }
+                
+                .btn-save-promo { background: var(--text); color: var(--bg); border: 1px solid var(--text); padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.9rem; }
+                .btn-save-promo:hover:not(:disabled) { background: transparent; color: var(--text); }
+                .btn-save-promo:disabled { opacity: 0.5; cursor: not-allowed; }
+                
+                /* ANIMASI KETIKA SUKSES */
+                .btn-save-promo.success { background: #10b981; color: white; border-color: #10b981; pointer-events: none; }
             `}</style>
         </div>
     );

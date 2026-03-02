@@ -4,11 +4,10 @@ import HeroNews from '../components/HeroNews.astro';
 import SubNewsCard from '../components/SubNewsCard.astro'; 
 import { supabase } from '../lib/supabase';
 import CategoryNav from '../components/CategoryNav.astro';
+import InstagramPromo from '../components/InstagramPromo.astro';
 
-// 1. Tangkap parameter kategori
 const activeCat = Astro.url.searchParams.get('kategori') || '';
 
-// 2. Siapkan Query Database
 let selectQuery = `
   id, title, slug, created_at, cover_url, content,
   profiles ( full_name ),
@@ -36,14 +35,12 @@ if (activeCat) {
 const { data: articles, error } = await query.limit(7);
 if (error) console.error("Error fetch news:", error);
 
-// 3. Pisahkan Data
 const heroArticle = articles && articles.length > 0 ? articles[0] : null;
 const subArticles = articles && articles.length > 1 ? articles.slice(1) : [];
 ---
 
 <Layout title="MEDIACIVITAS - Berita Terkini">
 
-    {/* WADAH 1: HERO. Dibungkus div dengan ID statis agar mudah ditukar JS */}
     <div id="dynamic-hero-container">
         {heroArticle && (
             <div class="section-hero">
@@ -55,7 +52,6 @@ const subArticles = articles && articles.length > 1 ? articles.slice(1) : [];
     <div class="section-latest">
         <CategoryNav activeSlug={activeCat} />
         
-        {/* WADAH 2: GRID & TOMBOL ARSIP. */}
         <div id="dynamic-grid-container">
             {subArticles.length > 0 ? (
                 <div class="news-grid">
@@ -71,30 +67,58 @@ const subArticles = articles && articles.length > 1 ? articles.slice(1) : [];
                 </div>
             )}
             
+            {/* DESAIN TOMBOL ARSIP MINIMALIS */}
             <div class="center-btn">
-                <a href={`/arsip${activeCat ? '?kategori=' + activeCat : ''}`} class="btn-archive">
-                    {activeCat ? 'Lihat Semua Arsip Kategori Ini →' : 'Lihat Semua Arsip Berita →'}
+                <a href={`/arsip${activeCat ? '?kategori=' + activeCat : ''}`} class="btn-archive-minimal">
+                    <span>{activeCat ? 'Lihat Arsip Kategori Ini' : 'Lihat Semua Arsip'}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14"></path>
+                        <path d="m12 5 7 7-7 7"></path>
+                    </svg>
                 </a>
             </div>
         </div>
 
     </div>
-
+    
+    <InstagramPromo />
 </Layout>
 
 <style>
-    /* STYLE TETAP SAMA SEPERTI SEBELUMNYA */
     .section-hero { margin-top: 20px; margin-bottom: 60px; }
-    .section-latest { margin-bottom: 100px; }
-    .news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 60px; }
+    
+    /* REVISI GAP: Margin dikurangi drastis agar IG Promo merapat */
+    .section-latest { margin-bottom: 40px; } 
+    .news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 30px; }
+    
+    /* STYLE TOMBOL ARSIP MINIMALIS */
     .center-btn { text-align: center; }
-    .btn-archive {
-        display: inline-block; padding: 15px 40px; background: #111; color: #fff;
-        font-weight: 700; border-radius: 50px; transition: transform 0.2s, background 0.2s; text-decoration: none;
+    .btn-archive-minimal {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        color: var(--text-muted);
+        font-weight: 400; /* Medium-Light */
+        font-size: 0.95rem;
+        transition: color 0.3s ease;
+        text-decoration: none;
     }
-    :global([data-theme="dark"]) .btn-archive { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
-    .btn-archive:hover { background: #333; transform: scale(1.05); }
-    :global([data-theme="dark"]) .btn-archive:hover { background: var(--border); }
+    
+    .btn-archive-minimal svg { 
+        transition: transform 0.3s ease; 
+        color: var(--text-muted);
+    }
+    
+    .btn-archive-minimal:hover {
+        color: var(--text);
+    }
+    
+    .btn-archive-minimal:hover svg {
+        color: var(--text);
+        transform: translateX(5px);
+    }
+
     @media (max-width: 900px) { .news-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 600px) { .news-grid { grid-template-columns: 1fr; } }
 </style>
