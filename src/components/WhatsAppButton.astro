@@ -8,44 +8,57 @@ const waLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}
 ---
 
 <section class="contact-dual-section">
-    <div class="contact-dual-banner">
-        
-        {/* KOLOM KIRI: WHATSAPP (FAST LANE) */}
-        <div class="contact-col left-col">
-            <div class="col-content">
-                <span class="badge-contact quick">Respon Cepat</span>
-                <h3>Punya info berita kilat?</h3>
-                <p>Hubungi redaksi via WhatsApp untuk respon instan.</p>
-                <a href={waLink} target="_blank" rel="noopener noreferrer" class="btn-contact btn-wa">
-                    <span class="icon-box" set:html={WaIcon} />
-                    <span>Chat WhatsApp</span>
-                </a>
+    {/* TAMBAHAN: Container agar lebar sama dengan IG Promo */}
+    <div class="container">
+        <div class="contact-dual-banner">
+            
+            {/* KOLOM KIRI: WHATSAPP (FAST LANE) */}
+            <div class="contact-col left-col">
+                <div class="col-content">
+                    <span class="badge-contact quick">Respon Cepat</span>
+                    <h3>Punya info berita kilat?</h3>
+                    <p>Hubungi redaksi via WhatsApp untuk respon instan.</p>
+                    <a href={waLink} target="_blank" rel="noopener noreferrer" class="btn-contact btn-wa">
+                        <span class="icon-box" set:html={WaIcon} />
+                        <span>Chat WhatsApp</span>
+                    </a>
+                </div>
             </div>
-        </div>
 
-        {/* GARIS PEMISAH VERTICAL (Hanya di Desktop) */}
-        <div class="vertical-divider"></div>
+            {/* GARIS PEMISAH VERTICAL (Hanya di Desktop) */}
+            <div class="vertical-divider"></div>
 
-        {/* KOLOM KANAN: EMAIL/FORM (FORMAL LANE) */}
-        <div class="contact-col right-col">
-            <div class="col-content">
-                <span class="badge-contact formal">Bisnis & Kerjasama</span>
-                <h3>Ingin mengajukan proposal?</h3>
-                <p>Gunakan formulir resmi kami untuk urusan administratif.</p>
-                <a href="/contact" class="btn-contact btn-email">
-                    <span class="icon-box" set:html={MailIcon} />
-                    <span>Hubungi Kami</span>
-                </a>
+            {/* KOLOM KANAN: EMAIL/FORM (FORMAL LANE) */}
+            <div class="contact-col right-col">
+                <div class="col-content">
+                    <span class="badge-contact formal">Bisnis & Kerjasama</span>
+                    <h3>Ingin mengajukan proposal?</h3>
+                    <p>Gunakan formulir resmi kami untuk urusan administratif.</p>
+                    <a href="/contact" class="btn-contact btn-email">
+                        <span class="icon-box" set:html={MailIcon} />
+                        <span>Hubungi Kami</span>
+                    </a>
+                </div>
             </div>
-        </div>
 
+        </div>
     </div>
 </section>
 
 <style>
+    /* Pastikan Container terdefinisi lokal jika global tidak terbaca */
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
     .contact-dual-section {
         padding: 0 0 80px 0; 
         font-family: 'Poppins', sans-serif;
+        width: 100%;
     }
 
     .contact-dual-banner {
@@ -57,7 +70,7 @@ const waLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}
         box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         overflow: hidden;
         width: 100%;
-        box-sizing: border-box;
+        /* box-sizing sudah dihandle container */
     }
 
     :global([data-theme="dark"]) .contact-dual-banner { background-color: #080808; border-color: #1a1a1a; }
