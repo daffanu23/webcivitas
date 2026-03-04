@@ -2,10 +2,12 @@
 import { getSupabaseServer } from '../lib/supabase';
 
 const supabase = getSupabaseServer(Astro.cookies);
+
 const { data: promos } = await supabase
     .from('ig_promos')
     .select('*')
-    .order('slot_number', { ascending: true });
+    .order('created_at', { ascending: false }) // Urutkan dari yang paling baru
+    .limit(4); // Cuma ambil 4 biji
 
 const slots = promos || [];
 

@@ -4,12 +4,15 @@ import AdminDashboardReact from '../../components/AdminDashboard';
 import { getSupabaseServer } from '../../lib/supabase';
 
 const supabase = getSupabaseServer(Astro.cookies);
+
+// 1. Cek User Login
 const { data: { user }, error: authError } = await supabase.auth.getUser();
 
 if (authError || !user) {
     return Astro.redirect('/login');
 }
 
+// 2. Cek Role Admin
 const { data: profile } = await supabase
     .from('profiles')
     .select('role')
@@ -20,27 +23,23 @@ if (!profile || profile.role !== 'admin') {
     return Astro.redirect('/'); 
 }
 
+// 3. Ambil Data Awal (Categories & Articles saja)
+// Promo IG tidak perlu diambil di sini lagi, karena AdminDashboard.jsx mengambilnya sendiri.
 const { data: categories } = await supabase.from('categories').select('*').order('name');
 
 const { data: articles } = await supabase
     .from('articles')
     .select('*, profiles(full_name), article_categories(category_id)')
     .order('created_at', { ascending: false }); 
-
-// --- 🌟 TAMBAHAN BARU: Tarik data promo Instagram ---
-const { data: promos } = await supabase
-    .from('ig_promos')
-    .select('*')
-    .order('slot_number', { ascending: true });
 ---
 
 <Layout title="Admin Dashboard | MEDIACIVITAS">
     <div class="admin-view-container">
+        {/* Hapus prop serverPromos karena sudah tidak dipakai di komponen React */}
         <AdminDashboardReact 
             client:only="react" 
-            serverCategories={categories || []}
+            serverCategories={categories || []} 
             serverArticles={articles || []}
-            serverPromos={promos || []} 
         />
     </div>
 </Layout>
