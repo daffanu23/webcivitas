@@ -13,38 +13,49 @@ const IgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" v
 ---
 
 <section class="ig-promo-section">
-    <div class="container">
-        <div class="ig-box-rounded">
-            <div class="ig-header">
-                <h2 class="ig-title">Kunjungi akun instagram kami!</h2>
-                <h3 class="ig-subtitle">Dapatkan update terbaru kami di <span class="text-highlight">@mediacivitas</span></h3>
-            </div>
+    {/* REVISI: Hapus <div class="container">, langsung box rounded agar width-nya full mengikuti parent */}
+    <div class="ig-box-rounded">
+        <div class="ig-header">
+            <h2 class="ig-title">Kunjungi akun instagram kami!</h2>
+            <h3 class="ig-subtitle">Dapatkan update terbaru kami di <span class="text-highlight">@mediacivitas</span></h3>
+        </div>
 
-            <div class="ig-grid">
-                {slots.map((item) => (
-                    <a href={item.link_url} target="_blank" rel="noopener noreferrer" class="ig-card">
-                        <div class="ig-img-wrapper">
-                            <img src={item.image_url} alt={`Instagram Promo Slot ${item.slot_number}`} loading="lazy" />
-                            <div class="ig-overlay">
-                                <div class="overlay-content">
-                                    <div class="icon-wrapper" set:html={IgIcon} />
-                                    {/* MUNCULKAN CAPTION JIKA ADA */}
-                                    {item.caption && (
-                                        <p class="ig-caption">{item.caption}</p>
-                                    )}
-                                </div>
+        <div class="ig-grid">
+            {slots.map((item) => (
+                <a href={item.link_url} target="_blank" rel="noopener noreferrer" class="ig-card">
+                    <div class="ig-img-wrapper">
+                        <img src={item.image_url} alt={`Instagram Promo Slot ${item.slot_number}`} loading="lazy" />
+                        <div class="ig-overlay">
+                            <div class="overlay-content">
+                                <div class="icon-wrapper" set:html={IgIcon} />
+                                {item.caption && (
+                                    <p class="ig-caption">{item.caption}</p>
+                                )}
                             </div>
                         </div>
-                    </a>
-                ))}
-            </div>
+                    </div>
+                </a>
+            ))}
         </div>
     </div>
 </section>
 
 <style>
-    .ig-promo-section { padding: 0 0 80px 0; font-family: 'Poppins', sans-serif; }
-    .ig-box-rounded { background-color: var(--bg-light); padding: 60px 50px; border-radius: 24px; color: var(--text); border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.04); transition: all 0.3s ease; }
+    .ig-promo-section { padding: 0 0 40px 0; font-family: 'Poppins', sans-serif; } /* Jarak bawah dikurangi agar rapat dengan WA */
+    
+    .ig-box-rounded { 
+        background-color: var(--bg-light); 
+        padding: 60px 50px; 
+        border-radius: 24px; 
+        color: var(--text); 
+        border: 1px solid var(--border); 
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.04); 
+        transition: all 0.3s ease; 
+        /* Pastikan box mengisi penuh lebar yang tersedia */
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
     :global([data-theme="dark"]) .ig-box-rounded { background-color: #080808; border-color: #1a1a1a; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); }
     .ig-header { text-align: center; margin-bottom: 40px; }
     .ig-title { font-size: 1.8rem; font-weight: 500; margin: 0; letter-spacing: 0.5px; }
@@ -53,7 +64,6 @@ const IgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" v
 
     .ig-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 
-    /* RASIO INSTAGRAM PORTRAIT SEJATI 4:5 */
     .ig-card {
         display: block; width: 100%; text-decoration: none;
         overflow: hidden; border-radius: 12px; 
@@ -66,39 +76,18 @@ const IgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" v
     .ig-img-wrapper { width: 100%; height: 100%; position: relative; }
     .ig-img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
 
-    /* OVERLAY & CAPTION CSS */
     .ig-overlay {
         position: absolute; inset: 0; 
         background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.4) 100%);
-        display: flex; align-items: flex-end; /* Supaya teks ada di bawah */
+        display: flex; align-items: flex-end; 
         justify-content: center;
         opacity: 0; transition: opacity 0.3s ease;
         padding: 25px 20px;
     }
     
-    .overlay-content { 
-        color: white; 
-        text-align: center;
-        transform: translateY(20px); 
-        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
-        width: 100%;
-    }
-    
+    .overlay-content { color: white; text-align: center; transform: translateY(20px); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); width: 100%; }
     .icon-wrapper { margin-bottom: 12px; }
-    
-    .ig-caption {
-        margin: 0;
-        font-size: 0.85rem;
-        font-weight: 300;
-        line-height: 1.4;
-        color: #f0f0f0;
-        /* Memotong teks jika terlalu panjang (Maks 3 baris) */
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    .ig-caption { margin: 0; font-size: 0.85rem; font-weight: 300; line-height: 1.4; color: #f0f0f0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; }
 
     .ig-card:hover .ig-img-wrapper img { transform: scale(1.04); }
     .ig-card:hover .ig-overlay { opacity: 1; }
@@ -112,6 +101,6 @@ const IgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" v
         .ig-box-rounded { padding: 30px 20px; border-radius: 20px; }
         .ig-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } 
         .ig-title { font-size: 1.5rem; }
-        .ig-caption { -webkit-line-clamp: 2; /* Di HP maksimal 2 baris aja */ font-size: 0.8rem; }
+        .ig-caption { -webkit-line-clamp: 2; font-size: 0.8rem; }
     }
 </style>

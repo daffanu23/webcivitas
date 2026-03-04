@@ -15,26 +15,74 @@ const { title = "MEDIACIVITAS" } = Astro.props;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
-    
-    {/* --- INI DIA BARIS UNTUK MEMANGGIL FAVICON --- */}
     <link rel="icon" type="image/svg+xml" href="/logo_civitas.svg" />
-    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
     <ClientRouter />
 </head>
 <body>
     
     <Navbar />
     <main class="main-content" transition:animate="none">
-        <div class="animate-wrapper container">
-            <DraftReminder /> <slot />
+        {/* Tambahkan style position: relative agar Toast bisa mengacu pada kotak ini */}
+        <div class="animate-wrapper container" style="position: relative;">
+            
+            {/* --- 1. NOTIFIKASI KITA PINDAH KE SINI --- */}
+            <div id="toast-notification" class="inner-toast">
+                <div class="toast-content">
+                    <div class="toast-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="toast-text">
+                        <h4>Pesan Terkirim!</h4>
+                        <p>Tim kami akan segera membalas.</p>
+                    </div>
+                    <button id="close-toast-btn" class="toast-close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            {/* --- 2. DRAFT REMINDER & KONTEN UTAMA --- */}
+            <DraftReminder /> 
+            <slot />
+        
         </div>
     </main>
 
     <Footer />
-
     <FloatingBar />
+
+    <script>
+        document.addEventListener('astro:page-load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const toast = document.getElementById('toast-notification');
+            const closeBtn = document.getElementById('close-toast-btn');
+
+            if (urlParams.get('status') === 'success') {
+                if (toast) {
+                    // Munculkan (Add class show)
+                    setTimeout(() => {
+                        toast.classList.add('show');
+                    }, 100);
+                    
+                    // Bersihkan URL
+                    const cleanUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
+
+                    // Hilang otomatis 5 detik
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                    }, 5000);
+                }
+            }
+
+            if (closeBtn && toast) {
+                closeBtn.addEventListener('click', () => {
+                    toast.classList.remove('show');
+                });
+            }
+        });
+    </script>
 
 </body>
 </html>
@@ -45,20 +93,13 @@ const { title = "MEDIACIVITAS" } = Astro.props;
     
     body {
         font-family: 'Poppins', sans-serif;
-        
-        /* PENTING: Jangan tulis background-color atau color disini! */
-        /* Biarkan global.css yang mengaturnya lewat var(--bg) */
-        
         overflow-x: hidden;
         display: flex;
         flex-direction: column;
         min-height: 100vh;
-        
-        /* Transisi agar ganti tema halus */
         transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* CONTAINER GLOBAL */
     .container {
         max-width: 1200px;
         margin: 0 auto;
@@ -66,7 +107,6 @@ const { title = "MEDIACIVITAS" } = Astro.props;
         width: 100%;
     }
 
-    /* ANIMASI KONTEN (Slide Up) */
     .animate-wrapper {
         animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         opacity: 0;
@@ -76,7 +116,73 @@ const { title = "MEDIACIVITAS" } = Astro.props;
         0% { opacity: 0; transform: translateY(40px); }
         100% { opacity: 1; transform: translateY(0); }
     }
-
-    /* Link Style Global */
     a { text-decoration: none; color: inherit; }
+</style>
+
+{/* --- CSS KHUSUS TOAST (YANG SEKARANG DI DALAM CONTAINER) --- */}
+<style>
+    .inner-toast {
+        position: absolute; /* Mengambang tapi relatif terhadap .container */
+        top: 20px;          /* Jarak dari atas container */
+        right: 20px;        /* Jarak dari kanan container */
+        z-index: 50;        /* Di atas konten lain (DraftReminder/Hero) */
+        
+        /* State Awal: Hidden & Geser dikit ke atas/kanan */
+        opacity: 0;
+        transform: translateY(-10px);
+        pointer-events: none; /* Supaya ga ngeblock klik kalau lagi hidden */
+        
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* State Show */
+    .inner-toast.show {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: all;
+    }
+
+    .toast-content {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 12px 20px; /* Lebih compact dikit */
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 280px;
+    }
+
+    .toast-icon {
+        background: #10b981;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .toast-text h4 { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .toast-text p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+
+    .toast-close {
+        background: transparent; border: none; color: var(--text-muted);
+        cursor: pointer; padding: 4px; margin-left: auto; transition: color 0.2s;
+    }
+    .toast-close:hover { color: var(--text); }
+
+    /* Responsif HP: Tetap di dalam container, tapi mungkin agak full width */
+    @media (max-width: 768px) {
+        .inner-toast {
+            width: auto;
+            left: 20px; /* Kiri kanan rata */
+            right: 20px;
+        }
+        .toast-content { width: 100%; justify-content: space-between; }
+    }
 </style>

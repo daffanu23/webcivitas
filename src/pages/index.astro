@@ -5,6 +5,7 @@ import SubNewsCard from '../components/SubNewsCard.astro';
 import { supabase } from '../lib/supabase';
 import CategoryNav from '../components/CategoryNav.astro';
 import InstagramPromo from '../components/InstagramPromo.astro';
+import WhatsAppButton from '../components/WhatsAppButton.astro';
 
 const activeCat = Astro.url.searchParams.get('kategori') || '';
 
@@ -82,6 +83,7 @@ const subArticles = articles && articles.length > 1 ? articles.slice(1) : [];
     </div>
     
     <InstagramPromo />
+    <WhatsAppButton />
 </Layout>
 
 <style>

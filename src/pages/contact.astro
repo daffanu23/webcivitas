@@ -1,0 +1,258 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const ACCESS_KEY = "1581c8ce-3561-42a3-b461-37b793d0129f"; 
+---
+
+<Layout title="Hubungi Kami - MEDIACIVITAS">
+    <div class="contact-page-wrapper">
+        <div class="container">
+            
+            <div class="contact-header">
+                <h1>Hubungi Redaksi</h1>
+                <p>Punya pertanyaan serius, proposal kerjasama, atau ingin beriklan? Silakan isi formulir di bawah ini.</p>
+            </div>
+
+            <div class="form-container">
+                {/* Form dengan ID untuk Script */}
+                <form id="contact-form" class="styled-form">
+                    
+                    <input type="hidden" name="access_key" value={ACCESS_KEY}>
+                    {/* Hapus input hidden subject agar subject email mengikuti pilihan dropdown user */}
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Nama Lengkap</label>
+                            <input type="text" id="name" name="name" placeholder="John Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Alamat Email</label>
+                            <input type="email" id="email" name="email" placeholder="email@contoh.com" required>
+                        </div>
+                    </div>
+
+                    {/* --- [DIKEMBALIKAN] KOLOM PERIHAL / SUBJECT --- */}
+                    <div class="form-group">
+                        <label for="subject">Perihal</label>
+                        <select id="subject" name="subject" required>
+                            <option value="" disabled selected>Pilih tujuan pesan...</option>
+                            <option value="Kerjasama / Partnership">Kerjasama / Partnership</option>
+                            <option value="Iklan / Advertising">Iklan / Advertising</option>
+                            <option value="Surat Pembaca">Surat Pembaca</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">Isi Pesan</label>
+                        <textarea id="message" name="message" rows="6" placeholder="Tuliskan pesan Anda secara detail di sini..." required></textarea>
+                    </div>
+
+                    <button type="submit" id="btn-submit" class="btn-submit">Kirim Pesan</button>
+                    <p id="status-msg" style="display:none; color: red; margin-top: 10px; font-size: 0.9rem;"></p>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+</Layout>
+
+<script>
+    const form = document.getElementById('contact-form') as HTMLFormElement;
+    const btn = document.getElementById('btn-submit');
+    const msg = document.getElementById('status-msg');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Tahan reload
+            
+            // UI Loading
+            if(btn) { btn.innerHTML = "Mengirim..."; btn.setAttribute('disabled', 'true'); btn.style.opacity = "0.7"; }
+            if(msg) msg.style.display = 'none';
+
+            // Ambil Data
+            const formData = new FormData(form);
+            const json = JSON.stringify(Object.fromEntries(formData));
+
+            // Kirim Silent via Fetch
+            fetch('https://api.web3forms.com/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: json
+            })
+            .then(async (response) => {
+                if (response.status == 200) {
+                    // SUKSES -> REDIRECT KE HOME
+                    window.location.href = "/?status=success";
+                } else {
+                    // GAGAL
+                    if(msg) { msg.innerText = "Gagal mengirim. Coba lagi."; msg.style.display = 'block'; }
+                    if(btn) { btn.innerHTML = "Kirim Pesan"; btn.removeAttribute('disabled'); btn.style.opacity = "1"; }
+                }
+            })
+            .catch(error => {
+                console.log(error);
+                if(msg) { msg.innerText = "Koneksi bermasalah."; msg.style.display = 'block'; }
+                if(btn) { btn.innerHTML = "Kirim Pesan"; btn.removeAttribute('disabled'); btn.style.opacity = "1"; }
+            });
+        });
+    }
+</script>
+
+<style>
+    .contact-page-wrapper { padding: 60px 0 100px 0; font-family: 'Poppins', sans-serif; }
+    .contact-header { text-align: center; max-width: 700px; margin: 0 auto 50px auto; }
+    .contact-header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 15px; color: var(--text); }
+    .contact-header p { color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; }
+
+    .form-container { max-width: 800px; margin: 0 auto; background: var(--bg-light); padding: 50px; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    :global([data-theme="dark"]) .form-container { background: #080808; border-color: #1a1a1a; }
+
+    .styled-form { display: flex; flex-direction: column; gap: 25px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+    .form-group { display: flex; flex-direction: column; gap: 10px; }
+    .form-group label { font-weight: 500; font-size: 0.95rem; color: var(--text); }
+
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 15px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; font-family: inherit; font-size: 1rem; transition: border-color 0.3s, box-shadow 0.3s; box-sizing: border-box; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 3px rgba(100,100,100,0.1); }
+
+    .btn-submit { background-color: var(--text); color: var(--bg); border: none; padding: 18px 40px; font-size: 1.1rem; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; align-self: flex-start; margin-top: 10px; }
+    .btn-submit:hover { opacity: 0.9; transform: translateY(-3px); }
+    .btn-submit:disabled { cursor: not-allowed; }
+
+    @media (max-width: 768px) { .form-container { padding: 30px 20px; } .form-grid { grid-template-columns: 1fr; } .contact-header h1 { font-size: 2rem; } .btn-submit { width: 100%; } }
+</style>---
+import Layout from '../layouts/Layout.astro';
+
+const ACCESS_KEY = "1581c8ce-3561-42a3-b461-37b793d0129f"; 
+---
+
+<Layout title="Hubungi Kami - MEDIACIVITAS">
+    <div class="contact-page-wrapper">
+        <div class="container">
+            
+            <div class="contact-header">
+                <h1>Hubungi Redaksi</h1>
+                <p>Punya pertanyaan serius, proposal kerjasama, atau ingin beriklan? Silakan isi formulir di bawah ini.</p>
+            </div>
+
+            <div class="form-container">
+                {/* TAMBAHAN PENTING: method="POST" agar tidak spam URL jika JS gagal */}
+                <form id="contact-form" class="styled-form" method="POST">
+                    
+                    <input type="hidden" name="access_key" value={ACCESS_KEY}>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Nama Lengkap</label>
+                            <input type="text" id="name" name="name" placeholder="John Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Alamat Email</label>
+                            <input type="email" id="email" name="email" placeholder="email@contoh.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subject">Perihal</label>
+                        <select id="subject" name="subject" required>
+                            <option value="" disabled selected>Pilih tujuan pesan...</option>
+                            <option value="Kerjasama / Partnership">Kerjasama / Partnership</option>
+                            <option value="Iklan / Advertising">Iklan / Advertising</option>
+                            <option value="Surat Pembaca">Surat Pembaca</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">Isi Pesan</label>
+                        <textarea id="message" name="message" rows="6" placeholder="Tuliskan pesan Anda secara detail di sini..." required></textarea>
+                    </div>
+
+                    <button type="submit" id="btn-submit" class="btn-submit">Kirim Pesan</button>
+                    <p id="status-msg" style="display:none; color: red; margin-top: 10px; font-size: 0.9rem;"></p>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+</Layout>
+
+<script>
+    // PERBAIKAN: Gunakan 'astro:page-load' agar script jalan saat navigasi
+    document.addEventListener('astro:page-load', () => {
+        const form = document.getElementById('contact-form') as HTMLFormElement;
+        const btn = document.getElementById('btn-submit');
+        const msg = document.getElementById('status-msg');
+
+        if (form) {
+            // Hapus listener lama jika ada (opsional, untuk kebersihan)
+            const handleSubmit = (e: SubmitEvent) => {
+                e.preventDefault(); // 1. TAHAN RELOAD (KUNCI UTAMA)
+                
+                // UI Loading
+                if(btn) { 
+                    btn.innerHTML = "Mengirim..."; 
+                    btn.setAttribute('disabled', 'true'); 
+                    btn.style.opacity = "0.7"; 
+                }
+                if(msg) msg.style.display = 'none';
+
+                // Ambil Data
+                const formData = new FormData(form);
+                const json = JSON.stringify(Object.fromEntries(formData));
+
+                // Kirim Silent via Fetch
+                fetch('https://api.web3forms.com/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: json
+                })
+                .then(async (response) => {
+                    if (response.status == 200) {
+                        // SUKSES -> REDIRECT KE HOME
+                        window.location.href = "/?status=success";
+                    } else {
+                        // GAGAL
+                        if(msg) { msg.innerText = "Gagal mengirim. Coba lagi."; msg.style.display = 'block'; }
+                        if(btn) { btn.innerHTML = "Kirim Pesan"; btn.removeAttribute('disabled'); btn.style.opacity = "1"; }
+                    }
+                })
+                .catch(error => {
+                    console.log(error);
+                    if(msg) { msg.innerText = "Koneksi bermasalah."; msg.style.display = 'block'; }
+                    if(btn) { btn.innerHTML = "Kirim Pesan"; btn.removeAttribute('disabled'); btn.style.opacity = "1"; }
+                });
+            };
+
+            // Pasang Event Listener Baru
+            form.addEventListener('submit', handleSubmit);
+        }
+    });
+</script>
+
+<style>
+    .contact-page-wrapper { padding: 60px 0 100px 0; font-family: 'Poppins', sans-serif; }
+    .contact-header { text-align: center; max-width: 700px; margin: 0 auto 50px auto; }
+    .contact-header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 15px; color: var(--text); }
+    .contact-header p { color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; }
+
+    .form-container { max-width: 800px; margin: 0 auto; background: var(--bg-light); padding: 50px; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    :global([data-theme="dark"]) .form-container { background: #080808; border-color: #1a1a1a; }
+
+    .styled-form { display: flex; flex-direction: column; gap: 25px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+    .form-group { display: flex; flex-direction: column; gap: 10px; }
+    .form-group label { font-weight: 500; font-size: 0.95rem; color: var(--text); }
+
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 15px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; font-family: inherit; font-size: 1rem; transition: border-color 0.3s, box-shadow 0.3s; box-sizing: border-box; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 3px rgba(100,100,100,0.1); }
+
+    .btn-submit { background-color: var(--text); color: var(--bg); border: none; padding: 18px 40px; font-size: 1.1rem; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.2s, opacity 0.2s; align-self: flex-start; margin-top: 10px; }
+    .btn-submit:hover { opacity: 0.9; transform: translateY(-3px); }
+    .btn-submit:disabled { cursor: not-allowed; }
+
+    @media (max-width: 768px) { .form-container { padding: 30px 20px; } .form-grid { grid-template-columns: 1fr; } .contact-header h1 { font-size: 2rem; } .btn-submit { width: 100%; } }
+</style>
