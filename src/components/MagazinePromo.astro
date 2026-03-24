@@ -1,0 +1,188 @@
+---
+import { getSupabaseServer } from '../lib/supabase';
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+// Ambil 1 Majalah/Tabloid/Wartabasement Terbaru
+const { data: latestMagazine, error } = await supabase
+    .from('magazines')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+if (error || !latestMagazine) {
+    return;
+}
+
+// --- LOGIKA TEMA WARNA (COLOR CODING) ---
+const jenis = latestMagazine.jenis || 'Majalah';
+let themeColor = '#dc2626'; // Default: Merah (Majalah)
+let themeText = 'white';    // Default: Teks Putih
+
+if (jenis === 'Tabloid') {
+    themeColor = '#2563eb'; // Biru untuk Tabloid
+    themeText = 'white';
+} else if (jenis === 'Wartabasement') {
+    themeColor = '#facc15'; // Kuning untuk Wartabasement
+    themeText = '#1e293b';  // Teks Gelap (Hitam Keabu-abuan) agar terbaca di background kuning
+}
+---
+
+<section class="magazine-promo-section">
+    <div class="container">
+        {/* Kita suntikkan variabel warna ke wrapper utama */}
+        <div class="promo-wrapper" style={`--theme-color: ${themeColor}; --theme-text: ${themeText};`}>
+            
+            {/* KIRI: 3D COVER DISPLAY */}
+            <div class="promo-visual">
+                <div class="book-container">
+                    <div class="book">
+                        <img src={latestMagazine.cover_url} alt={`Cover ${latestMagazine.title}`} class="book-cover" />
+                        <div class="book-spine"></div>
+                    </div>
+                    <div class="book-shadow"></div>
+                </div>
+            </div>
+
+            {/* KANAN: KONTEN BERSIH (HARD SELLING) */}
+            <div class="promo-content">
+                <div class="badge-wrapper">
+                    <span class="badge-highlight">{jenis}</span>
+                    <span class="badge-angkatan">{latestMagazine.angkatan || 'Terbaru'}</span>
+                </div>
+                
+                <h2 class="magazine-title">{latestMagazine.title}</h2>
+                <p class="magazine-desc">{latestMagazine.description || 'Simak ulasan mendalam pada edisi spesial kami kali ini. Dipersembahkan khusus oleh tim LPM Civitas.'}</p>
+
+                {/* CALL TO ACTION (CTA) */}
+                <div class="promo-action">
+                    <a href={latestMagazine.pdf_url} target="_blank" rel="noopener noreferrer" class="btn-read-pdf">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Baca {jenis} (PDF)
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .magazine-promo-section {
+        padding: 80px 0;
+        background: var(--bg-light);
+        font-family: 'Poppins', sans-serif;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        
+        /* JURUS FULL-BLEED: Memaksa background abu-abu tembus full kiri-kanan */
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+    }
+
+    /* 👇 TAMBAHKAN/UBAH BAGIAN INI UNTUK MENYAMAKAN LEBAR DENGAN SLIDER 👇 */
+    .magazine-promo-section .container {
+        /* Ubah angka ini menyamai lebar Hero Slider Anda (Contoh: 1440px) */
+        /* Jika slider Anda 100% full layar, ubah menjadi max-width: 100%; */
+        max-width: 1160px; 
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .promo-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 60px;
+        background: var(--bg);
+        border-radius: 24px;
+        padding: 50px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        border: 1px solid var(--border);
+        width: 100%; /* Pastikan kotaknya melar mengikuti container */
+    }
+
+    /* --- EFEK 3D BUKU --- */
+    .promo-visual { flex: 0 0 320px; perspective: 1000px; }
+    
+    .book-container {
+        position: relative; transform: rotateY(-15deg) rotateX(5deg);
+        transform-style: preserve-3d; transition: transform 0.5s ease;
+    }
+    
+    .promo-visual:hover .book-container { transform: rotateY(-5deg) rotateX(0deg) scale(1.05); }
+    
+    .book { position: relative; width: 100%; border-radius: 4px 12px 12px 4px; transform-style: preserve-3d; }
+    .book-cover { width: 100%; height: auto; border-radius: 4px 12px 12px 4px; box-shadow: inset 4px 0 10px rgba(0,0,0,0.1); z-index: 2; position: relative; }
+    
+    .book-spine {
+        position: absolute; top: 2%; left: -15px; width: 20px; height: 96%;
+        background: #e5e5e5; transform: rotateY(-90deg); transform-origin: right;
+        border-radius: 4px 0 0 4px; background-image: linear-gradient(to right, #ccc 0%, #eee 100%);
+    }
+
+    .book-shadow {
+        position: absolute; bottom: -20px; left: 5%; width: 90%; height: 30px;
+        background: rgba(0,0,0,0.2); filter: blur(15px); transform: rotateX(90deg) translateZ(-30px);
+    }
+
+    /* --- KONTEN KANAN BERSIH --- */
+    .promo-content { flex: 1; }
+
+    .badge-wrapper { display: flex; gap: 10px; margin-bottom: 20px; }
+
+    /* MENGGUNAKAN VARIABEL TEMA DINAMIS */
+    .badge-highlight {
+        background: var(--theme-color); 
+        color: var(--theme-text); 
+        padding: 6px 16px;
+        border-radius: 50px; font-size: 0.85rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 1px;
+    }
+
+    .badge-angkatan {
+        background: transparent; color: var(--text-muted);
+        border: 1px solid var(--border); padding: 6px 16px;
+        border-radius: 50px; font-size: 0.85rem; font-weight: 600;
+    }
+
+    .magazine-title {
+        font-size: 2.5rem; font-weight: 800; line-height: 1.2;
+        margin: 0 0 20px 0; color: var(--text); letter-spacing: -0.5px;
+    }
+
+    .magazine-desc {
+        font-size: 1.1rem; color: var(--text-muted); line-height: 1.6;
+        margin-bottom: 40px; max-width: 600px;
+    }
+
+    /* CALL TO ACTION JUGA MENGIKUTI TEMA DINAMIS */
+    .btn-read-pdf {
+        display: inline-flex; align-items: center; gap: 10px;
+        background: var(--theme-color); 
+        color: var(--theme-text); 
+        padding: 18px 40px;
+        border-radius: 50px; font-size: 1.1rem; font-weight: 700;
+        text-decoration: none; 
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Shadow netral */
+        transition: all 0.3s ease;
+    }
+
+    .btn-read-pdf:hover {
+        filter: brightness(0.9); /* Menggelapkan warna sedikit saat di-hover */
+        transform: translateY(-3px);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    @media (max-width: 900px) {
+        .promo-wrapper { flex-direction: column; text-align: center; padding: 40px 20px; }
+        .promo-visual { flex: 0 0 auto; width: 250px; margin: 0 auto 30px auto; }
+        .badge-wrapper { justify-content: center; }
+        .magazine-desc { margin: 0 auto 30px auto; }
+        .btn-read-pdf { width: 100%; justify-content: center; }
+    }
+</style>

@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import AdminDashboardReact from '../../components/AdminDashboard'; 
+import MagazineManager from '../../components/MagazineManager'; // IMPORT KOMPONEN MAJALAH
 import { getSupabaseServer } from '../../lib/supabase';
 
 const supabase = getSupabaseServer(Astro.cookies);
@@ -24,7 +25,6 @@ if (!profile || profile.role !== 'admin') {
 }
 
 // 3. Ambil Data Awal (Categories & Articles saja)
-// Promo IG tidak perlu diambil di sini lagi, karena AdminDashboard.jsx mengambilnya sendiri.
 const { data: categories } = await supabase.from('categories').select('*').order('name');
 
 const { data: articles } = await supabase
@@ -35,12 +35,26 @@ const { data: articles } = await supabase
 
 <Layout title="Admin Dashboard | MEDIACIVITAS">
     <div class="admin-view-container">
-        {/* Hapus prop serverPromos karena sudah tidak dipakai di komponen React */}
+        
+        {/* BAGIAN 1: MANAJEMEN BERITA, KATEGORI, DAN PROMO IG */}
         <AdminDashboardReact 
             client:only="react" 
             serverCategories={categories || []} 
             serverArticles={articles || []}
         />
+
+        {/* GARIS PEMISAH ANTAR SECTION */}
+        <div class="section-divider">
+            <span>Manajemen Penerbitan Edisi Khusus</span>
+        </div>
+
+        {/* BAGIAN 2: MANAJEMEN TABLOID & MAJALAH (PDF) */}
+        {/* Kita wajib melempar user.id agar database tahu siapa yang upload */}
+        <MagazineManager 
+            client:only="react" 
+            userId={user.id} 
+        />
+        
     </div>
 </Layout>
 
@@ -51,5 +65,30 @@ const { data: articles } = await supabase
         margin: 0 auto;    
         padding: 40px 20px; 
         min-height: 80vh;  
+    }
+
+    /* Style untuk Garis Pemisah yang Elegan */
+    .section-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 60px 0 40px 0;
+        color: var(--text-muted);
+    }
+
+    .section-divider::before,
+    .section-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 2px dashed var(--border);
+    }
+
+    .section-divider span {
+        padding: 0 20px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text);
     }
 </style>

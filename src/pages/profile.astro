@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProfileDashboardReact from '../components/ProfileDashboard';
+import { getSupabaseServer } from '../lib/supabase';
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+// 1. Cek User Login
+const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+if (authError || !user) {
+    return Astro.redirect('/login');
+}
+
+// 2. Ambil Profil Singkat (Hanya untuk verifikasi role jika perlu)
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+// Izinkan Redaksi & Admin mengakses halaman ini
+if (!profile || (profile.role !== 'admin' && profile.role !== 'redaksi')) {
+    return Astro.redirect('/'); 
+}
+---
+
+<Layout title="Profil Saya | MEDIACIVITAS">
+    <div class="admin-view-container">
+        
+        {/* Panggil React Component & Kirim ID User yang Sedang Login */}
+        <ProfileDashboardReact 
+            client:only="react" 
+            userId={user.id} 
+        />
+        
+    </div>
+</Layout>
+
+<style>
+    .admin-view-container {
+        width: 100%;
+        max-width: 1200px; /* Dibuat sedikit lebih sempit agar rapi */
+        margin: 0 auto;    
+        padding: 40px 20px; 
+        min-height: 80vh;  
+    }
+</style>

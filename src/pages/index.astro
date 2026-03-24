@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import HeroSlider from '../components/HeroSlider.astro'; 
 import SubNewsCard from '../components/SubNewsCard.astro'; 
+import MagazinePromo from '../components/MagazinePromo.astro'; // <-- 1. IMPORT PROMO MAJALAH
 import { supabase } from '../lib/supabase';
 import CategoryNav from '../components/CategoryNav.astro';
 import InstagramPromo from '../components/InstagramPromo.astro';
@@ -24,24 +25,20 @@ let query = supabase
 const { data: allArticles, error } = await query.limit(20);
 if (error) console.error("Error fetch news:", error);
 
-// Filter Manual Kategori (FIXED: Menggunakan Array.isArray & .some)
+// Filter Manual Kategori
 let filteredArticles = allArticles || [];
 
 if (activeCat) {
     filteredArticles = filteredArticles.filter(a => {
         const cats = a.categories;
-        // Cek apakah categories adalah array (karena relasi Supabase biasanya array)
         if (Array.isArray(cats)) {
             return cats.some((c: any) => c.slug === activeCat);
         }
-        // Fallback jikalau struktur datanya object tunggal
         return (cats as any)?.slug === activeCat;
     });
 }
 
-// Logika Tampilan Grid:
-// 1. Jika pakai kategori: Tampilkan semua hasil filter.
-// 2. Jika Homepage (tanpa kategori): Skip 5 berita pertama (karena sudah ada di HeroSlider).
+// Logika Tampilan Grid
 let gridArticles = [];
 
 if (activeCat) {
@@ -57,6 +54,8 @@ if (activeCat) {
     <div id="hero-slider-section">
         <HeroSlider />
     </div>
+
+    <MagazinePromo />
 
     <div class="section-latest container">
         
@@ -113,12 +112,12 @@ if (activeCat) {
 
     /* Section Hero Slider */
     #hero-slider-section {
-        margin-bottom: 50px;
+        margin-bottom: 0px; /* Disesuaikan agar mepet dengan Magazine Promo */
         /* Full width background handled by component */
     }
     
     /* Section Berita Grid */
-    .section-latest { margin-bottom: 80px; }
+    .section-latest { margin-bottom: 80px; margin-top: 50px; }
     
     .section-label {
         font-size: 1.2rem;
