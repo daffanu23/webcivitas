@@ -2,75 +2,106 @@
 import { LogIn, Sun, Moon } from 'lucide-react';
 import { getSupabaseServer } from '../lib/supabase';
 
-// UPGRADE KE getUser()
+// 1. Inisialisasi Supabase & Ambil User
 const supabase = getSupabaseServer(Astro.cookies);
 const { data: { user } } = await supabase.auth.getUser();
 
+// 2. Default State
 let name = 'User';
 let avatar = '';
 let firstName = 'User';
+let userRole = null;
 
+// 3. Ambil Data Profil & Role jika User Login
 if (user) {
     const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url')
+        .select('full_name, avatar_url, role')
         .eq('id', user.id)
         .single();
     
     name = profile?.full_name || 'User';
     firstName = name.split(' ')[0]; 
     avatar = profile?.avatar_url || `https://ui-avatars.com/api/?name=${name}&background=111&color=fff`;
+    userRole = profile?.role;
 }
+
+// 4. Logika Active Path
+const currentPath = Astro.url.pathname;
+const isActive = (path: string) => {
+    if (path === '/' && currentPath === '/') return 'active';
+    if (path !== '/' && currentPath.startsWith(path)) return 'active';
+    return '';
+};
 ---
 
-<header class="top-navbar">
-    <div class="container navbar-content">
+<header class="sleek-navbar" transition:persist="navbar">
+    <div class="container navbar-inner">
         
-        <div class="nav-left">
-            {/* HTML LANGSUNG RENDER PROFIL ATAU TOMBOL LOGIN! TIDAK ADA LOADING KEDIP! */}
-            {user ? (
-                <div class="auth-wrapper">
-                    <a href="/profile" class="user-pill" title="Lihat Profil">
-                        <img src={avatar} alt={name} class="avatar-img" />
-                        <span class="user-name">{firstName}</span>
-                    </a>
-                    
-                    {/* Tombol Logout sekarang diarahkan ke API Server */}
-                    <form action="/api/auth/logout" method="POST" style="margin: 0;">
-                        <button type="submit" class="btn-logout" title="Keluar">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                        </button>
-                    </form>
-                </div>
-            ) : (
-                <a href="/login" class="btn-login">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
-                    <span>Login</span>
-                </a>
+        {/* KIRI: MENU NAVIGASI (TEXT ONLY, LITE FONT) */}
+        <nav class="nav-left">
+            <a href="/" class={`nav-link ${isActive('/')}`} title="Beranda">Beranda</a>
+            <a href="/arsip" class={`nav-link ${isActive('/arsip')}`} title="Arsip">Arsip</a>
+
+            {user && (
+                <a href="/koleksi" class={`nav-link ${isActive('/koleksi')}`} title="Koleksi">Koleksi</a>
             )}
-        </div>
 
+            {(userRole === 'redaksi' || userRole === 'admin') && (
+                <a href="/redaksi/tulis" class={`nav-link ${isActive('/redaksi/tulis')}`} title="Tulis Berita">Tulis</a>
+            )}
+
+            {userRole === 'admin' && (
+                <a href="/admin/dashboard" class={`nav-link ${isActive('/admin/dashboard')}`} title="Dashboard Admin">Admin</a>
+            )}
+        </nav>
+
+        {/* TENGAH: BRAND LOGO (LITE SIZE) */}
         <div class="nav-center">
-            <span class="brand-text">@mediacivitas</span>
+            <a href="/" class="brand-text">@mediacivitas</a>
         </div>
 
+        {/* KANAN: UTILITIES (JAM) & MINIMALIST AUTH */}
         <div class="nav-right">
-            <button id="theme-toggle" class="theme-btn" aria-label="Ganti Tema">
-                <Sun className="icon-sun" size={20} strokeWidth={2} />
-                <Moon className="icon-moon" size={20} strokeWidth={2} />
-            </button>
+            
+            {/* Jam (Hidden di Mobile) */}
             <div class="time-badge">
                 <span id="clock-time">--:--</span>
                 <span class="divider">|</span>
                 <span id="clock-date">...</span>
             </div>
+
+            {/* Toggle Tema */}
+            <button id="theme-toggle" class="theme-btn" aria-label="Ganti Tema">
+                <Sun className="icon-sun" size={18} strokeWidth={2} />
+                <Moon className="icon-moon" size={18} strokeWidth={2} />
+            </button>
+
+            <div class="util-divider"></div>
+
+            {/* Auth Section (Icon Only) */}
+            {user ? (
+                <div class="auth-wrapper">
+                    <a href="/profile" class="user-pill" title="Lihat Profil">
+                        <img src={avatar} alt={name} class="avatar-img" />
+                    </a>
+                    <form action="/api/auth/logout" method="GET" style="margin: 0;">
+                        <button type="submit" class="btn-logout-icon" title="Keluar">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        </button>
+                    </form>
+                </div>
+            ) : (
+                <a href="/login" class="btn-login-icon" title="Masuk">
+                    <LogIn size={18} strokeWidth={2.5} />
+                </a>
+            )}
         </div>
 
     </div>
 </header>
 
 <script>
-    // SCRIPT SEKARANG SANGAT RINGAN! HANYA MENGURUS TEMA & JAM!
     function applyTheme() {
         const theme = (() => {
             if (typeof localStorage !== 'undefined') {
@@ -108,6 +139,17 @@ if (user) {
         }
     }
 
+    function updateActiveState() {
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.nav-link').forEach(item => {
+            const href = item.getAttribute('href');
+            if (!href) return;
+            item.classList.remove('active');
+            if (href === '/' && currentPath === '/') item.classList.add('active');
+            else if (href !== '/' && currentPath.startsWith(href)) item.classList.add('active');
+        });
+    }
+
     let clockInterval: ReturnType<typeof setInterval> | undefined;
 
     document.addEventListener('astro:after-swap', applyTheme);
@@ -115,6 +157,7 @@ if (user) {
     document.addEventListener('astro:page-load', () => {
         applyTheme(); 
         handleThemeToggle();
+        updateActiveState();
         updateClock();
         if (clockInterval) clearInterval(clockInterval);
         clockInterval = setInterval(updateClock, 1000);
@@ -128,32 +171,143 @@ if (user) {
 </script>
 
 <style>
-    /* STYLE SAMA PERSIS SEPERTI SEBELUMNYA - TIDAK ADA YG BERUBAH */
-    .top-navbar { width: 100%; padding: 15px 0; position: sticky; top: 0; z-index: 100; background-color: var(--bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-muted); transition: all 0.3s ease; }
-    .navbar-content { display: flex; justify-content: space-between; align-items: center; height: 40px; }
-    .nav-left { flex: 1; display: flex; justify-content: flex-start; align-items: center; }
-    
-    .auth-wrapper { display: flex; align-items: center; gap: 8px; }
-    .btn-login { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); font-weight: 700; font-size: 0.95rem; padding: 8px 16px; border-radius: 8px; transition: background 0.2s; }
-    .btn-login:hover { background-color: var(--bg-light); }
-    .user-pill { display: flex; align-items: center; gap: 10px; text-decoration: none; background: var(--bg-light); border: 1px solid var(--border-muted); padding: 4px 16px 4px 4px; border-radius: 50px; transition: all 0.2s ease; }
-    .user-pill:hover { background: var(--border-muted); border-color: var(--border); transform: translateY(-1px); }
-    .avatar-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-muted); }
-    .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
-    .btn-logout { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid transparent; background: transparent; border-radius: 50%; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
-    .btn-logout:hover { background: var(--bg-light); color: var(--danger); border-color: var(--border-muted); }
+    /* 1. KONTINER UTAMA NAVBAR */
+    .sleek-navbar {
+        width: 100%;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background-color: rgba(var(--bg-rgb, 10, 10, 10), 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+        transition: all 0.3s ease;
+    }
 
+    :global(body:not(.light)) .sleek-navbar { background-color: rgba(15, 15, 15, 0.8); }
+    :global(body.light) .sleek-navbar { background-color: rgba(255, 255, 255, 0.85); }
+
+    .navbar-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 60px;
+        padding: 0 20px;
+        max-width: 1440px; 
+        margin: 0 auto;
+    }
+
+    /* 2. KIRI: NAVIGASI LITE */
+    .nav-left {
+        flex: 1; display: flex; justify-content: flex-start; align-items: center; gap: 20px;
+    }
+
+    .nav-link {
+        color: var(--text-muted); text-decoration: none; 
+        font-weight: 400; /* Font Lite */
+        font-size: 0.9rem; /* Ukuran lebih kecil */
+        transition: color 0.2s ease;
+        position: relative;
+    }
+
+    /* Persiapan Garis Bawah (Sembunyi secara default dengan scaleX(0)) */
+    .nav-link::after {
+        content: ''; 
+        position: absolute; 
+        bottom: -4px; 
+        left: 0; 
+        width: 100%; 
+        height: 2px;
+        background-color: var(--text); 
+        border-radius: 2px;
+        transform: scaleX(0); /* Menyembunyikan garis */
+        transform-origin: left; /* Garis akan merayap dari kiri */
+        transition: transform 0.3s ease; /* Durasi animasi mulus */
+    }
+
+    .nav-link:hover { color: var(--text); }
+    
+    .nav-link.active {
+        color: var(--text); font-weight: 500;
+    }
+
+    /* Garis bawah selalu full untuk menu yang sedang aktif */
+    .nav-link.active::after {
+        transform: scaleX(1);
+    }
+
+    /* ANIMASI HOVER EKSKLUSIF UNTUK PC/LAPTOP (Perangkat dengan Mouse) */
+    @media (hover: hover) and (pointer: fine) {
+        .nav-link:hover::after {
+            transform: scaleX(1); /* Garis merayap penuh saat mouse di atasnya */
+        }
+    }
+
+    /* 3. TENGAH: BRAND LITE */
     .nav-center { flex: 1; display: flex; justify-content: center; }
-    .brand-text { font-family: 'Poppins', sans-serif; font-weight: 500; font-style: italic; font-size: 1.1rem; color: var(--text); letter-spacing: -0.5px; }
-
-    .nav-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
-    .time-badge { display: flex; align-items: center; gap: 10px; background: var(--bg-light); color: var(--text-muted); border: 1px solid var(--border-muted); padding: 8px 16px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; }
-    .divider { color: var(--border); }
     
-    .theme-btn { background: transparent; border: none; cursor: pointer; color: var(--text); padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-    .theme-btn:hover { background-color: var(--bg-light); color: var(--highlight); transform: rotate(15deg); }
+    .brand-text {
+        font-family: 'Poppins', sans-serif; font-weight: 500; font-style: italic;
+        font-size: 1rem; /* Ukuran Lite */
+        color: var(--text); letter-spacing: -0.5px; text-decoration: none;
+    }
+
+    /* 4. KANAN: UTILS & AUTH MINIMALIST */
+    .nav-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+    
+    .time-badge {
+        display: flex; align-items: center; gap: 8px; color: var(--text-muted);
+        font-size: 0.8rem; font-weight: 400;
+    }
+    
+    .divider { color: var(--border); }
+    .util-divider { width: 1px; height: 18px; background-color: var(--border); margin: 0 4px; }
+
+    .theme-btn {
+        background: transparent; border: none; cursor: pointer; color: var(--text-muted);
+        padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s;
+    }
+    .theme-btn:hover { color: var(--text); background-color: var(--bg-light); transform: rotate(15deg); }
     .icon-sun { display: block; } .icon-moon { display: none; }
     :global(body.light) .icon-sun { display: none; } :global(body.light) .icon-moon { display: block; }
+
+    /* AUTH BUTTONS (ICON ONLY) */
+    .auth-wrapper { display: flex; align-items: center; gap: 8px; }
     
-    @media (max-width: 600px) { .time-badge { display: none; } .nav-right { flex: 0; } }
+    .btn-login-icon {
+        display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+        text-decoration: none; color: var(--text); background: var(--bg-light);
+        border: 1px solid var(--border); border-radius: 50%; transition: all 0.2s ease;
+    }
+    .btn-login-icon:hover { background: var(--text); color: var(--bg); transform: translateY(-2px); }
+
+    .user-pill {
+        display: flex; align-items: center; justify-content: center; text-decoration: none;
+        background: transparent; border: 1px solid var(--border); padding: 2px;
+        border-radius: 50%; transition: border-color 0.2s ease;
+    }
+    .user-pill:hover { border-color: var(--text-muted); }
+    .avatar-img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+
+    .btn-logout-icon {
+        display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+        background: transparent; border: 1px solid transparent; border-radius: 50%;
+        color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+    }
+    .btn-logout-icon:hover { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+
+    /* --- RESPONSIVE MOBILE --- */
+    @media (max-width: 900px) {
+        .time-badge { display: none; } 
+    }
+
+    @media (max-width: 600px) {
+        .navbar-inner { padding: 0 15px; }
+        .nav-center { display: none; } /* Sembunyikan brand di tengah agar menu kiri dan kanan muat */
+        .nav-left { gap: 12px; overflow-x: auto; padding-bottom: 2px; } 
+        .nav-left::-webkit-scrollbar { display: none; }
+        .nav-link { font-size: 0.85rem; white-space: nowrap; }
+        .nav-right { flex: 0; gap: 8px; }
+    }
 </style>
