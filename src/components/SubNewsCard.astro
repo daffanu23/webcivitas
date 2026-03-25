@@ -1,11 +1,11 @@
 ---
-import { User, Clock } from 'lucide-react';
+import { User, Clock, Calendar } from 'lucide-react'; // 1. Tambahkan import Calendar
 
 const { article } = Astro.props;
 
-// --- 1. LOGIC WAKTU (Time Ago) ---
-const getRelativeTime = (dateString: string) => {
-    if (!dateString) return "";
+// --- 1. LOGIC WAKTU (Time Ago & Icon Switcher) ---
+const getRelativeTimeInfo = (dateString: string) => {
+    if (!dateString) return { text: "", isDays: false };
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -14,29 +14,28 @@ const getRelativeTime = (dateString: string) => {
     const hours = Math.floor(diffInSeconds / 3600);
     const days = Math.floor(diffInSeconds / 86400);
 
-    if (days > 0) return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    if (hours > 0) return `${hours} jam lalu`;
-    if (minutes > 0) return `${minutes} mnt lalu`;
-    return "Baru saja";
+    // Jika lebih dari 0 hari, kembalikan teks tanggal dan flag isDays: true
+    if (days > 0) return { 
+        text: date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }), 
+        isDays: true 
+    };
+    if (hours > 0) return { text: `${hours} jam lalu`, isDays: false };
+    if (minutes > 0) return { text: `${minutes} mnt lalu`, isDays: false };
+    return { text: "Baru saja", isDays: false };
 };
 
 // --- 2. LOGIC PEMBERSIH HTML (Strip Tags Kuat) ---
 const stripHtml = (html: string) => {
    if (!html) return "";
    
-   // A. Ganti tag block (<p>, <br>, <div>, </h1>) dengan SPASI agar teks tidak nempel
    let text = html.replace(/<\/?[^>]+(>|$)/g, (match) => {
-       // Kalau tag penutup block level, kasih spasi
        if (match.match(/<\/(p|div|h[1-6]|li|tr)>/i) || match.match(/<br\s*\/?>/i)) {
            return ' ';
        }
-       return ''; // Tag lain hapus aja
+       return ''; 
    });
    
-   // B. Decode entities sederhana
    text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-   
-   // C. Hapus spasi berlebih
    return text.replace(/\s+/g, ' ').trim();
 };
 
@@ -52,9 +51,10 @@ const data = article || {
 
 // --- 3. PROSES EXCERPT ---
 const cleanContent = stripHtml(data.content || "");
-// Ambil 100 karakter pertama biar kartu tidak kepanjangan
 const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? "..." : "");
 
+// 4. Panggil fungsi waktu yang baru
+const timeInfo = getRelativeTimeInfo(data.created_at);
 ---
 
 <a href={`/berita/${data.slug}`} class="news-card">
@@ -74,8 +74,9 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
                 <span>{data.profiles?.full_name || 'Redaksi'}</span>
             </div>
             <div class="meta-item time">
-                <Clock size={14} />
-                <span>{getRelativeTime(data.created_at)}</span>
+                {/* LOGIKA IKON DINAMIS */}
+                {timeInfo.isDays ? <Calendar size={14} /> : <Clock size={14} />}
+                <span>{timeInfo.text}</span>
             </div>
         </div>
     </div>
@@ -92,21 +93,14 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
         border: 1px solid var(--border);
         border-radius: 12px;
         overflow: hidden;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        height: 100%; /* Pastikan tinggi seragam di Grid */
-    }
-
-    /* Efek Hover: Naik & Shadow */
-    .news-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 6px 6px 0px var(--border); /* Shadow Solid Brutalist */
-        border-color: var(--text);
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        height: 100%; 
     }
 
     /* AREA GAMBAR */
     .card-image {
         width: 100%;
-        height: 180px; /* Tinggi tetap biar rapi */
+        height: 180px; 
         border-bottom: 1px solid var(--border);
         overflow: hidden;
         background: var(--bg-light);
@@ -119,16 +113,12 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
         transition: transform 0.5s ease;
     }
 
-    .news-card:hover .card-image img {
-        transform: scale(1.05);
-    }
-
     /* AREA TEKS */
     .card-content {
         padding: 20px;
         display: flex;
         flex-direction: column;
-        flex-grow: 1; /* Isi sisa ruang agar footer sejajar */
+        flex-grow: 1; 
     }
 
     .card-title {
@@ -138,7 +128,6 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
         margin-bottom: 10px;
         color: var(--text);
         
-        /* Batasi judul max 2 baris */
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -151,7 +140,6 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
         margin-bottom: 20px;
         line-height: 1.6;
         
-        /* Batasi excerpt max 3 baris */
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
@@ -161,13 +149,13 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
     .card-meta {
         display: flex;
         align-items: center;
-        justify-content: space-between; /* Penulis kiri, Waktu kanan */
+        justify-content: space-between; 
         font-size: 0.8rem;
         font-weight: 600;
         color: var(--text-muted);
         padding-top: 15px;
         border-top: 1px dashed var(--border-muted);
-        margin-top: auto; /* Dorong ke paling bawah */
+        margin-top: auto; 
     }
 
     .meta-item {
@@ -178,4 +166,18 @@ const excerpt = cleanContent.substring(0, 100) + (cleanContent.length > 100 ? ".
     
     .author { max-width: 60%; }
     .author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ======================================================
+       EFEK HOVER EKSKLUSIF PC (DESKTOP ONLY)
+       ====================================================== */
+    @media (hover: hover) and (pointer: fine) {
+        .news-card:hover {
+            border-color: var(--text); 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); 
+        }
+
+        .news-card:hover .card-image img {
+            transform: scale(1.05); 
+        }
+    }
 </style>
