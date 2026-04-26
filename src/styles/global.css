@@ -63,7 +63,6 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    transition: background-color 0.3s, color 0.3s; /* Efek transisi halus */
 }
 
 a { text-decoration: none; color: inherit; }
@@ -74,15 +73,4 @@ a { text-decoration: none; color: inherit; }
     margin: 0 auto;
     padding: 0 20px;
     width: 100%;
-}
-
-/* ANIMASI KONTEN (Slide Up) */
-.animate-wrapper {
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-}
-
-@keyframes slideUp {
-    0% { opacity: 0; transform: translateY(40px); }
-    100% { opacity: 1; transform: translateY(0); }
 }

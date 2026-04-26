@@ -1,7 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import AdminDashboardReact from '../../components/AdminDashboard'; 
-import MagazineManager from '../../components/MagazineManager'; // IMPORT KOMPONEN MAJALAH
+import AdminPanel from '../../components/AdminPanel'; 
 import { getSupabaseServer } from '../../lib/supabase';
 
 const supabase = getSupabaseServer(Astro.cookies);
@@ -24,71 +23,33 @@ if (!profile || profile.role !== 'admin') {
     return Astro.redirect('/'); 
 }
 
-// 3. Ambil Data Awal (Categories & Articles saja)
+// 3. Ambil Data Awal
 const { data: categories } = await supabase.from('categories').select('*').order('name');
-
 const { data: articles } = await supabase
     .from('articles')
     .select('*, profiles(full_name), article_categories(category_id)')
     .order('created_at', { ascending: false }); 
 ---
 
-<Layout title="Admin Dashboard | MEDIACIVITAS">
-    <div class="admin-view-container">
-        
-        {/* BAGIAN 1: MANAJEMEN BERITA, KATEGORI, DAN PROMO IG */}
-        <AdminDashboardReact 
+<Layout title="Admin Panel | MEDIACIVITAS">
+    <div class="admin-page-wrapper">
+        <AdminPanel 
             client:only="react" 
             serverCategories={categories || []} 
             serverArticles={articles || []}
+            userId={user.id}
         />
-
-        {/* GARIS PEMISAH ANTAR SECTION */}
-        <div class="section-divider">
-            <span>Manajemen Penerbitan Edisi Khusus</span>
-        </div>
-
-        {/* BAGIAN 2: MANAJEMEN TABLOID & MAJALAH (PDF) */}
-        {/* Kita wajib melempar user.id agar database tahu siapa yang upload */}
-        <MagazineManager 
-            client:only="react" 
-            userId={user.id} 
-        />
-        
     </div>
 </Layout>
 
-<style>
-    .admin-view-container {
-        width: 100%;
-        max-width: 1440px; 
-        margin: 0 auto;    
-        padding: 40px 20px; 
-        min-height: 80vh;  
+<style is:global>
+    /* Biarkan Navbar global tetap muncul */
+    body {
+        background-color: var(--bg);
     }
 
-    /* Style untuk Garis Pemisah yang Elegan */
-    .section-divider {
-        display: flex;
-        align-items: center;
-        text-align: center;
-        margin: 60px 0 40px 0;
-        color: var(--text-muted);
-    }
-
-    .section-divider::before,
-    .section-divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 2px dashed var(--border);
-    }
-
-    .section-divider span {
-        padding: 0 20px;
-        font-weight: 700;
-        font-size: 1.1rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--text);
+    /* Sesuaikan padding agar tidak tertutup Navbar sticky */
+    .admin-page-wrapper {
+        min-height: 100vh;
     }
 </style>

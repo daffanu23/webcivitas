@@ -19,7 +19,7 @@ const heroSlides = slides;
                 <div class={`hero-slide ${index === 0 ? 'active' : ''}`} data-index={index}>
                     
                     {/* Layer 1: Background Image dengan Optimasi Astro */}
-                    <div class="slide-bg">
+                    <div class="slide-bg" style="aspect-ratio: 2/1; background: var(--bg-light);">
                         {item.cover_url ? (
                             <Image 
                                 src={item.cover_url} 
@@ -29,6 +29,7 @@ const heroSlides = slides;
                                 format="webp"
                                 quality="mid"
                                 loading={index === 0 ? "eager" : "lazy"} 
+                                fetchpriority={index === 0 ? "high" : "auto"}
                                 class="hero-img"
                             />
                         ) : (
