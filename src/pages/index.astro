@@ -16,7 +16,7 @@ let query = supabase
   .select(`
     id, title, slug, created_at, cover_url, content,
     profiles ( full_name ),
-    categories ( slug )
+    article_categories ( category_id, categories ( name, slug ) )
   `)
   .eq('status', 'published')
   .order('created_at', { ascending: false });
@@ -25,26 +25,27 @@ let query = supabase
 const { data: allArticles, error } = await query.limit(20);
 if (error) console.error("Error fetch news:", error);
 
-// Filter Manual Kategori
+// Filter Manual Kategori (jika ada param ?kategori=)
 let filteredArticles = allArticles || [];
 
 if (activeCat) {
     filteredArticles = filteredArticles.filter(a => {
-        const cats = a.categories;
+        const cats = a.article_categories;
         if (Array.isArray(cats)) {
-            return cats.some((c: any) => c.slug === activeCat);
+            return cats.some((c: any) => c.categories?.slug === activeCat);
         }
-        return (cats as any)?.slug === activeCat;
+        return false;
     });
 }
 
-// Logika Tampilan Grid
+// Logika Tampilan Grid & Slider
+const heroArticles = filteredArticles.slice(0, 5); // 5 Pertama untuk Slider
 let gridArticles = [];
 
 if (activeCat) {
     gridArticles = filteredArticles;
 } else {
-    // Ambil berita ke-6 sampai ke-14 (9 item)
+    // Jika di Home tanpa filter, ambil berita ke-6 sampai ke-14 (9 item)
     gridArticles = filteredArticles.slice(5, 14); 
 }
 ---
@@ -52,7 +53,7 @@ if (activeCat) {
 <Layout title="MEDIACIVITAS - Berita Terkini">
 
     <div id="hero-slider-section">
-        <HeroSlider />
+        <HeroSlider slides={heroArticles} />
     </div>
 
     <MagazinePromo />

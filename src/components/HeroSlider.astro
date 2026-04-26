@@ -1,17 +1,12 @@
 ---
-import { getSupabaseServer } from '../lib/supabase';
+import { Image } from 'astro:assets';
 
-const supabase = getSupabaseServer(Astro.cookies);
+interface Props {
+  slides: any[];
+}
 
-// Ambil 5 Berita Terbaru (Published)
-const { data: slides } = await supabase
-  .from('articles')
-  .select('*, profiles(full_name), article_categories(category_id, categories(name))')
-  .eq('status', 'published') 
-  .order('created_at', { ascending: false }) 
-  .limit(5); 
-
-const heroSlides = slides || [];
+const { slides = [] } = Astro.props;
+const heroSlides = slides;
 ---
 
 {/* Container Luar untuk membatasi lebar & memberi jarak dari Navbar */}
@@ -23,13 +18,22 @@ const heroSlides = slides || [];
             {heroSlides.map((item, index) => (
                 <div class={`hero-slide ${index === 0 ? 'active' : ''}`} data-index={index}>
                     
-                    {/* Layer 1: Background Image */}
+                    {/* Layer 1: Background Image dengan Optimasi Astro */}
                     <div class="slide-bg">
-                        <img 
-                            src={item.cover_url || 'https://placehold.co/1200x600'} 
-                            alt={item.title} 
-                            loading={index === 0 ? "eager" : "lazy"} 
-                        />
+                        {item.cover_url ? (
+                            <Image 
+                                src={item.cover_url} 
+                                alt={item.title} 
+                                width={1200}
+                                height={600}
+                                format="webp"
+                                quality="mid"
+                                loading={index === 0 ? "eager" : "lazy"} 
+                                class="hero-img"
+                            />
+                        ) : (
+                            <img src="https://placehold.co/1200x600" alt="Placeholder" class="hero-img" />
+                        )}
                         <div class="overlay-gradient"></div>
                     </div>
 
