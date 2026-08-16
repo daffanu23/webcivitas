@@ -1,9 +1,9 @@
 ---
 import { getSupabaseServer } from '../lib/supabase';
+import { ArrowRight, BookOpen } from 'lucide-react';
 
 const supabase = getSupabaseServer(Astro.cookies);
 
-// Ambil 1 Majalah/Tabloid/Wartabasement Terbaru
 const { data: latestMagazine, error } = await supabase
     .from('magazines')
     .select('*')
@@ -17,172 +17,250 @@ if (error || !latestMagazine) {
 
 // --- LOGIKA TEMA WARNA (COLOR CODING) ---
 const jenis = latestMagazine.jenis || 'Majalah';
-let themeColor = '#dc2626'; // Default: Merah (Majalah)
-let themeText = 'white';    // Default: Teks Putih
+let themeColor = '#ef4444'; // Merah menyala
+let themeText = '#ffffff';
 
 if (jenis === 'Tabloid') {
-    themeColor = '#2563eb'; // Biru untuk Tabloid
-    themeText = 'white';
+    themeColor = '#3b82f6'; // Biru terang
 } else if (jenis === 'Wartabasement') {
-    themeColor = '#facc15'; // Kuning untuk Wartabasement
-    themeText = '#1e293b';  // Teks Gelap (Hitam Keabu-abuan) agar terbaca di background kuning
+    themeColor = '#f59e0b'; // Kuning emas
+    themeText = '#1a1a1a';  // Teks tombol gelap khusus untuk warna kuning
 }
 ---
 
-<section class="magazine-promo-section">
-    <div class="container">
-        {/* Kita suntikkan variabel warna ke wrapper utama */}
-        <div class="promo-wrapper" style={`--theme-color: ${themeColor}; --theme-text: ${themeText};`}>
-            
-            {/* KIRI: 3D COVER DISPLAY */}
-            <div class="promo-visual">
-                <div class="book-container">
-                    <div class="book">
-                        <img src={latestMagazine.cover_url} alt={`Cover ${latestMagazine.title}`} class="book-cover" />
-                        <div class="book-spine"></div>
-                    </div>
-                    <div class="book-shadow"></div>
-                </div>
+<section class="premium-promo-section container">
+    <div class="promo-glass-card" style={`--theme-color: ${themeColor}; --theme-text: ${themeText};`}>
+        
+        {/* CAHAYA PENDAR (AMBIENT GLOW) DI BELAKANG BUKU */}
+        <div class="ambient-glow"></div>
+
+        {/* KIRI: TEKS MINIMALIS */}
+        <div class="promo-content">
+            <div class="meta-header">
+                <span class="badge-jenis">{jenis}</span>
+                <span class="meta-angkatan">
+                    {latestMagazine.angkatan ? `Angkatan ${latestMagazine.angkatan}` : 'Rilis Terbaru'}
+                </span>
             </div>
-
-            {/* KANAN: KONTEN BERSIH (HARD SELLING) */}
-            <div class="promo-content">
-                <div class="badge-wrapper">
-                    <span class="badge-highlight">{jenis}</span>
-                    <span class="badge-angkatan">{latestMagazine.angkatan || 'Terbaru'}</span>
-                </div>
+            
+            <h2 class="title">{latestMagazine.title}</h2>
+            
+            <div class="action-area">
+                {/* TOMBOL UTAMA (KAPSUL) */}
+                <a href={`/terbitan/${latestMagazine.id}`} class="btn-glow">
+                    <BookOpen size={18} /> Baca Edisi Ini
+                </a>
                 
-                <h2 class="magazine-title">{latestMagazine.title}</h2>
-                <p class="magazine-desc">{latestMagazine.description || 'Simak ulasan mendalam pada edisi spesial kami kali ini. Dipersembahkan khusus oleh tim LPM Civitas.'}</p>
-
-                {/* CALL TO ACTION (CTA) */}
-                <div class="promo-action">
-                    <a href={latestMagazine.pdf_url} target="_blank" rel="noopener noreferrer" class="btn-read-pdf">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        Baca {jenis} (PDF)
-                    </a>
-                </div>
-
+                {/* TEKS AJAKAN (EXPLORE LINK) */}
+                <a href="/terbitan" class="btn-text-explore">
+                    Baca Edisi Cetak Kami yang Lain! <ArrowRight size={18} className="arrow-icon" />
+                </a>
             </div>
         </div>
+
+        {/* KANAN: COVER BUKU */}
+        <div class="promo-visual">
+            <img 
+                src={latestMagazine.cover_url} 
+                alt={`Cover ${latestMagazine.title}`} 
+                class="book-cover"
+                loading="eager" 
+            />
+        </div>
+
     </div>
 </section>
 
 <style>
-    .magazine-promo-section {
-        padding: 80px 0;
-        background: var(--bg-light);
-        font-family: 'Poppins', sans-serif;
-        border-top: 1px solid var(--border);
-        border-bottom: 1px solid var(--border);
-        
-        /* JURUS FULL-BLEED: Memaksa background abu-abu tembus full kiri-kanan */
-        width: 100vw;
+    .premium-promo-section {
+        margin-top: 40px;
+        margin-bottom: 60px;
+    }
+
+    .promo-glass-card {
         position: relative;
-        left: 50%;
-        right: 50%;
-        margin-left: -50vw;
-        margin-right: -50vw;
-    }
-
-    /* 👇 TAMBAHKAN/UBAH BAGIAN INI UNTUK MENYAMAKAN LEBAR DENGAN SLIDER 👇 */
-    .magazine-promo-section .container {
-        /* Ubah angka ini menyamai lebar Hero Slider Anda (Contoh: 1440px) */
-        /* Jika slider Anda 100% full layar, ubah menjadi max-width: 100%; */
-        max-width: 1160px; 
-        margin: 0 auto;
-        padding: 0 20px;
-    }
-
-    .promo-wrapper {
         display: flex;
         align-items: center;
-        gap: 60px;
-        background: var(--bg);
+        justify-content: space-between;
+        padding: 45px 60px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 24px;
-        padding: 50px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.05);
-        border: 1px solid var(--border);
-        width: 100%; /* Pastikan kotaknya melar mengikuti container */
+        overflow: hidden;
+        gap: 40px;
     }
 
-    /* --- EFEK 3D BUKU --- */
-    .promo-visual { flex: 0 0 320px; perspective: 1000px; }
-    
-    .book-container {
-        position: relative; transform: rotateY(-15deg) rotateX(5deg);
-        transform-style: preserve-3d; transition: transform 0.5s ease;
-    }
-    
-    .promo-visual:hover .book-container { transform: rotateY(-5deg) rotateX(0deg) scale(1.05); }
-    
-    .book { position: relative; width: 100%; border-radius: 4px 12px 12px 4px; transform-style: preserve-3d; }
-    .book-cover { width: 100%; height: auto; border-radius: 4px 12px 12px 4px; box-shadow: inset 4px 0 10px rgba(0,0,0,0.1); z-index: 2; position: relative; }
-    
-    .book-spine {
-        position: absolute; top: 2%; left: -15px; width: 20px; height: 96%;
-        background: #e5e5e5; transform: rotateY(-90deg); transform-origin: right;
-        border-radius: 4px 0 0 4px; background-image: linear-gradient(to right, #ccc 0%, #eee 100%);
+    /* CAHAYA PENDAR LATAR */
+    .ambient-glow {
+        position: absolute;
+        right: 5%;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 300px;
+        height: 300px;
+        background: var(--theme-color);
+        filter: blur(120px);
+        opacity: 0.15;
+        z-index: 0;
+        pointer-events: none;
     }
 
-    .book-shadow {
-        position: absolute; bottom: -20px; left: 5%; width: 90%; height: 30px;
-        background: rgba(0,0,0,0.2); filter: blur(15px); transform: rotateX(90deg) translateZ(-30px);
+    /* --- KONTEN KIRI --- */
+    .promo-content {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        max-width: 600px;
     }
 
-    /* --- KONTEN KANAN BERSIH --- */
-    .promo-content { flex: 1; }
-
-    .badge-wrapper { display: flex; gap: 10px; margin-bottom: 20px; }
-
-    /* MENGGUNAKAN VARIABEL TEMA DINAMIS */
-    .badge-highlight {
-        background: var(--theme-color); 
-        color: var(--theme-text); 
-        padding: 6px 16px;
-        border-radius: 50px; font-size: 0.85rem; font-weight: 700;
-        text-transform: uppercase; letter-spacing: 1px;
+    .meta-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
     }
 
-    .badge-angkatan {
-        background: transparent; color: var(--text-muted);
-        border: 1px solid var(--border); padding: 6px 16px;
-        border-radius: 50px; font-size: 0.85rem; font-weight: 600;
+    .badge-jenis {
+        background: var(--theme-color);
+        color: var(--theme-text);
+        padding: 4px 14px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
 
-    .magazine-title {
-        font-size: 2.5rem; font-weight: 600; line-height: 1.2;
-        margin: 0 0 20px 0; color: var(--text); letter-spacing: -0.5px;
+    .meta-angkatan {
+        color: rgba(255,255,255,0.5);
+        font-size: 0.9rem;
+        font-weight: 500;
     }
 
-    .magazine-desc {
-        font-size: 1.1rem; color: var(--text-muted); line-height: 1.6;
-        margin-bottom: 40px; max-width: 600px;
+    .title {
+        color: #ffffff;
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1.4;
+        margin-bottom: 35px;
+        letter-spacing: -0.2px;
     }
 
-    /* CALL TO ACTION JUGA MENGIKUTI TEMA DINAMIS */
-    .btn-read-pdf {
-        display: inline-flex; align-items: center; gap: 10px;
-        background: var(--theme-color); 
-        color: var(--theme-text); 
-        padding: 18px 40px;
-        border-radius: 50px; font-size: 1.1rem; font-weight: 600;
-        text-decoration: none; 
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* Shadow netral */
+    /* --- AREA AKSI (SUSUNAN ATAS BAWAH) --- */
+    .action-area {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    /* 1. Tombol Baca (Kapsul Aerodinamis Glow) */
+    .btn-glow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 32px;
+        border-radius: 50px; 
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-decoration: none;
         transition: all 0.3s ease;
+        background: rgba(0, 0, 0, 0.4); 
+        color: #ffffff;
+        border: 1px solid var(--theme-color);
+        box-shadow: 0 0 20px -5px var(--theme-color); 
+    }
+    
+    .btn-glow:hover {
+        background: var(--theme-color);
+        color: var(--theme-text);
+        box-shadow: 0 0 35px 0 var(--theme-color); 
+        transform: translateY(-2px);
     }
 
-    .btn-read-pdf:hover {
-        filter: brightness(0.9); /* Menggelapkan warna sedikit saat di-hover */
-        transform: translateY(-3px);
-        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+    /* 2. Teks Ajakan Ke Rak Buku (Elegant Underline) */
+    .btn-text-explore {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.6); 
+        text-decoration: none;
+        transition: all 0.3s ease;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255,255,255,0.15); /* Garis redup standby */
     }
 
-    @media (max-width: 900px) {
-        .promo-wrapper { flex-direction: column; text-align: center; padding: 40px 20px; }
-        .promo-visual { flex: 0 0 auto; width: 250px; margin: 0 auto 30px auto; }
-        .badge-wrapper { justify-content: center; }
-        .magazine-desc { margin: 0 auto 30px auto; }
-        .btn-read-pdf { width: 100%; justify-content: center; }
+    .btn-text-explore:hover {
+        color: #ffffff; 
+        border-bottom-color: var(--theme-color); /* Menyala sesuai warna */
+    }
+
+    .btn-text-explore .arrow-icon {
+        transition: transform 0.3s ease, color 0.3s ease;
+    }
+    
+    .btn-text-explore:hover .arrow-icon {
+        transform: translateX(6px); 
+        color: var(--theme-color);
+    }
+
+    /* --- VISUAL KANAN (BUKU) --- */
+    .promo-visual {
+        position: relative;
+        z-index: 1;
+        flex-shrink: 0;
+        perspective: 1000px;
+    }
+
+    .book-cover {
+        width: 170px;
+        height: auto;
+        border-radius: 2px 6px 6px 2px;
+        transform: rotateY(-15deg) rotateX(4deg);
+        box-shadow: 
+            -5px 5px 15px rgba(0,0,0,0.4), 
+            15px 20px 30px rgba(0,0,0,0.5);
+        transition: transform 0.4s ease;
+    }
+
+    .promo-visual:hover .book-cover {
+        transform: rotateY(-5deg) rotateX(0deg) scale(1.02);
+    }
+
+    /* --- RESPONSIVE MOBILE --- */
+    @media (max-width: 768px) {
+        .promo-glass-card {
+            flex-direction: column-reverse;
+            text-align: center;
+            padding: 40px 20px;
+            gap: 30px;
+        }
+
+        .ambient-glow {
+            top: 20%;
+            right: 50%;
+            transform: translateX(50%);
+        }
+
+        .meta-header {
+            justify-content: center;
+        }
+
+        .action-area {
+            align-items: center; /* Ketengahkan area tombol */
+            width: 100%;
+        }
+
+        .btn-glow {
+            width: 100%;
+        }
+
+        .book-cover {
+            width: 150px;
+            transform: rotateY(0) rotateX(0); /* Matikan efek miring di HP */
+        }
     }
 </style>

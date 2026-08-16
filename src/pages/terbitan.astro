@@ -1,0 +1,123 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getSupabaseServer } from '../lib/supabase';
+
+const supabase = getSupabaseServer(Astro.cookies);
+
+// Ambil data dari Supabase (Hanya butuh id, title, dan cover_url untuk rak buku)
+const { data: magazines, error } = await supabase
+    .from('magazines')
+    .select('id, title, cover_url')
+    .order('created_at', { ascending: false });
+
+if (error) {
+    console.error("Error fetching magazines:", error);
+}
+---
+
+<Layout title="Rak Terbitan | MEDIACIVITAS">
+    <div class="page-header container">
+        <h1 class="page-title">Rak Terbitan</h1>
+        <p class="page-subtitle">Koleksi cetak eksklusif LPM Civitas.</p>
+    </div>
+
+    <div class="container bookshelf-container">
+        <div class="bookshelf-grid">
+            {magazines && magazines.length > 0 ? (
+                magazines.map((mag: any) => (
+                    <a href={`/terbitan/${mag.id}`} class="book-item" title={mag.title}>
+                        <div class="book-cover">
+                            <img src={mag.cover_url} alt={mag.title} loading="lazy" />
+                            <div class="book-spine-shadow"></div>
+                        </div>
+                    </a>
+                ))
+            ) : (
+                <div class="empty-state">
+                    <p>Rak buku masih kosong.</p>
+                </div>
+            )}
+        </div>
+    </div>
+</Layout>
+
+<style>
+    .page-header {
+        padding: 60px 20px 40px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .page-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text);
+        margin-bottom: 10px;
+        letter-spacing: -1px;
+    }
+
+    .page-subtitle { color: var(--text-muted); }
+
+    /* RAK BUKU CLEAN */
+    .bookshelf-container {
+        padding-bottom: 100px;
+    }
+
+    .bookshelf-grid {
+        display: grid;
+        /* Proporsi grid dinamis: minimal 200px lebar buku */
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 40px;
+        justify-items: center;
+    }
+
+    .book-item {
+        display: block;
+        width: 100%;
+        max-width: 260px; /* Batas lebar maksimal buku */
+        aspect-ratio: 1 / 1.414; /* Proporsi kertas A4/Potrait standar */
+        text-decoration: none;
+        perspective: 1000px; /* Persiapan untuk efek 3D hover */
+    }
+
+    .book-cover {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        border-radius: 4px 8px 8px 4px; /* Sudut melengkung khas sisi kanan buku */
+        box-shadow: 
+            -2px 0 5px rgba(0,0,0,0.1), /* Bayangan tulang buku */
+            10px 10px 20px rgba(0,0,0,0.15); /* Bayangan jatuh (Drop shadow) */
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+        transform-origin: left center;
+        background-color: var(--border); /* Warna loading/placeholder */
+    }
+
+    .book-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: inherit;
+    }
+
+    /* Efek bayangan lipatan buku di sebelah kiri (Spine) */
+    .book-spine-shadow {
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 15px;
+        background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%);
+        border-radius: 4px 0 0 4px;
+    }
+
+    /* EFEK HOVER - DITARIK DARI RAK */
+    @media (hover: hover) and (pointer: fine) {
+        .book-item:hover .book-cover {
+            transform: scale(1.05) rotateY(-5deg); /* Membesar dan sedikit miring seperti buku ditarik */
+            box-shadow: 
+                -4px 0 10px rgba(0,0,0,0.15),
+                15px 20px 30px rgba(0,0,0,0.25);
+        }
+    }
+
+    .empty-state { grid-column: 1 / -1; color: var(--text-muted); margin-top: 40px; }
+</style>

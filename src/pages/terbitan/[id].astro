@@ -1,0 +1,284 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getSupabaseServer } from '../../lib/supabase';
+import { ArrowLeft, BookOpen, Users, Info } from 'lucide-react';
+
+const { id } = Astro.params;
+const supabase = getSupabaseServer(Astro.cookies);
+
+// Ambil detail spesifik berdasarkan ID
+const { data: mag, error } = await supabase
+    .from('magazines')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+// Jika file tidak ditemukan, arahkan kembali ke rak buku
+if (error || !mag) {
+    return Astro.redirect('/terbitan');
+}
+---
+
+<Layout title={`${mag.title} | Edisi Cetak`}>
+    <div class="container detail-container">
+        
+        <a href="/terbitan" class="btn-back">
+            <ArrowLeft size={18} /> Kembali Edisi Cetak
+        </a>
+
+        <div class="detail-grid">
+            {/* SISI KIRI: POSTER BUKU */}
+            <div class="book-showcase">
+                <div class="book-cover-large">
+                    <img src={mag.cover_url} alt={mag.title} />
+                    <div class="book-spine-shadow"></div>
+                </div>
+            </div>
+
+            {/* SISI KANAN: METADATA & DESKRIPSI */}
+            <div class="book-info">
+                <div class="badge-wrapper">
+                    <span class="badge" data-jenis={mag.jenis || 'Majalah'}>{mag.jenis || 'Majalah'}</span>
+                    {mag.angkatan && <span class="badge-outline">Angkatan {mag.angkatan}</span>}
+                </div>
+
+                <h1 class="book-title">{mag.title}</h1>
+                
+                <div class="book-description">
+                    <p>{mag.description || 'Tidak ada deskripsi untuk edisi ini.'}</p>
+                </div>
+
+                <div class="metadata-box">
+                    <h3 class="meta-title">
+                        <Users size={18} strokeWidth={2.5} /> 
+                        <span>Susunan Redaksi</span>
+                    </h3>
+                    
+                    <div class="meta-list">
+                        <div class="meta-item">
+                            <span class="meta-label">Pimpinan Redaksi</span>
+                            <span class="meta-value">{mag.pimpinan_redaksi || 'Belum didata'}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Redaksi Pelaksana</span>
+                            <span class="meta-value">{mag.redaktur_pelaksana || 'Belum didata'}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Penyunting</span>
+                            <span class="meta-value">{mag.editor || 'Belum didata'}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Tata Letak (Layout)</span>
+                            <span class="meta-value">{mag.layouter || 'Tim Layout Civitas'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <a href={mag.pdf_url} target="_blank" rel="noopener noreferrer" class="btn-read-pdf">
+                    <BookOpen size={20} />
+                    Baca Edisi Ini (PDF)
+                </a>
+            </div>
+        </div>
+    </div>
+</Layout>
+
+<style>
+    .detail-container {
+        padding: 40px 20px 100px;
+        max-width: 1000px;
+    }
+
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 500;
+        margin-bottom: 30px;
+        transition: color 0.2s;
+    }
+    .btn-back:hover { color: var(--text); }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 50px;
+        align-items: start;
+    }
+
+    /* KIRI: POSTER BUKU */
+    .book-showcase {
+        display: flex;
+        justify-content: center;
+    }
+
+    .book-cover-large {
+        width: 100%;
+        max-width: 320px;
+        aspect-ratio: 1 / 1.414;
+        position: relative;
+        border-radius: 6px 12px 12px 6px;
+        box-shadow: 20px 20px 40px rgba(0,0,0,0.15), -2px 0 5px rgba(0,0,0,0.1);
+    }
+    
+    .book-cover-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: inherit;
+    }
+
+    .book-spine-shadow {
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 25px;
+        background: linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%);
+        border-radius: 6px 0 0 6px;
+    }
+
+    /* KANAN: METADATA */
+    .book-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .badge-wrapper {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .badge, .badge-outline {
+        padding: 6px 14px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .badge[data-jenis="Majalah"] { background: #dc2626; color: white; }
+    .badge[data-jenis="Tabloid"] { background: #2563eb; color: white; }
+    .badge[data-jenis="Wartabasement"] { background: #facc15; color: #1e293b; }
+
+    .badge-outline {
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+    }
+
+    .book-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text);
+        line-height: 1.2;
+        margin-bottom: 20px;
+    }
+
+    .book-description {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        margin-bottom: 30px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    /* --- GAYA BARU SUSUNAN REDAKSI (EDITORIAL STYLE) --- */
+    .metadata-box {
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02); /* Bayangan super halus */
+    }
+
+    .meta-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid var(--border-muted); /* Garis tegas pemisah judul */
+    }
+
+    .meta-list {
+        display: flex;
+        flex-direction: column;
+        /* Hapus gap karena kita pakai padding & border di item */
+    }
+
+    .meta-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 0;
+        border-bottom: 1px dashed var(--border-muted); /* Garis putus-putus ala buku */
+        font-size: 0.95rem;
+    }
+
+    /* Hilangkan garis di item paling bawah agar bersih */
+    .meta-item:last-child {
+        border-bottom: none;
+        padding-bottom: 4px;
+    }
+
+    .meta-label {
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .meta-value {
+        color: var(--text);
+        font-weight: 700;
+        text-align: right; /* Nama diratakan ke kanan */
+    }
+
+    /* Penyesuaian di layar HP */
+    @media (max-width: 600px) {
+        .meta-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            padding: 12px 0;
+        }
+        .meta-value {
+            text-align: left;
+            font-size: 1rem;
+        }
+    }
+
+    .btn-read-pdf {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 16px;
+        background: var(--text);
+        color: var(--bg);
+        text-decoration: none;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        transition: transform 0.2s, opacity 0.2s;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .btn-read-pdf:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        .detail-grid { grid-template-columns: 1fr; gap: 30px; }
+        .book-cover-large { max-width: 240px; }
+        .meta-item { grid-template-columns: 1fr; gap: 4px; }
+        .book-title { font-size: 2rem; }
+    }
+</style>

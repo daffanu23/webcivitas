@@ -41,7 +41,8 @@ const isActive = (path: string) => {
         {/* KIRI: MENU NAVIGASI (TEXT ONLY, LITE FONT) */}
         <nav class="nav-left">
             <a href="/" class={`nav-link ${isActive('/')}`} title="Beranda">Beranda</a>
-            <a href="/arsip" class={`nav-link ${isActive('/arsip')}`} title="Arsip">Arsip</a>
+            <a href="/arsip" class={`nav-link ${isActive('/arsip')}`} title="Berita">Berita</a>
+            <a href="/terbitan" class={`nav-link ${isActive('/terbitan')}`} title="Edisi Cetak">Edisi Cetak</a>
 
             {user && (
                 <a href="/koleksi" class={`nav-link ${isActive('/koleksi')}`} title="Koleksi">Koleksi</a>
