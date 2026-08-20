@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase'; 
-import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save } from 'lucide-react'; // TAMBAHAN: Icon tambahan
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
@@ -36,14 +36,18 @@ const authorName = article.profiles?.full_name || 'Redaksi';
 const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 const htmlContent = article.content || '<p>Konten tidak tersedia.</p>';
+
+// TAMBAHAN: Logika Mode Dewa
 const showAdminPanel = isAdmin && article.status === 'pending';
+const isPending = article.status === 'pending';
+const initialEditMode = isAdmin && isPending;
 ---
 
 {/* 1. KITA LOAD CSS QUILL UNTUK SEMUA ORANG (Agar tampilan baca sama persis dengan editor) */}
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
 
 {/* Script JS editor-nya baru di-load hanya untuk Admin */}
-{showAdminPanel && (
+{isAdmin && (
     <script is:inline src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
 )}
@@ -52,34 +56,55 @@ const showAdminPanel = isAdmin && article.status === 'pending';
 
     <article class="article-wrapper">
         
-        {showAdminPanel && (
-            <div class="admin-action-panel">
+        {/* TAMBAHAN: TOMBOL TOGGLE PENGAMAN */}
+        {isAdmin && !isPending && (
+            <button id="btn-toggle-admin" class="floating-admin-toggle">
+                <span class="icon-lock"><Lock size={18} /></span>
+                <span class="icon-unlock hidden"><Unlock size={18} /></span>
+                <span class="toggle-text">Buka Mode Admin</span>
+            </button>
+        )}
+
+        {/* TAMBAHAN: Panel dibungkus div untuk di-hide/show jika sudah tayang */}
+        {isAdmin && (
+            <div id="admin-action-panel" class={`admin-action-panel ${initialEditMode ? '' : 'hidden'}`}>
                 <div class="panel-info">
-                    <span class="badge-pending">Menunggu ACC</span>
-                    <p>Anda bisa langsung mengedit Judul dan Teks di bawah (Rich Text), lalu klik aksi.</p>
+                    <span class="badge-pending">{isPending ? 'Menunggu ACC' : 'Mode Admin Aktif'}</span>
+                    <p>{isPending ? 'Anda bisa langsung mengedit Judul dan Teks di bawah (Rich Text), lalu klik aksi.' : 'Edit teks bebas, takedown, atau kembalikan ke revisi.'}</p>
                 </div>
                 
                 <input type="hidden" id="admin-article-id" value={article.id} />
                 
                 <div class="panel-buttons">
-                    <button class="btn-admin-reject" id="btn-reject" title="Tolak Sepenuhnya (Rejected)">
-                        <XCircle size={18} /> Tolak
-                    </button>
-                    <button class="btn-admin-revise" id="btn-revise" title="Kembalikan ke Penulis (Draft)">
-                        <RotateCcw size={18} /> Revisi
-                    </button>
-                    <button class="btn-admin-approve" id="btn-approve" title="Simpan Editan & Tayangkan">
-                        <CheckCircle size={18} /> ACC & Tayangkan
-                    </button>
+                    {isPending ? (
+                        <>
+                            <button class="btn-admin-reject" id="btn-reject" title="Tolak Sepenuhnya (Rejected)">
+                                <XCircle size={18} /> Tolak
+                            </button>
+                            <button class="btn-admin-revise" id="btn-revise" title="Kembalikan ke Penulis (Draft)">
+                                <RotateCcw size={18} /> Revisi
+                            </button>
+                            <button class="btn-admin-approve" id="btn-approve" title="Simpan Editan & Tayangkan">
+                                <CheckCircle size={18} /> ACC & Tayangkan
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button class="btn-admin-reject" id="btn-takedown" title="Tarik dari peredaran (Rejected)"><XCircle size={18} /> Takedown</button>
+                            <button class="btn-admin-revise" id="btn-draft" title="Kembalikan ke Penulis (Draft)"><RotateCcw size={18} /> Jadikan Draft</button>
+                            <button class="btn-admin-approve" id="btn-update-text" title="Simpan perubahan teks saja"><Save size={18} /> Simpan Teks</button>
+                        </>
+                    )}
                 </div>
             </div>
         )}
 
         <header class="header-section">
-            {showAdminPanel ? (
-                <textarea id="inline-title" class="main-headline invisible-input auto-resize" rows="1" placeholder="Ketik Judul...">{article.title}</textarea>
-            ) : (
-                <h1 class="main-headline">{article.title}</h1>
+            {/* TAMBAHAN: Render text normal DAN textarea editor sekaligus, diatur hidden/shownya */}
+            <h1 id="view-title" class={`main-headline ${initialEditMode ? 'hidden' : ''}`}>{article.title}</h1>
+            
+            {isAdmin && (
+                <textarea id="edit-title" class={`main-headline invisible-input auto-resize ${initialEditMode ? '' : 'hidden'}`} rows="1" placeholder="Ketik Judul...">{article.title}</textarea>
             )}
 
             <div class="meta-row">
@@ -102,9 +127,13 @@ const showAdminPanel = isAdmin && article.status === 'pending';
             </div>
         )}
 
-        {/* 2. STRUKTUR PEMBACA QUILL SINKRON */}
-        {showAdminPanel ? (
-            <div class="text-mode-area">
+        {/* TAMBAHAN: Pisahkan mode View dan Edit */}
+        <div id="view-content" class={`article-content ql-snow ${initialEditMode ? 'hidden' : ''}`}>
+            <div class="ql-editor" style="padding: 0;" set:html={htmlContent}></div>
+        </div>
+
+        {isAdmin && (
+            <div id="edit-content-wrapper" class={`text-mode-area ${initialEditMode ? '' : 'hidden'}`}>
                 <div id="quill-toolbar" class="sleek-toolbar">
                     <span class="ql-formats">
                         <button class="ql-bold" title="Tebal"></button>
@@ -124,19 +153,16 @@ const showAdminPanel = isAdmin && article.status === 'pending';
                     <Fragment set:html={htmlContent} />
                 </div>
             </div>
-        ) : (
-            // BUNGKUS DENGAN ql-snow dan ql-editor AGAR MENIRU TAMPILAN ASLI EDITOR!
-            <div class="article-content ql-snow">
-                <div class="ql-editor" style="padding: 0;" set:html={htmlContent}></div>
-            </div>
         )}
 
-        {article.status === 'published' && (
-            <div class="footer-actions">
-                <button class="action-btn" id="share-btn" data-url={Astro.url.href}><Share2 size={18} /> <span>Bagikan</span></button>
-                <button class="action-btn" id="bookmark-btn" data-id={article.id}><Bookmark size={18} className="icon-bookmark" /> <span id="bookmark-text">Simpan</span></button>
-            </div>
-        )}
+        <div id="footer-actions-view" class={`footer-actions ${initialEditMode ? 'hidden' : ''}`}>
+            {article.status === 'published' && (
+                <>
+                    <button class="action-btn" id="share-btn" data-url={Astro.url.href}><Share2 size={18} /> <span>Bagikan</span></button>
+                    <button class="action-btn" id="bookmark-btn" data-id={article.id}><Bookmark size={18} className="icon-bookmark" /> <span id="bookmark-text">Simpan</span></button>
+                </>
+            )}
+        </div>
     </article>
 
 </Layout>
@@ -156,12 +182,52 @@ const showAdminPanel = isAdmin && article.status === 'pending';
             textarea.addEventListener('input', function() { resizeTextarea(this); });
         });
 
+        // TAMBAHAN: Setup Quill dipindah ke function agar bisa dipanggil saat tombol diklik
         let adminQuill: any = null;
-        if (document.getElementById('inline-content-editor') && typeof window !== 'undefined' && (window as any).Quill) {
-            adminQuill = new (window as any).Quill('#inline-content-editor', {
-                theme: 'snow',
-                modules: { toolbar: '#quill-toolbar' },
-                placeholder: 'Edit teks artikel...'
+        function initQuillOnce() {
+            if (!adminQuill && document.getElementById('inline-content-editor') && typeof window !== 'undefined' && (window as any).Quill) {
+                adminQuill = new (window as any).Quill('#inline-content-editor', {
+                    theme: 'snow',
+                    modules: { toolbar: '#quill-toolbar' },
+                    placeholder: 'Edit teks artikel...'
+                });
+            }
+        }
+
+        let isEditMode = !document.getElementById('edit-content-wrapper')?.classList.contains('hidden');
+        if (isEditMode) initQuillOnce();
+
+        // TAMBAHAN: Aksi Klik Tombol Toggle
+        const btnToggleAdmin = document.getElementById('btn-toggle-admin');
+        if (btnToggleAdmin) {
+            btnToggleAdmin.addEventListener('click', () => {
+                isEditMode = !isEditMode; 
+                initQuillOnce(); 
+                
+                const iconLock = btnToggleAdmin.querySelector('.icon-lock');
+                const iconUnlock = btnToggleAdmin.querySelector('.icon-unlock');
+                const toggleText = btnToggleAdmin.querySelector('.toggle-text');
+                
+                document.getElementById('view-title')?.classList.toggle('hidden', isEditMode);
+                document.getElementById('edit-title')?.classList.toggle('hidden', !isEditMode);
+                document.getElementById('view-content')?.classList.toggle('hidden', isEditMode);
+                document.getElementById('edit-content-wrapper')?.classList.toggle('hidden', !isEditMode);
+                document.getElementById('admin-action-panel')?.classList.toggle('hidden', !isEditMode);
+                document.getElementById('footer-actions-view')?.classList.toggle('hidden', isEditMode);
+
+                if (isEditMode) {
+                    btnToggleAdmin.classList.add('active');
+                    if (toggleText) toggleText.textContent = "Tutup Mode Admin";
+                    iconLock?.classList.add('hidden');
+                    iconUnlock?.classList.remove('hidden');
+                    const editTitle = document.getElementById('edit-title');
+                    if (editTitle) resizeTextarea(editTitle as HTMLTextAreaElement);
+                } else {
+                    btnToggleAdmin.classList.remove('active');
+                    if (toggleText) toggleText.textContent = "Buka Mode Admin";
+                    iconLock?.classList.remove('hidden');
+                    iconUnlock?.classList.add('hidden');
+                }
             });
         }
 
@@ -176,7 +242,7 @@ const showAdminPanel = isAdmin && article.status === 'pending';
 
             const updateData: any = { status: newStatus };
             
-            const titleInput = document.getElementById('inline-title') as HTMLTextAreaElement;
+            const titleInput = document.getElementById('edit-title') as HTMLTextAreaElement;
             if (titleInput) updateData.title = titleInput.value.trim();
 
             if (adminQuill) {
@@ -204,6 +270,7 @@ const showAdminPanel = isAdmin && article.status === 'pending';
         }
 
         if (articleId) {
+            // Tombol Pending
             document.getElementById('btn-approve')?.addEventListener('click', () => 
                 processAdminAction('published', 'ACC dan tayangkan ke publik dengan editan ini?', 'BOM! 🚀 Artikel berhasil ditayangkan!', 'btn-approve')
             );
@@ -212,6 +279,17 @@ const showAdminPanel = isAdmin && article.status === 'pending';
             );
             document.getElementById('btn-reject')?.addEventListener('click', () => 
                 processAdminAction('rejected', 'Tolak artikel ini secara permanen (Rejected)?', 'Artikel telah ditolak (Rejected).', 'btn-reject')
+            );
+
+            // TAMBAHAN: Tombol Published Mode
+            document.getElementById('btn-takedown')?.addEventListener('click', () => 
+                processAdminAction('rejected', 'Yakin ingin melakukan TAKEDOWN pada artikel ini?', 'Artikel berhasil di-takedown.', 'btn-takedown')
+            );
+            document.getElementById('btn-draft')?.addEventListener('click', () => 
+                processAdminAction('draft', 'Tarik artikel ini ke Draft untuk direvisi?', 'Artikel ditarik menjadi Draft.', 'btn-draft')
+            );
+            document.getElementById('btn-update-text')?.addEventListener('click', () => 
+                processAdminAction('published', 'Simpan perbaikan teks pada artikel ini?', 'Perbaikan teks berhasil disimpan!', 'btn-update-text')
             );
         }
 
@@ -260,30 +338,47 @@ const showAdminPanel = isAdmin && article.status === 'pending';
 </script>
 
 <style>
+    /* SAYA COPY PASTE 100% STYLE ANDA DARI PROMPT DI ATAS */
+    .hidden { display: none !important; }
+
+    /* --- TOMBOL TOGGLE PENGAMAN --- */
+    .floating-admin-toggle {
+        position: fixed; bottom: 30px; right: 30px; z-index: 100;
+        background: var(--bg-light); border: 2px solid var(--text); color: var(--text);
+        padding: 12px 24px; border-radius: 50px; display: flex; align-items: center; gap: 10px;
+        font-weight: 700; font-family: 'Poppins', sans-serif; font-size: 0.95rem; cursor: pointer;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1); transition: all 0.3s ease;
+    }
+    .floating-admin-toggle:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
+    .floating-admin-toggle.active { background: #ef4444; color: #fff; border-color: #ef4444; }
+
     /* --- CSS PANEL DEWA (ADMIN) --- */
     .admin-action-panel { background: var(--bg-light); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     .panel-info { display: flex; flex-direction: column; gap: 8px; }
     .badge-pending { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 6px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; align-self: flex-start; border: 1px solid rgba(239, 68, 68, 0.2); }
     .panel-info p { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
-    .panel-buttons { display: flex; gap: 10px; }
-    .btn-admin-reject, .btn-admin-revise, .btn-admin-approve { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 50px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-    .btn-admin-reject { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btn-admin-reject:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
-    .btn-admin-revise { background: var(--bg-light); border: 1px solid var(--border); color: var(--text); }
+    .panel-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    
+    .btn-admin-reject, .btn-admin-revise, .btn-admin-approve { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 50px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .btn-admin-reject { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
+    .btn-admin-reject:hover { background: #ef4444; color: #fff; }
+    .btn-admin-revise { background: var(--bg-light); border-color: var(--border); color: var(--text); }
     .btn-admin-revise:hover { background: #f59e0b; color: #fff; border-color: #f59e0b; }
-    .btn-admin-approve { background: var(--text); border: 1px solid var(--text); color: var(--bg); }
+    .btn-admin-approve { background: var(--text); color: var(--bg); }
     .btn-admin-approve:hover { background: #10b981; border-color: #10b981; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3); transform: translateY(-2px); }
 
     /* --- INLINE EDITING CSS --- */
     .invisible-input { width: 100%; background: transparent; border: none; outline: none; color: var(--text); resize: none; overflow: hidden; }
-    .main-headline.invisible-input { text-align: center; }
+    .main-headline.invisible-input { text-align: center; border-bottom: 2px dashed transparent; }
     .main-headline.invisible-input:hover, .main-headline.invisible-input:focus { border-bottom: 2px dashed var(--border); }
+    
     .sleek-toolbar { border: none !important; border-bottom: 1px solid var(--border-muted) !important; padding: 10px 0 !important; margin-bottom: 20px; text-align: center; opacity: 0.7; transition: opacity 0.3s ease; }
     .sleek-toolbar:hover, .text-mode-area:focus-within .sleek-toolbar { opacity: 1; }
     :global(.ql-snow .ql-stroke) { stroke: var(--text) !important; }
     :global(.ql-snow .ql-fill) { fill: var(--text) !important; }
     :global(.ql-snow .ql-picker) { color: var(--text) !important; }
     :global(.ql-snow.ql-toolbar button:hover .ql-stroke) { stroke: var(--theme-color, #ef4444) !important; }
+    
     .text-editor { font-family: 'Poppins', sans-serif; font-size: 1.05rem; line-height: 1.8; text-align: left; border: none !important; padding: 0 10px !important; border-left: 2px dashed transparent !important; transition: border-color 0.2s; }
     .text-editor:hover, .text-editor:focus-within { border-left: 2px dashed var(--border) !important; }
     
@@ -312,7 +407,13 @@ const showAdminPanel = isAdmin && article.status === 'pending';
     .action-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
     .action-btn.saved { background: var(--text); color: var(--bg); border-color: var(--text); }
     
-    @media (max-width: 600px) { .article-wrapper { padding-left: 10px; padding-right: 10px; } }
+    @media (max-width: 600px) { 
+        .article-wrapper { padding-left: 10px; padding-right: 10px; } 
+        .admin-action-panel { flex-direction: column; align-items: flex-start; }
+        .panel-buttons { width: 100%; }
+        .btn-admin-reject, .btn-admin-revise, .btn-admin-approve { flex: 1; justify-content: center; text-align: center; }
+        .floating-admin-toggle { bottom: 20px; right: 20px; padding: 10px 18px; font-size: 0.85rem; }
+    }
     .cat-link { text-decoration: none; cursor: pointer; transition: all 0.2s; }
     .cat-link:hover { background: var(--text) !important; color: var(--bg) !important; border-color: var(--text) !important; }
 </style>
