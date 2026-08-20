@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase';
-import { Calendar, User, UploadCloud, FileText, Send, X, ChevronDown, Camera, Save, Loader2 } from 'lucide-react';
+import { Calendar, User, UploadCloud, FileText, Send, X, ChevronDown, Camera, Save, Loader2, CheckCircle } from 'lucide-react';
 
 // 1. Inisialisasi Auth Server
 const supabase = getSupabaseServer(Astro.cookies);
@@ -23,6 +23,7 @@ if (!profile || (profile.role !== 'redaksi' && profile.role !== 'admin')) {
 }
 
 const authorName = profile.full_name || 'Redaksi';
+const isAdmin = profile.role === 'admin'; // <-- Deteksi Admin
 const todayDate = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 // 3. Ambil Kategori
@@ -47,7 +48,7 @@ if (slug) {
 }
 ---
 
-{/* --- LIBRARY EKSTERNAL UNTUK RICH TEXT (Di-load secara aman) --- */}
+{/* --- LIBRARY EKSTERNAL UNTUK RICH TEXT --- */}
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
 <script is:inline src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
@@ -123,7 +124,6 @@ if (slug) {
             {/* --- RUANG KONTEN RICH TEXT --- */}
             <div class="text-mode-area">
                 
-                {/* TOOLBAR KUSTOM (Bersih & Elegan) */}
                 <div id="quill-toolbar" class="sleek-toolbar">
                     <span class="ql-formats">
                         <button class="ql-bold" title="Tebal"></button>
@@ -144,9 +144,7 @@ if (slug) {
                     </span>
                 </div>
 
-                {/* KANVAS EDITOR */}
                 <div id="input-content-editor" class="article-content text-editor">
-                    {/* Jika sedang Edit, masukkan HTML lama. Jika tidak, kosong */}
                     {initialArticle?.content ? <Fragment set:html={initialArticle.content} /> : ''}
                 </div>
 
@@ -160,11 +158,19 @@ if (slug) {
                     <span class="btn-text">Simpan Draft</span>
                 </button>
                 
-                <button type="button" class="action-btn btn-submit" id="btn-submit-admin">
-                    <Send size={18} className="btn-icon" />
-                    <Loader2 size={18} className="btn-spinner hidden" />
-                    <span class="btn-text">Kirim ke Admin</span>
-                </button>
+                {isAdmin ? (
+                    <button type="button" class="action-btn btn-submit btn-publish-direct" id="btn-publish-direct">
+                        <CheckCircle size={18} className="btn-icon" />
+                        <Loader2 size={18} className="btn-spinner hidden" />
+                        <span class="btn-text">Tayangkan Langsung</span>
+                    </button>
+                ) : (
+                    <button type="button" class="action-btn btn-submit" id="btn-submit-admin">
+                        <Send size={18} className="btn-icon" />
+                        <Loader2 size={18} className="btn-spinner hidden" />
+                        <span class="btn-text">Kirim ke Admin</span>
+                    </button>
+                )}
             </div>
             
         </form>
@@ -175,7 +181,6 @@ if (slug) {
     import { supabase } from '../../lib/supabase';
 
     document.addEventListener('astro:page-load', () => {
-        // --- 1. SETUP UI & RESIZE UNTUK JUDUL ---
         const textareas = document.querySelectorAll('.auto-resize');
         function resizeTextarea(el: HTMLTextAreaElement) {
             el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px';
@@ -186,20 +191,15 @@ if (slug) {
             textarea.addEventListener('input', function() { resizeTextarea(this); });
         });
 
-        // --- 2. INISIALISASI QUILL RICH TEXT EDITOR ---
-        // (Pastikan objek Quill dari CDN tersedia)
         let quillEditor: any;
         if (typeof window !== 'undefined' && (window as any).Quill) {
             quillEditor = new (window as any).Quill('#input-content-editor', {
                 theme: 'snow',
-                modules: {
-                    toolbar: '#quill-toolbar'
-                },
+                modules: { toolbar: '#quill-toolbar' },
                 placeholder: 'Mulai menulis atau Paste artikel Word Anda di sini...'
             });
         }
 
-        // --- 3. LOGIC GAMBAR COVER ---
         let coverFile: File | null = null;
         const coverInput = document.getElementById('input-cover') as HTMLInputElement;
         const coverContainer = document.getElementById('cover-preview-container');
@@ -224,22 +224,45 @@ if (slug) {
             });
         }
 
-        // --- 4. FUNGSI UPLOAD & SIMPAN ---
-        async function saveArticle(status: 'draft' | 'pending') {
-            const btn = status === 'draft' ? document.getElementById('btn-save-draft') : document.getElementById('btn-submit-admin');
+        async function saveArticle(status: 'draft' | 'pending' | 'published') {
+            let btnId = 'btn-save-draft';
+            if (status === 'pending') btnId = 'btn-submit-admin';
+            if (status === 'published') btnId = 'btn-publish-direct';
+            const btn = document.getElementById(btnId);
+
             const articleId = (document.getElementById('post-id') as HTMLInputElement).value;
             const userId = (document.getElementById('user-id') as HTMLInputElement).value;
-            
             const title = (document.getElementById('input-title') as HTMLTextAreaElement).value.trim();
             const categoryId = (document.getElementById('input-category') as HTMLSelectElement).value;
             
-            // --- EKSTRAKSI & STERILISASI HTML ---
+            // --- EKSTRAKSI & PENCUCIAN HTML ---
             let rawHtml = quillEditor ? quillEditor.root.innerHTML : '';
-            // Jika editor kosong, Quill membuat '<p><br></p>'
             if (rawHtml === '<p><br></p>') rawHtml = ''; 
             
-            // Cuci bersih HTML menggunakan DOMPurify!
-            const cleanContent = (window as any).DOMPurify ? (window as any).DOMPurify.sanitize(rawHtml) : rawHtml;
+            let cleanContent = rawHtml;
+
+            // Logika "Satpam Pintar" DOMPurify
+            if ((window as any).DOMPurify) {
+                // Hapus hook lama agar tidak menumpuk
+                (window as any).DOMPurify.removeAllHooks();
+                
+                // Tambahkan aturan khusus untuk Link (Tag <a>)
+                (window as any).DOMPurify.addHook('afterSanitizeAttributes', function(node: Element) {
+                    if (node.tagName === 'A') {
+                        const href = node.getAttribute('href');
+                        // 1. Cek jika link tidak punya http/https
+                        if (href && !/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(href)) {
+                            node.setAttribute('href', 'https://' + href);
+                        }
+                        // 2. Paksa buka di tab baru & amankan dari celah keamanan
+                        node.setAttribute('target', '_blank');
+                        node.setAttribute('rel', 'noopener noreferrer');
+                    }
+                });
+
+                // Eksekusi pembersihan (izinkan atribut target agar tidak dihapus DOMPurify)
+                cleanContent = (window as any).DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
+            }
             
             // Validasi Dasar
             if (!title) return alert("Judul tidak boleh kosong!");
@@ -247,7 +270,6 @@ if (slug) {
             if (!cleanContent) return alert("Isi berita tidak boleh kosong!");
             if (!coverFile && !coverContainer?.getAttribute('data-url')) return alert("Upload Cover Utama terlebih dahulu!");
 
-            // Animasi Loading
             if (btn) {
                 btn.setAttribute('disabled', 'true');
                 btn.classList.add('is-loading');
@@ -259,7 +281,6 @@ if (slug) {
             try {
                 let finalCoverUrl = coverContainer?.getAttribute('data-url') || '';
                 
-                // Upload Cover ke 'news-images'
                 if (coverFile) {
                     const fileExt = coverFile.name.split('.').pop();
                     const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -272,14 +293,13 @@ if (slug) {
                     finalCoverUrl = data.publicUrl;
                 }
 
-                // Buat Slug
                 let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
                 if (!articleId) slug = `${slug}-${Math.floor(Math.random() * 1000)}`;
 
                 const articleData = {
                     title: title,
                     slug: slug,
-                    content: cleanContent, // HTML yang sudah disterilkan masuk database!
+                    content: cleanContent, 
                     cover_url: finalCoverUrl,
                     status: status,
                     author_id: userId
@@ -312,13 +332,18 @@ if (slug) {
                     btn.classList.remove('is-loading');
                     btn.querySelector('.btn-icon')?.classList.remove('hidden');
                     btn.querySelector('.btn-spinner')?.classList.add('hidden');
-                    btn.querySelector('.btn-text')!.textContent = status === 'draft' ? "Simpan Draft" : "Kirim ke Admin";
+                    
+                    let originalText = "Simpan Draft";
+                    if (status === 'pending') originalText = "Kirim ke Admin";
+                    if (status === 'published') originalText = "Tayangkan Langsung";
+                    btn.querySelector('.btn-text')!.textContent = originalText;
                 }
             }
         }
 
         document.getElementById('btn-save-draft')?.addEventListener('click', () => saveArticle('draft'));
         document.getElementById('btn-submit-admin')?.addEventListener('click', () => saveArticle('pending'));
+        document.getElementById('btn-publish-direct')?.addEventListener('click', () => saveArticle('published'));
     });
 </script>
 
@@ -331,6 +356,7 @@ if (slug) {
         display: flex; align-items: center; justify-content: center;
         color: var(--text-muted); cursor: pointer; transition: all 0.2s ease; z-index: 100;
     }
+    
     .btn-close-editor:hover { background: #ef4444; color: #fff; border-color: #ef4444; transform: rotate(90deg); }
 
     .article-wrapper {
@@ -342,6 +368,7 @@ if (slug) {
         width: 100%; background: transparent; border: none; outline: none;
         color: var(--text); resize: none; text-align: center; overflow: hidden;
     }
+    
     .invisible-input::placeholder { color: var(--text-muted); opacity: 0.5; }
 
     .header-section { text-align: center; margin-bottom: 40px; }
@@ -350,9 +377,11 @@ if (slug) {
         font-family: 'Poppins', sans-serif; font-size: 2.2rem; font-weight: 700; line-height: 1.3; 
         margin-bottom: 20px; border-bottom: 2px dashed transparent; transition: border-color 0.2s;
     }
+    
     .main-headline:hover, .main-headline:focus { border-bottom: 2px dashed var(--border); }
 
     .meta-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    
     .meta-pill { 
         display: flex; align-items: center; gap: 6px; background: var(--bg-light); 
         border: 1px solid var(--border-muted); padding: 6px 14px; border-radius: 50px; 
@@ -363,6 +392,7 @@ if (slug) {
         position: relative; padding: 0; overflow: hidden;
         transition: border-color 0.2s, color 0.2s; cursor: pointer;
     }
+    
     .category-select-wrapper:hover { border-color: var(--text); color: var(--text); }
     
     .custom-select {
@@ -387,8 +417,11 @@ if (slug) {
     }
     
     .cover-empty-state { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+    
     .cover-placeholder:not(.has-image):hover { border-color: var(--text); color: var(--text); }
+    
     .cover-placeholder.has-image { border: 1px solid var(--border-muted); height: auto; }
+    
     :global(.cover-img-preview) { width: 100%; height: auto; display: block; border-radius: 12px; }
 
     :global(.change-cover-overlay) {
@@ -397,6 +430,7 @@ if (slug) {
         display: flex; align-items: center; justify-content: center;
         opacity: 0; transition: opacity 0.2s ease; border-radius: 12px;
     }
+    
     .cover-placeholder.has-image:hover :global(.change-cover-overlay) { opacity: 1; }
     
     :global(.btn-change-cover) {
@@ -404,8 +438,8 @@ if (slug) {
         color: #1a1a1a; border: none; padding: 12px 24px; border-radius: 50px;
         font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: transform 0.2s;
     }
+    
     :global(.btn-change-cover:hover) { transform: scale(1.05); }
-
 
     /* --- STYLING QUILL EDITOR AGAR TAMPIL SANGAT BERSIH --- */
     .sleek-toolbar {
@@ -417,11 +451,11 @@ if (slug) {
         opacity: 0.7;
         transition: opacity 0.3s ease;
     }
+    
     .sleek-toolbar:hover, .text-mode-area:focus-within .sleek-toolbar {
         opacity: 1;
     }
     
-    /* Ganti warna ikon Quill agar sesuai tema */
     :global(.ql-snow .ql-stroke) { stroke: var(--text) !important; }
     :global(.ql-snow .ql-fill) { fill: var(--text) !important; }
     :global(.ql-snow .ql-picker) { color: var(--text) !important; }
@@ -437,11 +471,10 @@ if (slug) {
     
     .text-editor:hover, .text-editor:focus-within { border-left: 2px dashed var(--border) !important; }
 
-    /* Override padding bawaan Quill agar tidak aneh */
     :global(.ql-editor) { padding: 0 !important; }
     :global(.ql-editor.ql-blank::before) { left: 0 !important; color: var(--text-muted) !important; font-style: italic; }
 
-
+    /* --- FOOTER ACTIONS --- */
     .footer-actions { 
         margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--border-muted); 
         display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;
@@ -452,11 +485,17 @@ if (slug) {
         border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 8px; 
         font-weight: 600; font-size: 0.95rem; color: var(--text); transition: all 0.2s; 
     }
+    
     .action-btn:hover { background: var(--bg-light); transform: translateY(-2px); }
     .action-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
     
     .btn-submit { background: var(--text); color: var(--bg); border-color: var(--text); }
+    
+    /* Tombol Khusus Admin Tayangkan Langsung */
+    .btn-publish-direct { background: #10b981; border-color: #10b981; } 
+    
     .btn-submit:hover:not(:disabled) { background: #ef4444; border-color: #ef4444; color: #fff; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2); }
+    .btn-publish-direct:hover:not(:disabled) { background: #059669; border-color: #059669; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2); }
 
     :global(.btn-spinner) { animation: spin 1s linear infinite; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -468,6 +507,4 @@ if (slug) {
         .footer-actions { flex-direction: column; }
         .action-btn { width: 100%; justify-content: center; }
     }
-
-    
 </style>
