@@ -73,22 +73,19 @@ export default function ProfileDashboard({ userId }) {
 
         let totalWords = 0;
         let totalChars = 0;
-        let catCounts = {}; // KEMBALI MENGHITUNG ARTIKEL
+        let catCounts = {}; 
 
         filteredData.forEach(article => {
-            // Hitung Kata per Artikel
             const cleanText = (article.content || '').replace(/(<([^>]+)>)/gi, "");
             totalChars += cleanText.length;
             const wordArr = cleanText.trim().split(/\s+/);
             const articleWords = wordArr[0] !== "" ? wordArr.length : 0;
             totalWords += articleWords;
 
-            // Masukkan JUMLAH ARTIKEL ke kategorinya
             const catName = article.article_categories?.[0]?.categories?.name || 'Tanpa Kategori';
             catCounts[catName] = (catCounts[catName] || 0) + 1;
         });
 
-        // Cari Kategori Terfavorit (Berdasarkan jumlah artikel)
         let topCat = '-';
         let maxCount = 0;
         for (const [cat, count] of Object.entries(catCounts)) {
@@ -104,7 +101,6 @@ export default function ProfileDashboard({ userId }) {
         });
     };
 
-    // LOGIKA PANGKAT / GAMIFICATION (KUSTOMISASI DI SINI)
     const getRank = (wordCount) => {
         if (wordCount < 1000) return { title: "Masih Magang", color: "#64748b" }; 
         if (wordCount < 5000) return { title: "Jurnalis Junior", color: "#10b981" }; 
@@ -230,7 +226,6 @@ export default function ProfileDashboard({ userId }) {
                     </div>
                 </div>
 
-                {/* 3 KARTU UTAMA */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon" style={{background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6'}}><FileText size={24}/></div>
@@ -241,7 +236,6 @@ export default function ProfileDashboard({ userId }) {
                         </div>
                     </div>
                     
-                    {/* Kartu Tengah Diganti Menjadi Total Topik/Kategori */}
                     <div className="stat-card">
                         <div className="stat-icon" style={{background: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}><BarChart2 size={24}/></div>
                         <div className="stat-data">
@@ -261,42 +255,38 @@ export default function ProfileDashboard({ userId }) {
                     </div>
                 </div>
 
-                {/* --- BREAKDOWN ARTIKEL & TOTAL KATA --- */}
                 {Object.keys(stats.categoryCounts).length > 0 && (
                     <div className="category-breakdown-card">
                         <h3>Distribusi Kategori</h3>
                         <div className="breakdown-list">
-                            {/* Baris Artikel per Kategori */}
                             {Object.entries(stats.categoryCounts)
                                 .sort(([,a], [,b]) => b - a) 
                                 .map(([cat, count]) => (
                                 <div key={cat} className="breakdown-item">
                                     <span className="cat-name">{cat}</span>
+                                    <span className="cat-count">{count} Artikel</span>
                                     <div className="cat-bar-container">
                                         <div className="cat-bar" style={{ width: stats.totalArticles > 0 ? ((count / stats.totalArticles) * 100) + '%' : '0%' }}></div>
                                     </div>
-                                    <span className="cat-count">{count} Artikel</span>
                                 </div>
                             ))}
 
-                            {/* --- SPESIAL: TOTAL KATA DI PALING BAWAH --- */}
                             <div className="breakdown-item special-words-row" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px dashed var(--border)' }}>
                                 <span className="cat-name" style={{ color: '#10b981' }}>Total Kata Ditulis</span>
-                                <div className="cat-bar-container">
-                                    <div className="cat-bar" style={{ width: '100%', background: '#10b981' }}></div>
-                                </div>
                                 <span className="cat-count" style={{ color: '#10b981', fontWeight: '700' }}>
                                     {stats.totalWords.toLocaleString('id-ID')} Kata
                                 </span>
+                                <div className="cat-bar-container">
+                                    <div className="cat-bar" style={{ width: '100%', background: '#10b981' }}></div>
+                                </div>
                             </div>
-
                         </div>
                     </div>
                 )}
             </div>
 
             <style>{`
-                .profile-dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); padding-bottom: 50px; }
+                .profile-dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); padding-bottom: 60px; }
                 .loading-state { text-align: center; padding: 50px; color: var(--text-muted); }
                 
                 /* HEADER PROFIL */
@@ -317,11 +307,17 @@ export default function ProfileDashboard({ userId }) {
                 
                 .bio-text { color: var(--text-muted); font-size: 1rem; line-height: 1.6; margin-bottom: 20px; max-width: 800px; }
                 
-                .meta-row { display: flex; gap: 20px; margin-bottom: 20px; }
+                .meta-row { display: flex; gap: 20px; margin-bottom: 25px; }
                 .meta-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text); background: var(--bg-light); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); }
                 
-                .btn-edit-profile { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 20px; border-radius: 50px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
-                .btn-edit-profile:hover { background: var(--text); color: var(--bg); }
+                /* FIX UX: Tombol Edit Profil Dipercantik */
+                .btn-edit-profile { 
+                    background: var(--bg-light); border: 1px solid var(--border); color: var(--text); 
+                    padding: 10px 24px; border-radius: 50px; font-weight: 600; cursor: pointer; 
+                    display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; 
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+                }
+                .btn-edit-profile:hover { background: var(--text); color: var(--bg); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
 
                 /* EDIT FORM */
                 .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: var(--bg-light); padding: 25px; border-radius: 16px; border: 1px dashed var(--border); }
@@ -347,7 +343,7 @@ export default function ProfileDashboard({ userId }) {
                 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
                 .stat-card { background: var(--bg); border: 1px solid var(--border); padding: 25px; border-radius: 20px; display: flex; align-items: center; gap: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.02); transition: transform 0.2s; }
                 .stat-card:hover { transform: translateY(-5px); }
-                .stat-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+                .stat-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .stat-data h3 { margin: 0 0 5px 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
                 .stat-value { margin: 0; font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1.1; }
                 .stat-label { font-size: 0.8rem; color: var(--text-muted); }
@@ -356,21 +352,45 @@ export default function ProfileDashboard({ userId }) {
                 .category-breakdown-card { background: var(--bg); border: 1px solid var(--border); padding: 30px; border-radius: 20px; }
                 .category-breakdown-card h3 { margin: 0 0 20px 0; font-size: 1.2rem; font-weight: 700; }
                 .breakdown-list { display: flex; flex-direction: column; gap: 15px; }
-                .breakdown-item { display: flex; align-items: center; gap: 15px; }
+                .breakdown-item { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
                 .cat-name { width: 150px; font-weight: 600; font-size: 0.9rem; }
-                .cat-bar-container { flex: 1; height: 10px; background: var(--bg-light); border-radius: 10px; overflow: hidden; }
+                .cat-bar-container { flex: 1; height: 10px; background: var(--bg-light); border-radius: 10px; overflow: hidden; min-width: 100px; }
                 .cat-bar { height: 100%; background: #dc2626; border-radius: 10px; transition: width 1s ease-out; }
                 .cat-count { width: 100px; text-align: right; font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
 
+                /* =========================================
+                   RESPONSIVE MOBILE 
+                   ========================================= */
                 @media (max-width: 768px) {
+                    /* FIX OVERLAP: Tambah ruang ekstra di paling bawah agar aman dari tombol + FAB */
+                    .profile-dashboard-wrapper { padding-bottom: 140px; }
+
                     .profile-info-container { flex-direction: column; align-items: center; text-align: center; padding: 0 20px 30px 20px; }
                     .name-row { flex-direction: column; gap: 5px; }
-                    .meta-row { flex-direction: column; gap: 10px; align-items: center; }
+                    .meta-row { flex-direction: column; gap: 10px; align-items: stretch; width: 100%; }
+                    .meta-item { justify-content: center; }
+                    
+                    /* FIX UX: Tombol Edit Profil di HP Dibuat Full Width & Menonjol */
+                    .btn-edit-profile { 
+                        width: 100%; justify-content: center; padding: 14px; font-size: 1rem; 
+                        background: var(--text); color: var(--bg); /* Mode Solid di HP */
+                    }
+
                     .edit-form-grid { grid-template-columns: 1fr; }
                     .stats-header { flex-direction: column; gap: 15px; align-items: flex-start; }
-                    .breakdown-item { flex-direction: column; align-items: flex-start; gap: 8px; }
-                    .cat-name, .cat-count { width: auto; }
-                    .cat-bar-container { width: 100%; }
+                    
+                    /* FIX UX: Tata Ulang Grafik Breakdown Kategori */
+                    .breakdown-item { 
+                        flex-direction: row; 
+                        align-items: center; 
+                        justify-content: space-between; 
+                        gap: 5px;
+                    }
+                    .cat-name { width: auto; flex: 1; }
+                    .cat-count { width: auto; text-align: right; }
+                    .cat-bar-container { 
+                        width: 100%; flex: none; order: 3; margin-top: 4px; /* Garis turun ke bawah */
+                    }
                 }
             `}</style>
         </div>

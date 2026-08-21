@@ -1,5 +1,6 @@
 ---
-import { LogIn, Sun, Moon } from 'lucide-react';
+// TAMBAHAN: Import Menu dan X untuk ikon Hamburger
+import { LogIn, Sun, Moon, Menu, X } from 'lucide-react';
 import { getSupabaseServer } from '../lib/supabase';
 
 // 1. Inisialisasi Supabase & Ambil User
@@ -38,8 +39,13 @@ const isActive = (path: string) => {
 <header class="sleek-navbar" transition:persist="navbar">
     <div class="container navbar-inner">
         
-        {/* KIRI: MENU NAVIGASI */}
-        <nav class="nav-left">
+        {/* KIRI: BRAND LOGO (Sekarang di kiri agar lebih clean) */}
+        <div class="nav-left">
+            <a href="/" class="brand-text">@mediacivitas</a>
+        </div>
+
+        {/* TENGAH: MENU NAVIGASI (Hanya tampil di Desktop) */}
+        <nav class="nav-center desktop-nav">
             <a href="/" class={`nav-link ${isActive('/')}`} title="Beranda">Beranda</a>
             <a href="/arsip" class={`nav-link ${isActive('/arsip')}`} title="Berita">Berita</a>
             <a href="/terbitan" class={`nav-link ${isActive('/terbitan')}`} title="Edisi Cetak">Edisi Cetak</a>
@@ -52,11 +58,6 @@ const isActive = (path: string) => {
                 <a href="/admin/dashboard" class={`nav-link ${isActive('/admin/dashboard')}`} title="Dashboard Admin">Admin</a>
             )}
         </nav>
-
-        {/* TENGAH: BRAND LOGO */}
-        <div class="nav-center">
-            <a href="/" class="brand-text">@mediacivitas</a>
-        </div>
 
         {/* KANAN: UTILITIES & AUTH */}
         <div class="nav-right">
@@ -82,7 +83,7 @@ const isActive = (path: string) => {
                     <a href="/profile" class="user-pill" title="Lihat Profil">
                         <img src={avatar} alt={name} class="avatar-img" />
                     </a>
-                    <form action="/api/auth/logout" method="GET" style="margin: 0;">
+                    <form action="/api/auth/logout" method="GET" style="margin: 0;" class="desktop-logout">
                         <button type="submit" class="btn-logout-icon" title="Keluar">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
                         </button>
@@ -93,8 +94,37 @@ const isActive = (path: string) => {
                     <LogIn size={18} strokeWidth={2.5} />
                 </a>
             )}
-        </div>
 
+            {/* HAMBURGER MENU (Khusus HP) */}
+            <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Buka Menu">
+                <Menu size={24} strokeWidth={2.5} className="icon-hamburger" />
+                <X size={24} strokeWidth={2.5} className="icon-close hidden" />
+            </button>
+        </div>
+    </div>
+
+    {/* LACI MENU MOBILE (Tersembunyi di atas, turun saat diklik) */}
+    <div id="mobile-drawer" class="mobile-drawer">
+        <nav class="drawer-nav">
+            <a href="/" class={`drawer-link ${isActive('/')}`}>Beranda</a>
+            <a href="/arsip" class={`drawer-link ${isActive('/arsip')}`}>Berita</a>
+            <a href="/terbitan" class={`drawer-link ${isActive('/terbitan')}`}>Edisi Cetak</a>
+            {user && (
+                <a href="/koleksi" class={`drawer-link ${isActive('/koleksi')}`}>Koleksi</a>
+            )}
+            {userRole === 'admin' && (
+                <a href="/admin/dashboard" class={`drawer-link ${isActive('/admin/dashboard')}`}>Admin</a>
+            )}
+            
+            {user && (
+                <form action="/api/auth/logout" method="GET" class="drawer-logout-form">
+                    <button type="submit" class="drawer-logout-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                        Keluar Akun
+                    </button>
+                </form>
+            )}
+        </nav>
     </div>
 </header>
 
@@ -138,13 +168,45 @@ const isActive = (path: string) => {
 
     function updateActiveState() {
         const currentPath = window.location.pathname;
-        document.querySelectorAll('.nav-link').forEach(item => {
+        // Update Desktop & Mobile Links
+        document.querySelectorAll('.nav-link, .drawer-link').forEach(item => {
             const href = item.getAttribute('href');
             if (!href) return;
             item.classList.remove('active');
             if (href === '/' && currentPath === '/') item.classList.add('active');
             else if (href !== '/' && currentPath.startsWith(href)) item.classList.add('active');
         });
+    }
+
+    // --- LOGIKA HAMBURGER MENU MOBILE ---
+    function setupMobileMenu() {
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const drawer = document.getElementById('mobile-drawer');
+        const iconHamburger = menuBtn?.querySelector('.icon-hamburger');
+        const iconClose = menuBtn?.querySelector('.icon-close');
+        
+        if (menuBtn && drawer && !menuBtn.hasAttribute('data-listener')) {
+            menuBtn.setAttribute('data-listener', 'true');
+            
+            menuBtn.addEventListener('click', () => {
+                const isActive = drawer.classList.toggle('active');
+                iconHamburger?.classList.toggle('hidden', isActive);
+                iconClose?.classList.toggle('hidden', !isActive);
+                
+                // Kunci scroll body saat menu terbuka
+                document.body.style.overflow = isActive ? 'hidden' : '';
+            });
+
+            // Tutup menu otomatis jika salah satu link diklik (agar transisi halaman Astro mulus)
+            drawer.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    drawer.classList.remove('active');
+                    iconHamburger?.classList.remove('hidden');
+                    iconClose?.classList.add('hidden');
+                    document.body.style.overflow = '';
+                });
+            });
+        }
     }
 
     let clockInterval: ReturnType<typeof setInterval> | undefined;
@@ -155,6 +217,8 @@ const isActive = (path: string) => {
         applyTheme(); 
         handleThemeToggle();
         updateActiveState();
+        setupMobileMenu(); // Inisialisasi Mobile Menu
+        
         updateClock();
         if (clockInterval) clearInterval(clockInterval);
         clockInterval = setInterval(updateClock, 1000);
@@ -166,20 +230,18 @@ const isActive = (path: string) => {
         document.body.classList.add('light');
     }
 
-    // Logic Animasi Popover / Slide-Up Menu
+    // Logic Animasi Popover / Slide-Up Menu (FAB)
     document.addEventListener('astro:page-load', () => {
         const trigger = document.getElementById('fab-trigger');
         const menu = document.getElementById('fab-menu');
 
         if (trigger && menu) {
-            // Toggle saat tombol + diklik
             trigger.addEventListener('click', (e) => {
                 e.stopPropagation();
                 trigger.classList.toggle('active');
                 menu.classList.toggle('active');
             });
 
-            // Tutup jika layar di luar menu diklik
             document.addEventListener('click', (e) => {
                 if (!trigger.contains(e.target) && !menu.contains(e.target)) {
                     trigger.classList.remove('active');
@@ -193,18 +255,13 @@ const isActive = (path: string) => {
 {/* --- FLOATING ACTION BUTTON & SLIDE-UP MENU --- */}
 {(userRole === 'redaksi' || userRole === 'admin') && (
     <div class="fab-container">
-        
-        {/* Menu Menyembul (Slide Up) */}
         <div id="fab-menu" class="fab-menu">
-            {/* Opsi 2: Upload PDF */}
             <a href="/redaksi/tulis?mode=pdf" class="fab-menu-item" title="Upload Artikel PDF">
                 <span class="fab-menu-label">Upload PDF</span>
                 <div class="fab-menu-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 12 15 15"></polyline></svg>
                 </div>
             </a>
-
-            {/* Opsi 1: Teks / Langsung */}
             <a href="/redaksi/tulis?mode=teks" class="fab-menu-item" title="Tulis Langsung">
                 <span class="fab-menu-label">Tulis Langsung</span>
                 <div class="fab-menu-icon">
@@ -212,108 +269,69 @@ const isActive = (path: string) => {
                 </div>
             </a>
         </div>
-
-        {/* Tombol Pemicu Utama (+) */}
         <button id="fab-trigger" class="fab-main-btn" title="Buat Berita Baru">
             <svg class="icon-plus" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
         </button>
-
     </div>
 )}
 
 <style>
-    /* 1. KONTINER UTAMA NAVBAR */
+    /* =========================================
+       1. KONTINER UTAMA NAVBAR
+       ========================================= */
     .sleek-navbar {
-        width: 100%;
-        position: sticky;
-        top: 0;
-        z-index: 1000;
+        width: 100%; position: sticky; top: 0; z-index: 1000;
         background-color: rgba(var(--bg-rgb, 10, 10, 10), 0.75);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-bottom: 1px solid var(--border);
-        transition: all 0.3s ease;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border); transition: all 0.3s ease;
     }
-
     :global(body:not(.light)) .sleek-navbar { background-color: rgba(15, 15, 15, 0.8); }
     :global(body.light) .sleek-navbar { background-color: rgba(255, 255, 255, 0.85); }
 
     .navbar-inner {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        height: 60px;
-        padding: 0 20px;
-        max-width: 1440px; 
-        margin: 0 auto;
+        display: flex; justify-content: space-between; align-items: center;
+        height: 60px; padding: 0 20px; max-width: 1440px; margin: 0 auto;
     }
 
-    /* 2. KIRI: NAVIGASI LITE */
-    .nav-left {
-        flex: 1; display: flex; justify-content: flex-start; align-items: center; gap: 20px;
+    /* KIRI: BRAND LOGO */
+    .nav-left { flex: 1; display: flex; justify-content: flex-start; align-items: center; }
+    .brand-text {
+        font-family: 'Poppins', sans-serif; font-weight: 700; font-style: italic;
+        font-size: 1.1rem; color: var(--text); letter-spacing: -0.5px; text-decoration: none;
     }
 
+    /* TENGAH: NAVIGASI DESKTOP */
+    .nav-center { flex: 1; display: flex; justify-content: center; align-items: center; gap: 20px; }
     .nav-link {
-        color: var(--text-muted); text-decoration: none; 
-        font-weight: 400; font-size: 0.9rem; transition: color 0.2s ease;
-        position: relative;
+        color: var(--text-muted); text-decoration: none; font-weight: 500; font-size: 0.95rem; 
+        transition: color 0.2s ease; position: relative;
     }
-
     .nav-link::after {
-        content: ''; position: absolute; bottom: -4px; left: 0; 
-        width: 100%; height: 2px; background-color: var(--text); 
-        border-radius: 2px; transform: scaleX(0); transform-origin: left; 
-        transition: transform 0.3s ease;
+        content: ''; position: absolute; bottom: -4px; left: 0; width: 100%; height: 2px; 
+        background-color: var(--text); border-radius: 2px; transform: scaleX(0); 
+        transform-origin: center; transition: transform 0.3s ease;
     }
-
-    .nav-link:hover { color: var(--text); }
-    .nav-link.active { color: var(--text); font-weight: 500; }
+    .nav-link:hover, .nav-link.active { color: var(--text); }
     .nav-link.active::after { transform: scaleX(1); }
 
-    @media (hover: hover) and (pointer: fine) {
-        .nav-link:hover::after { transform: scaleX(1); }
-    }
-
-    /* 3. TENGAH: BRAND LITE */
-    .nav-center { flex: 1; display: flex; justify-content: center; }
-    
-    .brand-text {
-        font-family: 'Poppins', sans-serif; font-weight: 500; font-style: italic;
-        font-size: 1rem; color: var(--text); letter-spacing: -0.5px; text-decoration: none;
-    }
-
-    /* 4. KANAN: UTILS & AUTH MINIMALIST */
+    /* KANAN: UTILS & AUTH */
     .nav-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
-    
-    .time-badge {
-        display: flex; align-items: center; gap: 8px; color: var(--text-muted);
-        font-size: 0.8rem; font-weight: 400;
-    }
-    
+    .time-badge { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; font-weight: 500; }
     .divider { color: var(--border); }
     .util-divider { width: 1px; height: 18px; background-color: var(--border); margin: 0 4px; }
 
     .theme-btn {
         background: transparent; border: none; cursor: pointer; color: var(--text-muted);
-        padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        transition: all 0.2s;
+        padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
     }
     .theme-btn:hover { color: var(--text); background-color: var(--bg-light); transform: rotate(15deg); }
     .icon-sun { display: block; } .icon-moon { display: none; }
     :global(body.light) .icon-sun { display: none; } :global(body.light) .icon-moon { display: block; }
 
     .auth-wrapper { display: flex; align-items: center; gap: 8px; }
-    
-    .btn-login-icon {
-        display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
-        text-decoration: none; color: var(--text); background: var(--bg-light);
-        border: 1px solid var(--border); border-radius: 50%; transition: all 0.2s ease;
-    }
-    .btn-login-icon:hover { background: var(--text); color: var(--bg); transform: translateY(-2px); }
-
     .user-pill {
         display: flex; align-items: center; justify-content: center; text-decoration: none;
         background: transparent; border: 1px solid var(--border); padding: 2px;
@@ -322,160 +340,90 @@ const isActive = (path: string) => {
     .user-pill:hover { border-color: var(--text-muted); }
     .avatar-img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
 
-    .btn-logout-icon {
+    .btn-login-icon, .btn-logout-icon {
         display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
-        background: transparent; border: 1px solid transparent; border-radius: 50%;
-        color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+        text-decoration: none; color: var(--text); background: var(--bg-light);
+        border: 1px solid var(--border); border-radius: 50%; transition: all 0.2s ease; cursor: pointer;
     }
+    .btn-logout-icon { background: transparent; border-color: transparent; color: var(--text-muted); }
+    .btn-login-icon:hover { background: var(--text); color: var(--bg); transform: translateY(-2px); }
     .btn-logout-icon:hover { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
 
-    /* --- RESPONSIVE MOBILE --- */
+    .mobile-menu-btn { display: none; } /* Disembunyikan di desktop */
+    .hidden { display: none !important; }
+
+    /* =========================================
+       2. LACI MENU MOBILE (DRAWER)
+       ========================================= */
+    .mobile-drawer {
+        position: absolute; top: 60px; left: 0; width: 100%; height: calc(100vh - 60px);
+        background-color: var(--bg); padding: 20px;
+        opacity: 0; visibility: hidden; transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex; flex-direction: column; overflow-y: auto;
+    }
+    
+    .mobile-drawer.active { opacity: 1; visibility: visible; transform: translateY(0); }
+    
+    .drawer-nav { display: flex; flex-direction: column; gap: 10px; }
+    .drawer-link {
+        font-size: 1.3rem; font-weight: 600; color: var(--text-muted); padding: 15px 10px;
+        text-decoration: none; border-radius: 12px; transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+    .drawer-link:hover, .drawer-link.active {
+        color: var(--text); background: var(--bg-light); border-color: var(--border-muted);
+    }
+
+    .drawer-logout-form { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+    .drawer-logout-btn {
+        width: 100%; padding: 15px; display: flex; align-items: center; justify-content: center;
+        background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 12px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s;
+    }
+    .drawer-logout-btn:hover { background: #ef4444; color: #fff; }
+
+    /* =========================================
+       3. RESPONSIVE MOBILE
+       ========================================= */
     @media (max-width: 900px) {
         .time-badge { display: none; } 
     }
 
-    @media (max-width: 600px) {
-        .navbar-inner { padding: 0 15px; }
-        .nav-center { display: none; }
-        .nav-left { gap: 12px; overflow-x: auto; padding-bottom: 2px; } 
-        .nav-left::-webkit-scrollbar { display: none; }
-        .nav-link { font-size: 0.85rem; white-space: nowrap; }
-        .nav-right { flex: 0; gap: 8px; }
+    @media (max-width: 768px) {
+        .desktop-nav { display: none; } /* Sembunyikan menu teks tengah */
+        .desktop-logout { display: none; } /* Sembunyikan tombol logout kecil */
+        
+        .nav-right { flex: 0; gap: 10px; }
+        .util-divider { display: none; }
+        
+        .mobile-menu-btn {
+            display: flex; align-items: center; justify-content: center;
+            background: transparent; border: none; color: var(--text);
+            padding: 4px; cursor: pointer;
+        }
     }
 
     /* =========================================
-       FAB SLIDE-UP MENU (POPOVER) STYLES
+       4. FAB SLIDE-UP MENU (TETAP SAMA!)
        ========================================= */
-    .fab-container {
-        position: fixed;
-        bottom: 40px;
-        right: 40px;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        z-index: 9999;
-    }
-
-    /* Menu Menyembul (Bersembunyi secara default) */
-    .fab-menu {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        margin-bottom: 20px;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(20px) scale(0.8);
-        transform-origin: bottom center;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    /* Saat Class 'active' ditambahkan oleh JS */
-    .fab-menu.active {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0) scale(1);
-    }
-
-    /* Anak Menu (Item Pilihan) */
-    .fab-menu-item {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        text-decoration: none;
-        justify-content: flex-end;
-    }
-
-    .fab-menu-label {
-        background: var(--bg);
-        color: var(--text);
-        padding: 6px 14px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        border: 1px solid var(--border);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        opacity: 0;
-        transform: translateX(10px);
-        transition: all 0.2s ease;
-    }
-
-    /* Ikon Lingkaran Kecil */
-    .fab-menu-icon {
-        width: 48px;
-        height: 48px;
-        background: var(--bg-light);
-        border: 1px solid var(--border);
-        color: var(--text);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease, background 0.2s ease;
-    }
-
-    /* Efek Hover per Item */
-    .fab-menu-item:hover .fab-menu-icon {
-        background: var(--text);
-        color: var(--bg);
-        transform: scale(1.1);
-    }
-
-    .fab-menu-item:hover .fab-menu-label {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    /* Tombol Utama (+) */
-    .fab-main-btn {
-        width: 65px;
-        height: 65px;
-        background: var(--text);
-        color: var(--bg);
-        border: none;
-        outline: none;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        cursor: pointer;
-        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease;
-    }
-
-    .fab-main-btn:hover {
-        background: #ef4444; /* Merah menyala */
-        color: #ffffff;
-    }
-
-    /* Animasi Putar (+) menjadi (x) saat aktif */
-    .fab-main-btn .icon-plus {
-        transition: transform 0.3s ease;
-    }
-
-    .fab-main-btn.active .icon-plus {
-        transform: rotate(45deg); /* Berubah jadi tanda silang X */
-    }
+    .fab-container { position: fixed; bottom: 40px; right: 40px; display: flex; flex-direction: column; align-items: flex-end; z-index: 9999; }
+    .fab-menu { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; opacity: 0; visibility: hidden; transform: translateY(20px) scale(0.8); transform-origin: bottom center; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .fab-menu.active { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+    .fab-menu-item { display: flex; align-items: center; gap: 15px; text-decoration: none; justify-content: flex-end; }
+    .fab-menu-label { background: var(--bg); color: var(--text); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); opacity: 0; transform: translateX(10px); transition: all 0.2s ease; }
+    .fab-menu-icon { width: 48px; height: 48px; background: var(--bg-light); border: 1px solid var(--border); color: var(--text); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.2s ease, background 0.2s ease; }
+    .fab-menu-item:hover .fab-menu-icon { background: var(--text); color: var(--bg); transform: scale(1.1); }
+    .fab-menu-item:hover .fab-menu-label { opacity: 1; transform: translateX(0); }
+    .fab-main-btn { width: 65px; height: 65px; background: var(--text); color: var(--bg); border: none; outline: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease; }
+    .fab-main-btn:hover { background: #ef4444; color: #ffffff; }
+    .fab-main-btn .icon-plus { transition: transform 0.3s ease; }
+    .fab-main-btn.active .icon-plus { transform: rotate(45deg); }
+    .fab-main-btn.active { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
     
-    .fab-main-btn.active {
-        background: var(--bg-light); /* Warna redup saat menu terbuka */
-        color: var(--text);
-        border: 1px solid var(--border);
-    }
-
-    /* Responsif HP */
     @media (max-width: 768px) {
-        .fab-container {
-            bottom: 25px;
-            right: 25px;
-        }
-        .fab-main-btn {
-            width: 55px;
-            height: 55px;
-        }
-        .fab-menu-icon {
-            width: 44px;
-            height: 44px;
-        }
+        .fab-container { bottom: 25px; right: 25px; }
+        .fab-main-btn { width: 55px; height: 55px; }
+        .fab-menu-icon { width: 44px; height: 44px; }
     }
 </style>

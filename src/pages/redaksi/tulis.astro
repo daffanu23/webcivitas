@@ -48,7 +48,6 @@ if (slug) {
 }
 ---
 
-{/* --- LIBRARY EKSTERNAL (TAMBAHAN: BROWSER IMAGE COMPRESSION) --- */}
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
 <script is:inline src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
@@ -80,19 +79,33 @@ if (slug) {
                     <div class="meta-pill"><User size={14} /> <span>{authorName}</span></div>
                     <div class="meta-pill"><Calendar size={14} /> <span>{todayDate}</span></div>
                     
-                    <div class="meta-pill category-select-wrapper">
-                        <select id="input-category" class="custom-select" required>
-                            <option value="" disabled selected={initialSelectedCategories.length === 0}>Pilih Kategori</option>
+                    {/* --- CUSTOM DROPDOWN KATEGORI (CLEAN UI) --- */}
+                    <div class="meta-pill custom-dropdown-wrapper" id="category-dropdown-wrapper">
+                        {/* Hidden input penyimpan ID Kategori untuk dikirim ke Database */}
+                        <input type="hidden" id="input-category" value={initialSelectedCategories.length > 0 ? initialSelectedCategories[0] : ''} required />
+                        
+                        {/* Tombol Pemicu Dropdown */}
+                        <div class="dropdown-trigger" id="dropdown-trigger">
+                            <span id="selected-category-text">
+                                {initialSelectedCategories.length > 0 
+                                    ? categories?.find(c => c.id === initialSelectedCategories[0])?.name || 'Pilih Kategori'
+                                    : 'Pilih Kategori'}
+                            </span>
+                            <ChevronDown size={14} className="dropdown-icon" />
+                        </div>
+
+                        {/* Menu Melayang (Custom UI) */}
+                        <div class="dropdown-menu" id="dropdown-menu">
                             {categories && categories.map(cat => (
-                                <option 
-                                    value={cat.id} 
-                                    selected={initialSelectedCategories.includes(cat.id)}
+                                <div 
+                                    class={`dropdown-item ${initialSelectedCategories.includes(cat.id) ? 'active' : ''}`}
+                                    data-value={cat.id}
+                                    data-name={cat.name}
                                 >
                                     {cat.name}
-                                </option>
+                                </div>
                             ))}
-                        </select>
-                        <ChevronDown size={14} className="select-icon" />
+                        </div>
                     </div>
                 </div>
             </header>
@@ -120,7 +133,6 @@ if (slug) {
             </div>
 
             <div class="text-mode-area">
-                
                 <div id="quill-toolbar" class="sleek-toolbar">
                     <span class="ql-formats">
                         <button class="ql-bold" title="Tebal"></button>
@@ -144,7 +156,6 @@ if (slug) {
                 <div id="input-content-editor" class="article-content text-editor">
                     {initialArticle?.content ? <Fragment set:html={initialArticle.content} /> : ''}
                 </div>
-
             </div>
 
             <div class="footer-actions">
@@ -188,7 +199,46 @@ if (slug) {
             textarea.addEventListener('input', function() { resizeTextarea(this); });
         });
 
-        // --- 2. INISIALISASI QUILL ---
+        // --- 2. SETUP CUSTOM DROPDOWN KATEGORI ---
+        const dropdownWrapper = document.getElementById('category-dropdown-wrapper');
+        const trigger = document.getElementById('dropdown-trigger');
+        const menu = document.getElementById('dropdown-menu');
+        const inputCategory = document.getElementById('input-category') as HTMLInputElement;
+        const selectedText = document.getElementById('selected-category-text');
+
+        if (dropdownWrapper && trigger && menu && inputCategory && selectedText) {
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdownWrapper.classList.toggle('open');
+            });
+
+            const items = menu.querySelectorAll('.dropdown-item');
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    const val = item.getAttribute('data-value');
+                    const name = item.getAttribute('data-name');
+                    
+                    if (val && name) {
+                        inputCategory.value = val;
+                        selectedText.textContent = name;
+                        selectedText.style.color = 'var(--text)'; // Update teks jadi tegas
+                        
+                        items.forEach(i => i.classList.remove('active'));
+                        item.classList.add('active');
+                    }
+                    dropdownWrapper.classList.remove('open');
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!dropdownWrapper.contains(e.target as Node)) {
+                    dropdownWrapper.classList.remove('open');
+                }
+            });
+        }
+
+        // --- 3. INISIALISASI QUILL ---
         let quillEditor: any;
         if (typeof window !== 'undefined' && (window as any).Quill) {
             quillEditor = new (window as any).Quill('#input-content-editor', {
@@ -198,7 +248,7 @@ if (slug) {
             });
         }
 
-        // --- 3. LOGIC UPLOAD GAMBAR DENGAN MESIN PEMERAS (KOMPRESI) ---
+        // --- 4. UPLOAD & KOMPRESI GAMBAR ---
         let coverFile: File | null = null;
         const coverInput = document.getElementById('input-cover') as HTMLInputElement;
         const coverContainer = document.getElementById('cover-preview-container');
@@ -206,12 +256,9 @@ if (slug) {
         if (coverInput && coverContainer) {
             coverContainer.addEventListener('click', () => coverInput.click());
             
-            // Jadikan event listener async karena proses peras butuh waktu
             coverInput.addEventListener('change', async function() {
                 if (this.files && this.files[0]) {
                     const originalFile = this.files[0];
-                    
-                    // Beri tahu user bahwa sistem sedang bekerja memeras gambar
                     coverContainer.classList.remove('has-image');
                     coverContainer.innerHTML = `
                         <div class="cover-empty-state">
@@ -221,25 +268,16 @@ if (slug) {
                     `;
 
                     try {
-                        // Aturan Pemerasan: Maks 300KB, Resolusi maks 1280px
-                        const options = {
-                            maxSizeMB: 0.3,
-                            maxWidthOrHeight: 1280,
-                            useWebWorker: true
-                        };
-
+                        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1280, useWebWorker: true };
                         if ((window as any).imageCompression) {
                             coverFile = await (window as any).imageCompression(originalFile, options);
-                            console.log(`Penyusutan berhasil: ${(originalFile.size/1024/1024).toFixed(2)} MB menjadi ${(coverFile!.size/1024/1024).toFixed(2)} MB`);
                         } else {
-                            coverFile = originalFile; // Fallback jika script gagal load
+                            coverFile = originalFile; 
                         }
                     } catch (error) {
-                        console.error("Gagal memeras gambar", error);
                         coverFile = originalFile;
                     }
 
-                    // Tampilkan gambar yang sudah diperas ke layar
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         coverContainer.innerHTML = `
@@ -255,7 +293,7 @@ if (slug) {
             });
         }
 
-        // --- 4. FUNGSI UPLOAD & SIMPAN ---
+        // --- 5. FUNGSI SIMPAN ARTIKEL ---
         async function saveArticle(status: 'draft' | 'pending' | 'published') {
             let btnId = 'btn-save-draft';
             if (status === 'pending') btnId = 'btn-submit-admin';
@@ -265,9 +303,8 @@ if (slug) {
             const articleId = (document.getElementById('post-id') as HTMLInputElement).value;
             const userId = (document.getElementById('user-id') as HTMLInputElement).value;
             const title = (document.getElementById('input-title') as HTMLTextAreaElement).value.trim();
-            const categoryId = (document.getElementById('input-category') as HTMLSelectElement).value;
+            const categoryId = (document.getElementById('input-category') as HTMLInputElement).value;
             
-            // Ekstraksi HTML & Cuci dengan Satpam DOMPurify
             let rawHtml = quillEditor ? quillEditor.root.innerHTML : '';
             if (rawHtml === '<p><br></p>') rawHtml = ''; 
             
@@ -303,25 +340,14 @@ if (slug) {
             try {
                 let finalCoverUrl = coverContainer?.getAttribute('data-url') || '';
                 
-                // --- PROSES UPLOAD COVER BARU ---
                 if (coverFile) {
-                    
-                    // 1. TUKANG SAPU: Hapus gambar lama jika ini mode Edit!
                     if (articleId && finalCoverUrl && finalCoverUrl.includes('covers/')) {
                         try {
-                            // Mengekstrak path gambar lama dari URL panjang
-                            // Contoh: mengubah "https://..../public/news-images/covers/123.jpg" menjadi "covers/123.jpg"
                             const oldPath = finalCoverUrl.substring(finalCoverUrl.indexOf('covers/'));
-                            
-                            // Eksekusi penghapusan di Supabase Storage
                             await supabase.storage.from('news-images').remove([oldPath]);
-                            console.log("🧹 Cover lama berhasil dihapus dari storage!");
-                        } catch(err) {
-                            console.warn("Gagal menghapus cover lama:", err);
-                        }
+                        } catch(err) {}
                     }
 
-                    // 2. UPLOAD GAMBAR BARU (Yang sudah dikompres)
                     const fileExt = coverFile.name.split('.').pop();
                     const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                     const filePath = `covers/${uniqueName}`;
@@ -330,7 +356,7 @@ if (slug) {
                     if (uploadError) throw new Error("Gagal mengunggah cover: " + uploadError.message);
                     
                     const { data } = supabase.storage.from('news-images').getPublicUrl(filePath);
-                    finalCoverUrl = data.publicUrl; // Perbarui URL dengan gambar baru
+                    finalCoverUrl = data.publicUrl; 
                 }
 
                 let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -388,6 +414,9 @@ if (slug) {
 </script>
 
 <style>
+    /* =========================================
+       CSS GLOBAL & DESKTOP EDITOR
+       ========================================= */
     .editor-container { position: relative; width: 100%; min-height: 100vh; }
 
     .btn-close-editor {
@@ -396,7 +425,6 @@ if (slug) {
         display: flex; align-items: center; justify-content: center;
         color: var(--text-muted); cursor: pointer; transition: all 0.2s ease; z-index: 100;
     }
-    
     .btn-close-editor:hover { background: #ef4444; color: #fff; border-color: #ef4444; transform: rotate(90deg); }
 
     .article-wrapper {
@@ -404,11 +432,11 @@ if (slug) {
         padding: 60px 20px 100px 20px; box-sizing: border-box;
     }
 
+    /* --- AREA JUDUL --- */
     .invisible-input {
         width: 100%; background: transparent; border: none; outline: none;
         color: var(--text); resize: none; text-align: center; overflow: hidden;
     }
-    
     .invisible-input::placeholder { color: var(--text-muted); opacity: 0.5; }
 
     .header-section { text-align: center; margin-bottom: 40px; }
@@ -417,9 +445,9 @@ if (slug) {
         font-family: 'Poppins', sans-serif; font-size: 2.2rem; font-weight: 700; line-height: 1.3; 
         margin-bottom: 20px; border-bottom: 2px dashed transparent; transition: border-color 0.2s;
     }
-    
     .main-headline:hover, .main-headline:focus { border-bottom: 2px dashed var(--border); }
 
+    /* --- METADATA UMUM --- */
     .meta-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     
     .meta-pill { 
@@ -428,25 +456,89 @@ if (slug) {
         font-size: 0.85rem; font-weight: 600; color: var(--text-muted); 
     }
 
-    .category-select-wrapper {
-        position: relative; padding: 0; overflow: hidden;
-        transition: border-color 0.2s, color 0.2s; cursor: pointer;
+    /* --- CUSTOM DROPDOWN UI --- */
+    .custom-dropdown-wrapper {
+        position: relative;
+        cursor: pointer;
+        padding: 0; /* Override padding bawaan meta-pill */
+        overflow: visible; /* Penting! Agar menu dropdown tidak terpotong */
+        transition: border-color 0.2s;
+        user-select: none;
     }
     
-    .category-select-wrapper:hover { border-color: var(--text); color: var(--text); }
-    
-    .custom-select {
-        appearance: none; -webkit-appearance: none; -moz-appearance: none;
-        background: transparent; border: none; outline: none;
-        color: inherit; font-family: inherit; font-weight: inherit; font-size: inherit;
-        padding: 6px 32px 6px 14px; cursor: pointer; width: 100%; height: 100%;
-    }
-    
-    .select-icon {
-        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-        pointer-events: none; transition: color 0.2s;
+    .custom-dropdown-wrapper:hover, .custom-dropdown-wrapper.open {
+        border-color: var(--text);
     }
 
+    .dropdown-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 12px 6px 14px;
+        min-width: 150px;
+        gap: 8px;
+    }
+    
+    .dropdown-trigger span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--text-muted);
+    }
+
+    .dropdown-icon {
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        color: var(--text);
+    }
+    .custom-dropdown-wrapper.open .dropdown-icon {
+        transform: rotate(180deg);
+        color: #ef4444;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%) translateY(-10px);
+        width: 220px;
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 8px 0;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+        z-index: 9999;
+        
+        /* Animasi Buka/Tutup */
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .custom-dropdown-wrapper.open .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .dropdown-item {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        color: var(--text);
+        transition: background 0.2s;
+        text-align: left;
+    }
+    .dropdown-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    .dropdown-item.active {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        font-weight: 700;
+        border-left: 3px solid #ef4444;
+        padding-left: 13px; /* Kompensasi border */
+    }
+
+    /* --- UPLOAD COVER --- */
     .hidden-file-input { display: none; }
     .cover-upload-area { margin-bottom: 40px; }
     
@@ -455,11 +547,8 @@ if (slug) {
         color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
         background: var(--bg-light); position: relative; overflow: hidden;
     }
-    
     .cover-empty-state { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-    
     .cover-placeholder:not(.has-image):hover { border-color: var(--text); color: var(--text); }
-    
     .cover-placeholder.has-image { border: 1px solid var(--border-muted); height: auto; }
     
     :global(.cover-img-preview) { width: 100%; height: auto; display: block; border-radius: 12px; }
@@ -470,7 +559,6 @@ if (slug) {
         display: flex; align-items: center; justify-content: center;
         opacity: 0; transition: opacity 0.2s ease; border-radius: 12px;
     }
-    
     .cover-placeholder.has-image:hover :global(.change-cover-overlay) { opacity: 1; }
     
     :global(.btn-change-cover) {
@@ -478,32 +566,19 @@ if (slug) {
         color: #1a1a1a; border: none; padding: 12px 24px; border-radius: 50px;
         font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: transform 0.2s;
     }
-    
     :global(.btn-change-cover:hover) { transform: scale(1.05); }
 
-    /* Custom Spinner untuk Indikator Kompresi */
     .spinner-custom {
-        width: 32px; height: 32px;
-        border: 4px solid var(--border);
-        border-top: 4px solid var(--text);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 10px;
+        width: 32px; height: 32px; border: 4px solid var(--border); border-top: 4px solid var(--text);
+        border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px;
     }
 
+    /* --- EDITOR QUILL --- */
     .sleek-toolbar {
-        border: none !important;
-        border-bottom: 1px solid var(--border-muted) !important;
-        padding: 10px 0 !important;
-        margin-bottom: 20px;
-        text-align: center;
-        opacity: 0.7;
-        transition: opacity 0.3s ease;
+        border: none !important; border-bottom: 1px solid var(--border-muted) !important;
+        padding: 10px 0 !important; margin-bottom: 20px; text-align: center; opacity: 0.7; transition: opacity 0.3s ease;
     }
-    
-    .sleek-toolbar:hover, .text-mode-area:focus-within .sleek-toolbar {
-        opacity: 1;
-    }
+    .sleek-toolbar:hover, .text-mode-area:focus-within .sleek-toolbar { opacity: 1; }
     
     :global(.ql-snow .ql-stroke) { stroke: var(--text) !important; }
     :global(.ql-snow .ql-fill) { fill: var(--text) !important; }
@@ -511,18 +586,16 @@ if (slug) {
     :global(.ql-snow.ql-toolbar button:hover .ql-stroke) { stroke: var(--theme-color, #ef4444) !important; }
 
     .text-editor {
-        font-family: 'Poppins', sans-serif; font-size: 1.05rem; line-height: 1.8;
-        text-align: left; border: none !important; padding: 0 10px !important; 
-        min-height: 400px;
-        border-left: 2px dashed transparent !important;
-        transition: border-color 0.2s;
+        font-family: 'Poppins', sans-serif; font-size: 1.05rem; line-height: 1.8; text-align: left; 
+        border: none !important; padding: 0 10px !important; min-height: 400px;
+        border-left: 2px dashed transparent !important; transition: border-color 0.2s;
     }
-    
     .text-editor:hover, .text-editor:focus-within { border-left: 2px dashed var(--border) !important; }
 
     :global(.ql-editor) { padding: 0 !important; }
     :global(.ql-editor.ql-blank::before) { left: 0 !important; color: var(--text-muted) !important; font-style: italic; }
 
+    /* --- TOMBOL BAWAH --- */
     .footer-actions { 
         margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--border-muted); 
         display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;
@@ -538,7 +611,6 @@ if (slug) {
     .action-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
     
     .btn-submit { background: var(--text); color: var(--bg); border-color: var(--text); }
-    
     .btn-publish-direct { background: #10b981; border-color: #10b981; } 
     
     .btn-submit:hover:not(:disabled) { background: #ef4444; border-color: #ef4444; color: #fff; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2); }
@@ -548,10 +620,34 @@ if (slug) {
     @keyframes spin { 100% { transform: rotate(360deg); } }
     .hidden { display: none !important; }
     
+    /* =========================================
+       RESPONSIVE MOBILE (CLEAN UI OVERHAUL)
+       ========================================= */
     @media (max-width: 768px) {
-        .btn-close-editor { top: 15px; left: 15px; width: 40px; height: 40px; }
-        .article-wrapper { padding-top: 80px; }
-        .footer-actions { flex-direction: column; }
-        .action-btn { width: 100%; justify-content: center; }
+        .btn-close-editor { top: 15px; left: 15px; width: 38px; height: 38px; }
+        .btn-close-editor :global(svg) { width: 20px; height: 20px; }
+        
+        .article-wrapper { padding-top: 70px; padding-bottom: 60px; }
+        
+        .header-section { margin-bottom: 25px; text-align: left; }
+        .main-headline { font-size: 1.6rem; text-align: left; margin-bottom: 15px; }
+
+        .meta-row { justify-content: flex-start; gap: 8px; }
+        .meta-pill { padding: 4px 10px; font-size: 0.75rem; }
+        
+        /* Geser dropdown menu di HP agar rata kiri */
+        .dropdown-menu { left: 0; transform: translateX(0) translateY(-10px); width: 200px; }
+        .custom-dropdown-wrapper.open .dropdown-menu { transform: translateX(0) translateY(0); }
+
+        .cover-upload-area { margin-bottom: 25px; }
+        .cover-placeholder { height: 160px; } 
+        .cover-empty-state svg { width: 26px; height: 26px; }
+        .cover-empty-state span { font-size: 0.8rem; text-align: center; padding: 0 15px; }
+
+        .sleek-toolbar { margin-bottom: 15px; padding: 5px 0 !important; }
+        .text-editor { font-size: 1rem; min-height: 350px; padding: 0 5px !important; }
+
+        .footer-actions { margin-top: 40px; padding-top: 20px; flex-direction: column; gap: 12px; }
+        .action-btn { width: 100%; justify-content: center; padding: 12px; font-size: 0.9rem; }
     }
 </style>

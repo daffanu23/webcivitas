@@ -1,5 +1,6 @@
 ---
 import { supabase } from '../lib/supabase';
+import { ChevronDown } from 'lucide-react'; // TAMBAHAN: Ikon Panah Bawah
 
 const { activeSlug = '' } = Astro.props;
 
@@ -7,72 +8,111 @@ const { data: categories } = await supabase
     .from('categories')
     .select('*')
     .order('name');
-// 1. DETEKSI LOKASI HALAMAN SAAT INI
+
 const currentPath = Astro.url.pathname;
 const basePath = currentPath.includes('/arsip') ? '/arsip' : '/';
+
+// CARI NAMA KATEGORI AKTIF (Untuk ditampilkan di tombol mobile)
+let activeName = 'Semua Berita';
+if (activeSlug && categories) {
+    const found = categories.find(c => c.slug === activeSlug);
+    if (found) activeName = found.name;
+}
 ---
 
-<nav class="category-nav-wrapper" id="category-filter-nav">
-    {/* 2. GUNAKAN BASEPATH AGAR LINKNYA DINAMIS */}
-    <a href={basePath} class={`cat-pill ${!activeSlug ? 'active' : ''}`}>
-        Semua
-    </a>
+<div class="category-filter-container" id="category-filter-nav">
     
-    {categories?.map((cat) => (
-        <a 
-            href={`${basePath}?kategori=${cat.slug}`} 
-            class={`cat-pill ${activeSlug === cat.slug ? 'active' : ''}`}
-        >
-            {cat.name}
+    {/* --- TOMBOL DROPDOWN KHUSUS MOBILE --- */}
+    <button class="mobile-filter-toggle" id="mobile-filter-toggle">
+        <span class="filter-label">Kategori: <strong>{activeName}</strong></span>
+        <ChevronDown size={18} className="chevron-icon" />
+    </button>
+
+    {/* --- DAFTAR KATEGORI (Horizontal di Laptop, Dropdown di HP) --- */}
+    <nav class="category-nav-list" id="category-nav-list">
+        <a href={basePath} class={`cat-tab ${!activeSlug ? 'active' : ''}`}>
+            Semua Berita
         </a>
-    ))}
-</nav>
+        
+        {categories?.map((cat) => (
+            <a 
+                href={`${basePath}?kategori=${cat.slug}`} 
+                class={`cat-tab ${activeSlug === cat.slug ? 'active' : ''}`}
+            >
+                {cat.name}
+            </a>
+        ))}
+    </nav>
+
+</div>
 
 <script>
     function initAjaxFilter() {
-        const nav = document.getElementById('category-filter-nav');
-        if (!nav) return;
+        const navContainer = document.getElementById('category-filter-nav');
+        if (!navContainer) return;
 
-        const buttons = nav.querySelectorAll('.cat-pill');
+        const buttons = navContainer.querySelectorAll('.cat-tab');
+        const toggleBtn = document.getElementById('mobile-filter-toggle');
+        const filterLabel = navContainer.querySelector('.filter-label strong');
 
+        // --- 1. LOGIKA BUKA TUTUP DROPDOWN (MOBILE) ---
+        if (toggleBtn && !toggleBtn.hasAttribute('data-listener')) {
+            toggleBtn.setAttribute('data-listener', 'true');
+            
+            toggleBtn.addEventListener('click', () => {
+                navContainer.classList.toggle('is-open');
+            });
+            
+            // Tutup dropdown otomatis kalau mengeklik di luar kotak menu
+            document.addEventListener('click', (e) => {
+                if (!navContainer.contains(e.target as Node)) {
+                    navContainer.classList.remove('is-open');
+                }
+            });
+        }
+
+        // --- 2. LOGIKA AJAX FILTER (TANPA REFRESH) ---
         buttons.forEach(btn => {
-            // Mencegah listener tertumpuk jika pindah halaman
             if (btn.hasAttribute('data-ajax-ready')) return;
             btn.setAttribute('data-ajax-ready', 'true');
 
             btn.addEventListener('click', async (e) => {
-                e.preventDefault(); // MATIKAN LOADING HALAMAN!
+                e.preventDefault(); 
                 
                 const url = btn.getAttribute('href');
                 if (!url) return;
 
-                // 1. INSTAN: Ubah warna tombol langsung detik itu juga
+                // INSTAN: Ubah warna & UI tombol
                 buttons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                
+                // Jika di HP, perbarui teks "Kategori: [Nama]" dan tutup dropdown
+                if (filterLabel) {
+                    filterLabel.textContent = btn.textContent?.trim() || 'Semua Berita';
+                }
+                navContainer.classList.remove('is-open');
 
-                // 2. FETCH: Ambil data dari server secara diam-diam
+                // FETCH AJAX
                 try {
                     const response = await fetch(url);
                     const htmlText = await response.text();
                     
-                    // 3. PARSING: Ubah teks HTML menjadi dokumen yang bisa dibaca JS
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(htmlText, 'text/html');
 
-                    // 4. SWAP: Tukar isi wadah dengan isi yang baru dari server
+                    // GANTI KONTEN DOM
                     const currentHero = document.getElementById('dynamic-hero-container');
                     const newHero = doc.getElementById('dynamic-hero-container');
-                    if (currentHero && newHero) {
-                        currentHero.innerHTML = newHero.innerHTML;
-                    }
+                    if (currentHero && newHero) currentHero.innerHTML = newHero.innerHTML;
 
                     const currentGrid = document.getElementById('dynamic-grid-container');
                     const newGrid = doc.getElementById('dynamic-grid-container');
-                    if (currentGrid && newGrid) {
-                        currentGrid.innerHTML = newGrid.innerHTML;
-                    }
+                    if (currentGrid && newGrid) currentGrid.innerHTML = newGrid.innerHTML;
 
-                    // 5. URL: Ganti tulisan URL di atas browser tanpa me-refresh halaman
+                    const currentArchive = document.getElementById('dynamic-archive-container');
+                    const newArchive = doc.getElementById('dynamic-archive-container');
+                    if (currentArchive && newArchive) currentArchive.innerHTML = newArchive.innerHTML;
+
                     window.history.pushState({}, '', url);
 
                 } catch (error) {
@@ -82,23 +122,132 @@ const basePath = currentPath.includes('/arsip') ? '/arsip' : '/';
         });
     }
 
-    // Jalankan setiap kali halaman siap
     document.addEventListener('astro:page-load', initAjaxFilter);
 </script>
 
 <style>
-    .category-nav-wrapper {
-        display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 25px;
-        scrollbar-width: none; -ms-overflow-style: none;  
+    .category-filter-container {
+        position: relative;
+        margin-bottom: 30px;
     }
-    .category-nav-wrapper::-webkit-scrollbar { display: none; }
 
-    .cat-pill {
-        white-space: nowrap; padding: 8px 18px; border-radius: 50px;
-        background: var(--bg-light); border: 1px solid var(--border-muted);
-        color: var(--text-muted); font-size: 0.85rem; font-weight: 600;
-        text-decoration: none; transition: all 0.2s ease; font-family: 'Poppins', sans-serif;
+    /* =========================================
+       DESKTOP VIEW (UNDERLINE TABS)
+       ========================================= */
+    .mobile-filter-toggle {
+        display: none; /* Sembunyikan tombol dropdown di Laptop */
     }
-    .cat-pill:hover { border-color: var(--text); color: var(--text); }
-    .cat-pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    .category-nav-list {
+        display: flex; 
+        gap: 25px; 
+        border-bottom: 1px solid var(--border-muted); 
+        padding-bottom: 2px;
+    }
+
+    .cat-tab {
+        white-space: nowrap; 
+        padding: 0 0 12px 0; 
+        color: var(--text-muted); 
+        font-size: 0.95rem; 
+        font-weight: 500;
+        text-decoration: none; 
+        transition: color 0.2s ease; 
+        font-family: 'Poppins', sans-serif;
+        position: relative;
+        cursor: pointer;
+    }
+    
+    .cat-tab:hover { color: var(--text); }
+
+    /* Garis Bawah Merah */
+    .cat-tab::after {
+        content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px;
+        background-color: #ef4444; border-radius: 2px 2px 0 0; transform: scaleX(0);
+        transform-origin: center; transition: transform 0.3s ease;
+    }
+
+    .cat-tab.active { color: var(--text); font-weight: 700; }
+    .cat-tab.active::after { transform: scaleX(1); }
+
+    /* =========================================
+       MOBILE VIEW (DROPDOWN MENU)
+       ========================================= */
+    @media (max-width: 768px) {
+        .category-filter-container {
+            margin-bottom: 25px;
+            z-index: 50; /* Pastikan dropdown melayang di atas grid berita */
+        }
+
+        /* 1. Tombol Utama Dropdown */
+        .mobile-filter-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-label { color: var(--text-muted); }
+        .filter-label strong { color: var(--text); font-weight: 600; margin-left: 4px; }
+        
+        .chevron-icon { transition: transform 0.3s ease; color: var(--text-muted); }
+        .category-filter-container.is-open .mobile-filter-toggle { border-color: #ef4444; }
+        .category-filter-container.is-open .chevron-icon { transform: rotate(180deg); color: #ef4444; }
+
+        /* 2. Menu Laci Dropdown */
+        .category-nav-list {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            flex-direction: column;
+            gap: 0;
+            padding: 8px 0;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            
+            /* Logika Buka Tutup Animasi Mulus */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .category-filter-container.is-open .category-nav-list {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* 3. Desain Item di Dalam Dropdown */
+        .cat-tab {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-muted);
+        }
+        .cat-tab:last-child {
+            border-bottom: none;
+        }
+        .cat-tab::after {
+            display: none; /* Matikan garis bawah merah ala desktop */
+        }
+
+        /* Tanda Kategori Sedang Aktif di dalam Dropdown */
+        .cat-tab.active {
+            background: rgba(239, 68, 68, 0.08); /* Background merah pudar */
+            color: #ef4444;
+            border-left: 3px solid #ef4444; /* Garis penanda di kiri */
+            padding-left: 17px; /* Kompensasi border */
+        }
+    }
 </style>
