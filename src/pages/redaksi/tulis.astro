@@ -23,7 +23,7 @@ if (!profile || (profile.role !== 'redaksi' && profile.role !== 'admin')) {
 }
 
 const authorName = profile.full_name || 'Redaksi';
-const isAdmin = profile.role === 'admin'; // <-- Deteksi Admin
+const isAdmin = profile.role === 'admin'; 
 const todayDate = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 // 3. Ambil Kategori
@@ -48,15 +48,15 @@ if (slug) {
 }
 ---
 
-{/* --- LIBRARY EKSTERNAL UNTUK RICH TEXT --- */}
+{/* --- LIBRARY EKSTERNAL (TAMBAHAN: BROWSER IMAGE COMPRESSION) --- */}
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
 <script is:inline src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+<script is:inline src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 
 <Layout title={initialArticle ? "Edit Berita | MEDIACIVITAS" : "Tulis Berita Baru | MEDIACIVITAS"}>
     <div class="editor-container">
         
-        {/* Tombol Batal */}
         <button type="button" class="btn-close-editor" onclick="history.back()" title="Batal Menulis">
             <X size={24} />
         </button>
@@ -67,7 +67,6 @@ if (slug) {
             <input type="hidden" id="post-id" value={initialArticle?.id || ''} />
             <input type="hidden" id="user-id" value={user.id} />
             
-            {/* --- HEADER EDITOR ILUSI --- */}
             <header class="header-section">
                 <textarea 
                     id="input-title" 
@@ -98,7 +97,6 @@ if (slug) {
                 </div>
             </header>
 
-            {/* --- UPLOAD COVER --- */}
             <div class="cover-upload-area" id="cover-dropzone">
                 <input type="file" id="input-cover" accept="image/*" class="hidden-file-input" />
                 
@@ -121,7 +119,6 @@ if (slug) {
                 </div>
             </div>
 
-            {/* --- RUANG KONTEN RICH TEXT --- */}
             <div class="text-mode-area">
                 
                 <div id="quill-toolbar" class="sleek-toolbar">
@@ -150,7 +147,6 @@ if (slug) {
 
             </div>
 
-            {/* --- FOOTER ACTIONS --- */}
             <div class="footer-actions">
                 <button type="button" class="action-btn btn-draft" id="btn-save-draft">
                     <Save size={18} className="btn-icon" /> 
@@ -181,6 +177,7 @@ if (slug) {
     import { supabase } from '../../lib/supabase';
 
     document.addEventListener('astro:page-load', () => {
+        // --- 1. SETUP UI & RESIZE UNTUK JUDUL ---
         const textareas = document.querySelectorAll('.auto-resize');
         function resizeTextarea(el: HTMLTextAreaElement) {
             el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px';
@@ -191,6 +188,7 @@ if (slug) {
             textarea.addEventListener('input', function() { resizeTextarea(this); });
         });
 
+        // --- 2. INISIALISASI QUILL ---
         let quillEditor: any;
         if (typeof window !== 'undefined' && (window as any).Quill) {
             quillEditor = new (window as any).Quill('#input-content-editor', {
@@ -200,15 +198,48 @@ if (slug) {
             });
         }
 
+        // --- 3. LOGIC UPLOAD GAMBAR DENGAN MESIN PEMERAS (KOMPRESI) ---
         let coverFile: File | null = null;
         const coverInput = document.getElementById('input-cover') as HTMLInputElement;
         const coverContainer = document.getElementById('cover-preview-container');
         
         if (coverInput && coverContainer) {
             coverContainer.addEventListener('click', () => coverInput.click());
-            coverInput.addEventListener('change', function() {
+            
+            // Jadikan event listener async karena proses peras butuh waktu
+            coverInput.addEventListener('change', async function() {
                 if (this.files && this.files[0]) {
-                    coverFile = this.files[0];
+                    const originalFile = this.files[0];
+                    
+                    // Beri tahu user bahwa sistem sedang bekerja memeras gambar
+                    coverContainer.classList.remove('has-image');
+                    coverContainer.innerHTML = `
+                        <div class="cover-empty-state">
+                            <div class="spinner-custom"></div>
+                            <span style="color: var(--text);">Mengompres Gambar... ⏳</span>
+                        </div>
+                    `;
+
+                    try {
+                        // Aturan Pemerasan: Maks 300KB, Resolusi maks 1280px
+                        const options = {
+                            maxSizeMB: 0.3,
+                            maxWidthOrHeight: 1280,
+                            useWebWorker: true
+                        };
+
+                        if ((window as any).imageCompression) {
+                            coverFile = await (window as any).imageCompression(originalFile, options);
+                            console.log(`Penyusutan berhasil: ${(originalFile.size/1024/1024).toFixed(2)} MB menjadi ${(coverFile!.size/1024/1024).toFixed(2)} MB`);
+                        } else {
+                            coverFile = originalFile; // Fallback jika script gagal load
+                        }
+                    } catch (error) {
+                        console.error("Gagal memeras gambar", error);
+                        coverFile = originalFile;
+                    }
+
+                    // Tampilkan gambar yang sudah diperas ke layar
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         coverContainer.innerHTML = `
@@ -219,11 +250,12 @@ if (slug) {
                         `;
                         coverContainer.classList.add('has-image');
                     };
-                    reader.readAsDataURL(this.files[0]);
+                    reader.readAsDataURL(coverFile as File);
                 }
             });
         }
 
+        // --- 4. FUNGSI UPLOAD & SIMPAN ---
         async function saveArticle(status: 'draft' | 'pending' | 'published') {
             let btnId = 'btn-save-draft';
             if (status === 'pending') btnId = 'btn-submit-admin';
@@ -235,36 +267,26 @@ if (slug) {
             const title = (document.getElementById('input-title') as HTMLTextAreaElement).value.trim();
             const categoryId = (document.getElementById('input-category') as HTMLSelectElement).value;
             
-            // --- EKSTRAKSI & PENCUCIAN HTML ---
+            // Ekstraksi HTML & Cuci dengan Satpam DOMPurify
             let rawHtml = quillEditor ? quillEditor.root.innerHTML : '';
             if (rawHtml === '<p><br></p>') rawHtml = ''; 
             
             let cleanContent = rawHtml;
-
-            // Logika "Satpam Pintar" DOMPurify
             if ((window as any).DOMPurify) {
-                // Hapus hook lama agar tidak menumpuk
                 (window as any).DOMPurify.removeAllHooks();
-                
-                // Tambahkan aturan khusus untuk Link (Tag <a>)
                 (window as any).DOMPurify.addHook('afterSanitizeAttributes', function(node: Element) {
                     if (node.tagName === 'A') {
                         const href = node.getAttribute('href');
-                        // 1. Cek jika link tidak punya http/https
                         if (href && !/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(href)) {
                             node.setAttribute('href', 'https://' + href);
                         }
-                        // 2. Paksa buka di tab baru & amankan dari celah keamanan
                         node.setAttribute('target', '_blank');
                         node.setAttribute('rel', 'noopener noreferrer');
                     }
                 });
-
-                // Eksekusi pembersihan (izinkan atribut target agar tidak dihapus DOMPurify)
                 cleanContent = (window as any).DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
             }
             
-            // Validasi Dasar
             if (!title) return alert("Judul tidak boleh kosong!");
             if (!categoryId) return alert("Pilih kategori terlebih dahulu!");
             if (!cleanContent) return alert("Isi berita tidak boleh kosong!");
@@ -281,7 +303,25 @@ if (slug) {
             try {
                 let finalCoverUrl = coverContainer?.getAttribute('data-url') || '';
                 
+                // --- PROSES UPLOAD COVER BARU ---
                 if (coverFile) {
+                    
+                    // 1. TUKANG SAPU: Hapus gambar lama jika ini mode Edit!
+                    if (articleId && finalCoverUrl && finalCoverUrl.includes('covers/')) {
+                        try {
+                            // Mengekstrak path gambar lama dari URL panjang
+                            // Contoh: mengubah "https://..../public/news-images/covers/123.jpg" menjadi "covers/123.jpg"
+                            const oldPath = finalCoverUrl.substring(finalCoverUrl.indexOf('covers/'));
+                            
+                            // Eksekusi penghapusan di Supabase Storage
+                            await supabase.storage.from('news-images').remove([oldPath]);
+                            console.log("🧹 Cover lama berhasil dihapus dari storage!");
+                        } catch(err) {
+                            console.warn("Gagal menghapus cover lama:", err);
+                        }
+                    }
+
+                    // 2. UPLOAD GAMBAR BARU (Yang sudah dikompres)
                     const fileExt = coverFile.name.split('.').pop();
                     const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                     const filePath = `covers/${uniqueName}`;
@@ -290,7 +330,7 @@ if (slug) {
                     if (uploadError) throw new Error("Gagal mengunggah cover: " + uploadError.message);
                     
                     const { data } = supabase.storage.from('news-images').getPublicUrl(filePath);
-                    finalCoverUrl = data.publicUrl;
+                    finalCoverUrl = data.publicUrl; // Perbarui URL dengan gambar baru
                 }
 
                 let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -441,7 +481,16 @@ if (slug) {
     
     :global(.btn-change-cover:hover) { transform: scale(1.05); }
 
-    /* --- STYLING QUILL EDITOR AGAR TAMPIL SANGAT BERSIH --- */
+    /* Custom Spinner untuk Indikator Kompresi */
+    .spinner-custom {
+        width: 32px; height: 32px;
+        border: 4px solid var(--border);
+        border-top: 4px solid var(--text);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 10px;
+    }
+
     .sleek-toolbar {
         border: none !important;
         border-bottom: 1px solid var(--border-muted) !important;
@@ -474,7 +523,6 @@ if (slug) {
     :global(.ql-editor) { padding: 0 !important; }
     :global(.ql-editor.ql-blank::before) { left: 0 !important; color: var(--text-muted) !important; font-style: italic; }
 
-    /* --- FOOTER ACTIONS --- */
     .footer-actions { 
         margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--border-muted); 
         display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;
@@ -491,7 +539,6 @@ if (slug) {
     
     .btn-submit { background: var(--text); color: var(--bg); border-color: var(--text); }
     
-    /* Tombol Khusus Admin Tayangkan Langsung */
     .btn-publish-direct { background: #10b981; border-color: #10b981; } 
     
     .btn-submit:hover:not(:disabled) { background: #ef4444; border-color: #ef4444; color: #fff; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2); }

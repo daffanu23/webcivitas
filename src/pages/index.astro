@@ -74,9 +74,12 @@ const heroArticles = filteredArticles.slice(0, 5);
 let gridArticles = [];
 
 if (activeCat) {
-    gridArticles = filteredArticles;
+    // Jika sedang memilih kategori, kita batasi juga agar tidak kepanjangan
+    // (Misal kita kecualikan 5 yang masuk slider, lalu ambil 3 sisanya)
+    gridArticles = filteredArticles.slice(5, 8); 
 } else {
-    gridArticles = filteredArticles.slice(5, 14); 
+    // Untuk beranda normal, cukup ambil 3 kartu!
+    gridArticles = filteredArticles.slice(5, 8); 
 }
 ---
 
