@@ -113,8 +113,30 @@ export default function MagazineManager({ userId }) {
 
     const handleDelete = async (id) => {
         if (!confirm("Yakin ingin menghapus dokumen ini dari database?")) return;
-        await supabase.from('magazines').delete().eq('id', id);
-        fetchMagazines();
+        try {
+            // 1. Ambil data dulu untuk mendapatkan URL file
+            const target = magazines.find(m => m.id === id);
+            
+            // 2. Hapus file dari Storage (jika ada)
+            if (target?.cover_url) {
+                const coverFileName = target.cover_url.split('/').pop();
+                if (coverFileName) {
+                    await supabase.storage.from('magazine_covers').remove([coverFileName]);
+                }
+            }
+            if (target?.pdf_url) {
+                const pdfFileName = target.pdf_url.split('/').pop();
+                if (pdfFileName) {
+                    await supabase.storage.from('magazine_pdfs').remove([pdfFileName]);
+                }
+            }
+
+            // 3. Hapus dari database
+            await supabase.from('magazines').delete().eq('id', id);
+            fetchMagazines();
+        } catch (error) {
+            alert("Gagal menghapus: " + error.message);
+        }
     };
 
     return (

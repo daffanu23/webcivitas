@@ -2,6 +2,7 @@
 // TAMBAHAN: Import Menu dan X untuk ikon Hamburger
 import { LogIn, Sun, Moon, Menu, X } from 'lucide-react';
 import { getSupabaseServer } from '../lib/supabase';
+import MagazineUploadModal from './MagazineUploadModal';
 
 // 1. Inisialisasi Supabase & Ambil User
 const supabase = getSupabaseServer(Astro.cookies);
@@ -249,6 +250,20 @@ const isActive = (path: string) => {
                 }
             });
         }
+
+        // Tombol Upload Majalah -> Buka Modal via Custom Event
+        const magBtn = document.getElementById('fab-magazine-btn');
+        if (magBtn && trigger && menu) {
+            magBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Tutup FAB menu dulu
+                trigger.classList.remove('active');
+                menu.classList.remove('active');
+                // Dispatch event untuk buka modal React
+                window.dispatchEvent(new CustomEvent('open-magazine-upload'));
+            });
+        }
     });
 </script>
 
@@ -256,12 +271,15 @@ const isActive = (path: string) => {
 {(userRole === 'redaksi' || userRole === 'admin') && (
     <div class="fab-container">
         <div id="fab-menu" class="fab-menu">
-            <a href="/redaksi/tulis?mode=pdf" class="fab-menu-item" title="Upload Artikel PDF">
-                <span class="fab-menu-label">Upload PDF</span>
-                <div class="fab-menu-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 12 15 15"></polyline></svg>
-                </div>
-            </a>
+            {/* Tombol Upload Majalah - HANYA ADMIN */}
+            {userRole === 'admin' && (
+                <button type="button" id="fab-magazine-btn" class="fab-menu-item" title="Upload Majalah / Terbitan">
+                    <span class="fab-menu-label">Upload Majalah</span>
+                    <div class="fab-menu-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+                    </div>
+                </button>
+            )}
             <a href="/redaksi/tulis?mode=teks" class="fab-menu-item" title="Tulis Langsung">
                 <span class="fab-menu-label">Tulis Langsung</span>
                 <div class="fab-menu-icon">
@@ -276,6 +294,11 @@ const isActive = (path: string) => {
             </svg>
         </button>
     </div>
+)}
+
+{/* --- MAGAZINE UPLOAD MODAL (Admin Only) --- */}
+{userRole === 'admin' && user && (
+    <MagazineUploadModal client:only="react" userId={user.id} />
 )}
 
 <style>
@@ -410,7 +433,7 @@ const isActive = (path: string) => {
     .fab-container { position: fixed; bottom: 40px; right: 40px; display: flex; flex-direction: column; align-items: flex-end; z-index: 9999; }
     .fab-menu { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; opacity: 0; visibility: hidden; transform: translateY(20px) scale(0.8); transform-origin: bottom center; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .fab-menu.active { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
-    .fab-menu-item { display: flex; align-items: center; gap: 15px; text-decoration: none; justify-content: flex-end; }
+    .fab-menu-item { display: flex; align-items: center; gap: 15px; text-decoration: none; justify-content: flex-end; background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
     .fab-menu-label { background: var(--bg); color: var(--text); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); opacity: 0; transform: translateX(10px); transition: all 0.2s ease; }
     .fab-menu-icon { width: 48px; height: 48px; background: var(--bg-light); border: 1px solid var(--border); color: var(--text); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.2s ease, background 0.2s ease; }
     .fab-menu-item:hover .fab-menu-icon { background: var(--text); color: var(--bg); transform: scale(1.1); }

@@ -83,8 +83,8 @@ if (jenis === 'Tabloid') {
         align-items: center;
         justify-content: space-between;
         padding: 45px 60px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--bg-light);
+        border: 1px solid var(--border);
         border-radius: 24px;
         overflow: hidden;
         gap: 40px;
@@ -132,13 +132,13 @@ if (jenis === 'Tabloid') {
     }
 
     .meta-angkatan {
-        color: rgba(255,255,255,0.5);
+        color: var(--text-muted);
         font-size: 0.9rem;
         font-weight: 500;
     }
 
     .title {
-        color: #ffffff;
+        color: var(--text);
         font-size: 1.5rem;
         font-weight: 600;
         line-height: 1.4;
@@ -166,8 +166,8 @@ if (jenis === 'Tabloid') {
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease;
-        background: rgba(0, 0, 0, 0.4); 
-        color: #ffffff;
+        background: var(--bg);
+        color: var(--text);
         border: 1px solid var(--theme-color);
         box-shadow: 0 0 20px -5px var(--theme-color); 
     }
@@ -186,15 +186,15 @@ if (jenis === 'Tabloid') {
         gap: 8px;
         font-size: 0.95rem;
         font-weight: 500;
-        color: rgba(255,255,255,0.6); 
+        color: var(--text-muted); 
         text-decoration: none;
         transition: all 0.3s ease;
         padding-bottom: 4px;
-        border-bottom: 1px solid rgba(255,255,255,0.15); /* Garis redup standby */
+        border-bottom: 1px solid var(--border); /* Garis redup standby */
     }
 
     .btn-text-explore:hover {
-        color: #ffffff; 
+        color: var(--text); 
         border-bottom-color: var(--theme-color); /* Menyala sesuai warna */
     }
 
