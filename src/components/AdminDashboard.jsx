@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import MDEditor from '@uiw/react-md-editor';
-import { Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye, ArrowLeftCircle, Inbox, Archive, Instagram, Upload, PlusCircle, LayoutDashboard, FileText, BookOpen } from 'lucide-react';
+import {
+    Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye,
+    ArrowLeftCircle, Inbox, Archive, Instagram, Upload, PlusCircle,
+    BookOpen, ChevronDown, ChevronRight, Sparkles, ExternalLink, Filter
+} from 'lucide-react';
 import MagazineManager from './MagazineManager';
 
 export default function AdminDashboard({ serverCategories, serverArticles, userId }) {
@@ -60,7 +64,7 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
     };
 
     const submitNewPromo = async () => {
-        if (!newPromo.file && !newPromo.image_url) return alert("Pilih gambar dulu!");
+        if (!newPromo.file && !newPromo.image_url) return alert("Pilih gambar terlebih dahulu!");
 
         setIsUploadingPromo(true);
         try {
@@ -91,7 +95,7 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
             if (error) throw error;
 
             setNewPromo({ image_url: '', link_url: '', caption: '', file: null });
-            alert("Promo berhasil ditambahkan! Foto lama otomatis tergeser.");
+            alert("Promo berhasil ditambahkan!");
             fetchData();
 
         } catch (error) {
@@ -110,7 +114,7 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
         } catch (error) {
             alert("Gagal hapus: " + error.message);
         }
-    }
+    };
 
     // --- FUNGSI EDITOR BERITA ---
     const handleOpenReview = (article) => {
@@ -134,7 +138,7 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
 
     const handleUpdateStatus = async (newStatus) => {
         if (!selectedArticle) return;
-        if (newStatus === 'published' && selectedCategories.length === 0) return alert("Berita yang dipublish wajib punya kategori!");
+        if (newStatus === 'published' && selectedCategories.length === 0) return alert("Berita yang dipublish wajib memiliki minimal 1 kategori!");
         let confirmMsg = newStatus === 'published' ? "Terbitkan berita ini sekarang?" : newStatus === 'draft' ? "Kembalikan ke penulis untuk revisi?" : "Tolak dan arsipkan berita ini?";
         if (!confirm(confirmMsg)) return;
 
@@ -153,68 +157,168 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
     };
 
     const handleDeletePermanent = async (id) => {
-        if (!confirm("Hapus permanen? Data tidak bisa kembali.")) return;
+        if (!confirm("Hapus artikel ini secara permanen dari database?")) return;
         await supabase.from('articles').delete().eq('id', id);
         fetchData();
-    }
+    };
 
     const pendingArticles = articles.filter(a => a.status === 'pending');
 
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'published':
+                return <span className="status-badge-pill live">Live</span>;
+            case 'pending':
+                return <span className="status-badge-pill pending">Review</span>;
+            case 'draft':
+                return <span className="status-badge-pill draft">Revisi</span>;
+            case 'rejected':
+                return <span className="status-badge-pill rejected">Ditolak</span>;
+            default:
+                return <span className="status-badge-pill draft">{status}</span>;
+        }
+    };
+
     return (
-        <div className="admin-layout">
-            {/* SIDEBAR NAVIGATION */}
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <ShieldCheck size={24} className="text-primary" />
-                    <h2>Admin Panel</h2>
+        <div className="adm-container">
+            {/* SIDEBAR NAVIGATION (Desktop) */}
+            <aside className="adm-sidebar">
+                <div className="adm-brand">
+                    <div className="adm-brand-icon">
+                        <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                        <h2>Admin Panel</h2>
+                        <span>Mediacivitas</span>
+                    </div>
                 </div>
-                <nav className="sidebar-nav">
-                    <button className={`nav-item ${activeTab === 'review' ? 'active' : ''}`} onClick={() => setActiveTab('review')}>
+
+                <nav className="adm-nav-list">
+                    <button
+                        className={`adm-nav-btn ${activeTab === 'review' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('review')}
+                    >
                         <Inbox size={18} />
                         <span>Meja Redaksi</span>
-                        {pendingArticles.length > 0 && <span className="nav-badge">{pendingArticles.length}</span>}
+                        {pendingArticles.length > 0 && (
+                            <span className="adm-counter-badge">{pendingArticles.length}</span>
+                        )}
                     </button>
-                    <button className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => setActiveTab('archive')}>
+
+                    <button
+                        className={`adm-nav-btn ${activeTab === 'archive' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('archive')}
+                    >
                         <Archive size={18} />
                         <span>Arsip Berita</span>
+                        <span className="adm-sub-badge">{articles.length}</span>
                     </button>
-                    <button className={`nav-item ${activeTab === 'magazine' ? 'active' : ''}`} onClick={() => setActiveTab('magazine')}>
+
+                    <button
+                        className={`adm-nav-btn ${activeTab === 'magazine' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('magazine')}
+                    >
                         <BookOpen size={18} />
                         <span>Manajemen Terbitan</span>
                     </button>
-                    <button className={`nav-item ${activeTab === 'promo' ? 'active' : ''}`} onClick={() => setActiveTab('promo')}>
+
+                    <button
+                        className={`adm-nav-btn ${activeTab === 'promo' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('promo')}
+                    >
                         <Instagram size={18} />
                         <span>Etalase IG</span>
+                        {promos.length > 0 && (
+                            <span className="adm-sub-badge">{promos.length}/4</span>
+                        )}
                     </button>
                 </nav>
             </aside>
 
             {/* MAIN CONTENT AREA */}
-            <main className="admin-main">
-                <header className="main-header">
-                    <div>
-                        <h1>{activeTab === 'review' ? 'Antrian Review' : activeTab === 'archive' ? 'Database Arsip' : activeTab === 'magazine' ? 'Manajemen Edisi Khusus' : 'Etalase Instagram'}</h1>
-                        <p className="text-muted">Kelola konten dan publikasi MEDIACIVITAS.</p>
+            <main className="adm-main-content">
+                {/* Mobile Section Selector */}
+                <div className="adm-mobile-header">
+                    <div className="adm-mobile-title">
+                        <ShieldCheck size={20} className="adm-text-primary" />
+                        <span>Admin Manajemen</span>
                     </div>
+                    <div className="adm-select-wrapper">
+                        <select
+                            value={activeTab}
+                            onChange={(e) => setActiveTab(e.target.value)}
+                            className="adm-mobile-select"
+                        >
+                            <option value="review">📥 Meja Redaksi {pendingArticles.length > 0 ? `(${pendingArticles.length} Antrian)` : ''}</option>
+                            <option value="archive">📁 Arsip Berita ({articles.length} Artikel)</option>
+                            <option value="magazine">📖 Manajemen Terbitan (Majalah)</option>
+                            <option value="promo">📸 Etalase Instagram ({promos.length}/4)</option>
+                        </select>
+                        <ChevronDown size={18} className="adm-select-arrow" />
+                    </div>
+                </div>
+
+                {/* Section Header */}
+                <header className="adm-section-header">
+                    <div>
+                        <h1>
+                            {activeTab === 'review' && 'Meja Redaksi'}
+                            {activeTab === 'archive' && 'Database Arsip Berita'}
+                            {activeTab === 'magazine' && 'Manajemen Edisi Terbitan'}
+                            {activeTab === 'promo' && 'Etalase Promosi Instagram'}
+                        </h1>
+                        <p>
+                            {activeTab === 'review' && 'Tinjau artikel masuk dari kontributor sebelum dipublikasikan.'}
+                            {activeTab === 'archive' && 'Kelola, cari, dan sunting seluruh artikel berita yang pernah ditulis.'}
+                            {activeTab === 'magazine' && 'Atur majalah digital, tabloid, dan edisi cetak yang ada di rak terbitan.'}
+                            {activeTab === 'promo' && 'Kelola 4 slot kartu postingan Instagram yang tampil di beranda.'}
+                        </p>
+                    </div>
+
                     {activeTab !== 'magazine' && (
-                        <button onClick={fetchData} className="btn-refresh"><RefreshCw size={16} /> Refresh Data</button>
+                        <button onClick={fetchData} className="adm-refresh-btn" title="Refresh data terbaru">
+                            <RefreshCw size={15} />
+                            <span>Segarkan</span>
+                        </button>
                     )}
                 </header>
 
-                <div className="content-area">
-                    {/* TAB: REVIEW ARTIKEL */}
+                {/* TAB CONTENT PANES */}
+                <div className="adm-tab-body">
+                    {/* TAB 1: MEJA REDAKSI (REVIEW) */}
                     {activeTab === 'review' && (
-                        <div className="tab-pane">
+                        <div className="adm-pane">
                             {pendingArticles.length === 0 ? (
-                                <div className="empty-state"><CheckCircle size={48} strokeWidth={1.5} className="text-muted" /><p>Semua berita sudah direview.</p></div>
+                                <div className="adm-empty-box">
+                                    <div className="adm-empty-icon">
+                                        <CheckCircle size={36} />
+                                    </div>
+                                    <h3>Tidak Ada Antrian Review</h3>
+                                    <p>Semua kiriman artikel telah ditinjau dan dipublikasikan.</p>
+                                </div>
                             ) : (
-                                <div className="card-grid">
+                                <div className="adm-review-grid">
                                     {pendingArticles.map((item) => (
-                                        <div key={item.id} className="news-card" onClick={() => handleOpenReview(item)}>
-                                            <div className="card-img-box"><img src={item.cover_url || 'https://placehold.co/400'} alt="cover" /><div className="overlay-hover"><Eye size={24} color="white" /></div></div>
-                                            <div className="card-info">
-                                                <div className="card-meta"><span>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span><span className="dot">•</span><span>{item.profiles?.full_name || 'Anonim'}</span></div>
-                                                <h3>{item.title}</h3>
+                                        <div
+                                            key={item.id}
+                                            className="adm-review-card"
+                                            onClick={() => handleOpenReview(item)}
+                                        >
+                                            <div className="adm-review-thumb">
+                                                <img src={item.cover_url || 'https://placehold.co/400x250'} alt={item.title} />
+                                                <div className="adm-review-badge">Perlu Review</div>
+                                            </div>
+                                            <div className="adm-review-details">
+                                                <div className="adm-review-meta">
+                                                    <span>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                                                    <span>•</span>
+                                                    <span>{item.profiles?.full_name || 'Penulis Anonim'}</span>
+                                                </div>
+                                                <h4>{item.title}</h4>
+                                                <div className="adm-review-action">
+                                                    <span>Buka Editor & Review</span>
+                                                    <ChevronRight size={16} />
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -223,113 +327,220 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
                         </div>
                     )}
 
-                    {/* TAB: ARSIP BERITA */}
+                    {/* TAB 2: ARSIP BERITA */}
                     {activeTab === 'archive' && (
-                        <div className="tab-pane">
-                            <div className="table-responsive">
-                                <table className="minimal-table">
-                                    <thead><tr><th>Judul Berita</th><th>Penulis</th><th>Status</th><th style={{ textAlign: 'right' }}>Aksi</th></tr></thead>
+                        <div className="adm-pane">
+                            {/* Desktop Table View */}
+                            <div className="adm-desktop-table-box">
+                                <table className="adm-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Judul Artikel</th>
+                                            <th>Penulis</th>
+                                            <th>Tanggal</th>
+                                            <th>Status</th>
+                                            <th style={{ textAlign: 'right' }}>Aksi</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         {articles.map((item) => (
-                                            <tr key={item.id} className={item.status === 'pending' ? 'row-highlight' : ''}>
-                                                <td className="td-title"><span className="title-text">{item.title}</span><span className="date-text">{new Date(item.created_at).toLocaleDateString()}</span></td>
-                                                <td className="td-author">{item.profiles?.full_name || 'Redaksi'}</td>
-                                                <td><span className={`status-dot ${item.status}`}></span><span className="status-text">{item.status === 'published' ? 'Live' : (item.status === 'rejected' ? 'Ditolak' : (item.status === 'draft' ? 'Draft' : 'Pending'))}</span></td>
-                                                <td className="col-actions">
-                                                    <button onClick={() => handleOpenReview(item)} className="icon-btn" title="Review"><Edit3 size={16} /></button>
-                                                    <button onClick={() => handleDeletePermanent(item.id)} className="icon-btn danger" title="Hapus"><Trash2 size={16} /></button>
+                                            <tr key={item.id} className={item.status === 'pending' ? 'is-pending' : ''}>
+                                                <td className="adm-td-title">
+                                                    <span className="adm-table-title">{item.title}</span>
+                                                </td>
+                                                <td className="adm-td-author">
+                                                    {item.profiles?.full_name || 'Redaksi'}
+                                                </td>
+                                                <td className="adm-td-date">
+                                                    {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </td>
+                                                <td>
+                                                    {getStatusBadge(item.status)}
+                                                </td>
+                                                <td className="adm-td-actions">
+                                                    <button
+                                                        onClick={() => handleOpenReview(item)}
+                                                        className="adm-action-icon edit"
+                                                        title="Sunting Artikel"
+                                                    >
+                                                        <Edit3 size={15} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePermanent(item.id)}
+                                                        className="adm-action-icon delete"
+                                                        title="Hapus Artikel"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Mobile Accordion Cards View */}
+                            <div className="adm-mobile-accordion-list">
+                                {articles.map((item) => (
+                                    <details key={item.id} className="adm-accordion-card">
+                                        <summary className="adm-accordion-summary">
+                                            <div className="adm-accordion-main">
+                                                <div className="adm-accordion-header-row">
+                                                    {getStatusBadge(item.status)}
+                                                    <span className="adm-accordion-date">
+                                                        {new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                    </span>
+                                                </div>
+                                                <h4 className="adm-accordion-title">{item.title}</h4>
+                                            </div>
+                                            <div className="adm-accordion-icon">
+                                                <ChevronDown size={18} />
+                                            </div>
+                                        </summary>
+
+                                        <div className="adm-accordion-expanded">
+                                            <div className="adm-expanded-meta-row">
+                                                <span className="adm-meta-label">Penulis:</span>
+                                                <span className="adm-meta-val">{item.profiles?.full_name || 'Redaksi'}</span>
+                                            </div>
+
+                                            <div className="adm-accordion-btn-group">
+                                                <button
+                                                    onClick={() => handleOpenReview(item)}
+                                                    className="adm-acc-btn edit"
+                                                >
+                                                    <Edit3 size={15} />
+                                                    <span>Review / Edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeletePermanent(item.id)}
+                                                    className="adm-acc-btn delete"
+                                                >
+                                                    <Trash2 size={15} />
+                                                    <span>Hapus</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </details>
+                                ))}
+                            </div>
                         </div>
                     )}
 
-                    {/* TAB: MANAJEMEN MAJALAH */}
+                    {/* TAB 3: MANAJEMEN TERBITAN */}
                     {activeTab === 'magazine' && (
-                        <div className="tab-pane">
+                        <div className="adm-pane">
                             <MagazineManager userId={userId} />
                         </div>
                     )}
 
-                    {/* TAB: PROMO IG */}
+                    {/* TAB 4: PROMO INSTAGRAM */}
                     {activeTab === 'promo' && (
-                        <div className="tab-pane">
-                            <div className="promo-input-wrapper">
-                                <div className="promo-input-card">
-                                    <div className="card-header-small">
-                                        <h3><PlusCircle size={18} /> Tambah Postingan Baru</h3>
-                                    </div>
-                                    <div className="promo-form-body-horizontal">
-                                        <div className="upload-wrapper-compact">
-                                            <label className={`promo-upload-area ${newPromo.image_url ? 'has-image' : 'empty'}`}>
-                                                {newPromo.image_url ? (
-                                                    <>
-                                                        <img src={newPromo.image_url} className="promo-preview-lg" />
-                                                        <div className="upload-hover-overlay"><Upload size={24} /><span>Ganti</span></div>
-                                                    </>
-                                                ) : (
-                                                    <div className="placeholder-content">
-                                                        <Upload size={24} />
-                                                        <span className="upload-title">Upload Foto (4:5)</span>
+                        <div className="adm-pane">
+                            {/* Input Form Box */}
+                            <div className="adm-promo-input-box">
+                                <div className="adm-box-header">
+                                    <PlusCircle size={18} />
+                                    <h3>Tambah Postingan Instagram Baru</h3>
+                                </div>
+
+                                <div className="adm-promo-form-grid">
+                                    {/* Upload Dropzone */}
+                                    <div className="adm-promo-upload-side">
+                                        <label className={`adm-promo-drop ${newPromo.image_url ? 'has-img' : ''}`}>
+                                            {newPromo.image_url ? (
+                                                <div className="adm-promo-preview-wrap">
+                                                    <img src={newPromo.image_url} alt="Preview Promo" />
+                                                    <div className="adm-promo-hover-overlay">
+                                                        <Upload size={20} />
+                                                        <span>Ganti Foto</span>
                                                     </div>
-                                                )}
-                                                <input type="file" accept="image/*" onChange={handleNewPromoImage} className="file-input-hidden" />
-                                            </label>
+                                                </div>
+                                            ) : (
+                                                <div className="adm-promo-drop-empty">
+                                                    <Upload size={24} />
+                                                    <span>Pilih Foto (4:5)</span>
+                                                    <span className="sub">Maksimal resolusi tajam</span>
+                                                </div>
+                                            )}
+                                            <input type="file" accept="image/*" onChange={handleNewPromoImage} className="adm-hidden-input" />
+                                        </label>
+                                    </div>
+
+                                    {/* Fields */}
+                                    <div className="adm-promo-fields-side">
+                                        <div className="adm-input-unit">
+                                            <label>Kutipan / Caption</label>
+                                            <textarea
+                                                value={newPromo.caption}
+                                                onChange={(e) => handleNewPromoChange('caption', e.target.value)}
+                                                rows="3"
+                                                placeholder="Tuliskan rangkuman atau kutipan menarik dari postingan ini..."
+                                            />
                                         </div>
 
-                                        <div className="promo-fields-expanded">
-                                            <div className="input-group">
-                                                <label>Caption / Kutipan</label>
-                                                <textarea
-                                                    value={newPromo.caption}
-                                                    onChange={(e) => handleNewPromoChange('caption', e.target.value)}
-                                                    rows="4"
-                                                    placeholder="Tulis caption menarik di sini..."
-                                                    className="styled-input"
-                                                ></textarea>
+                                        <div className="adm-input-unit">
+                                            <label>Link Postingan Instagram</label>
+                                            <div className="adm-input-icon-wrap">
+                                                <Instagram size={16} className="adm-input-left-icon" />
+                                                <input
+                                                    type="text"
+                                                    value={newPromo.link_url}
+                                                    onChange={(e) => handleNewPromoChange('link_url', e.target.value)}
+                                                    placeholder="https://instagram.com/p/..."
+                                                    className="has-icon"
+                                                />
                                             </div>
-                                            <div className="input-group">
-                                                <label>Link Postingan IG</label>
-                                                <div className="input-with-icon">
-                                                    <Instagram size={16} className="input-icon" />
-                                                    <input
-                                                        type="text"
-                                                        value={newPromo.link_url}
-                                                        onChange={(e) => handleNewPromoChange('link_url', e.target.value)}
-                                                        placeholder="https://instagram.com/p/..."
-                                                        className="styled-input pl-icon"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <button type="button" onClick={submitNewPromo} disabled={isUploadingPromo} className="btn-submit-promo">
-                                                {isUploadingPromo ? (
-                                                    <span className="flex-center"><RefreshCw className="spin" size={18} /> Mengupload...</span>
-                                                ) : (
-                                                    <span className="flex-center">Tayangkan Sekarang</span>
-                                                )}
-                                            </button>
                                         </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={submitNewPromo}
+                                            disabled={isUploadingPromo}
+                                            className="adm-promo-submit-btn"
+                                        >
+                                            {isUploadingPromo ? (
+                                                <span className="adm-flex-btn">
+                                                    <RefreshCw size={16} className="adm-spin" />
+                                                    <span>Menayangkan...</span>
+                                                </span>
+                                            ) : (
+                                                <span className="adm-flex-btn">
+                                                    <Upload size={16} />
+                                                    <span>Tayangkan di Beranda</span>
+                                                </span>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="promo-grid-display">
-                                {promos.length === 0 && <p className="text-muted">Belum ada promo aktif.</p>}
-                                {promos.map((item, index) => (
-                                    <div key={item.id} className="promo-display-card">
-                                        <div className="display-card-header">
-                                            <span className="badge-slot">Posisi #{index + 1}</span>
-                                            <button onClick={() => deletePromo(item.id)} className="btn-delete-circle" title="Hapus"><Trash2 size={16} /></button>
+                            {/* Active Promos List */}
+                            <div className="adm-promo-list-header">
+                                <h3>Etalase Aktif Saat Ini ({promos.length}/4)</h3>
+                                <p>Postingan di bawah ini adalah yang sedang tayang di bagian etalase beranda.</p>
+                            </div>
+
+                            <div className="adm-promo-grid">
+                                {promos.map((item, idx) => (
+                                    <div key={item.id} className="adm-promo-card">
+                                        <div className="adm-promo-card-top">
+                                            <span className="adm-slot-badge">Slot #{idx + 1}</span>
+                                            <button onClick={() => deletePromo(item.id)} className="adm-del-btn" title="Hapus Promo">
+                                                <Trash2 size={15} />
+                                            </button>
                                         </div>
-                                        <div className="display-img-box">
+                                        <div className="adm-promo-img-box">
                                             <img src={item.image_url} alt="Promo" />
                                         </div>
-                                        <div className="display-info">
-                                            <p className="display-caption">{item.caption || 'Tanpa caption'}</p>
-                                            <a href={item.link_url} target="_blank" rel="noreferrer" className="link-text">Lihat Link ↗</a>
+                                        <div className="adm-promo-info">
+                                            <p className="adm-promo-caption">{item.caption || 'Tanpa deskripsi'}</p>
+                                            {item.link_url && (
+                                                <a href={item.link_url} target="_blank" rel="noreferrer" className="adm-promo-link">
+                                                    <span>Buka di Instagram</span>
+                                                    <ExternalLink size={12} />
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -339,206 +550,1141 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
                 </div>
             </main>
 
+            {/* REVIEW / EDITOR DRAWER MODAL */}
             {mounted && createPortal(
-                <>
-                    <div className={`drawer-backdrop ${isPanelOpen ? 'open' : ''}`} onClick={handleCloseReview}></div>
-                    <div className={`drawer-panel ${isPanelOpen ? 'open' : ''}`}>
+                <div className={`adm-drawer-overlay ${isPanelOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) handleCloseReview(); }}>
+                    <div className="adm-drawer-panel">
                         {selectedArticle && (
-                            <div className="drawer-container-flex">
-                                <div className="drawer-header sticky-header"><div><h2 className="drawer-title">Editor Mode</h2></div><button onClick={handleCloseReview} className="btn-close"><XCircle size={24} strokeWidth={1.5} /></button></div>
-                                <div className="drawer-content scrollable-content">
-                                    <div className="meta-compact"><img src={selectedArticle.cover_url || 'https://placehold.co/100'} className="meta-thumb" /><div className="meta-info"><p className="author-name">{selectedArticle.profiles?.full_name || 'Redaksi'}</p><span className={`status-pill ${selectedArticle.status}`}>{selectedArticle.status}</span></div></div>
-                                    <div className="form-group"><label>Judul Headline</label><input type="text" className="input-minimal" value={editorTitle} onChange={(e) => setEditorTitle(e.target.value)} /></div>
-                                    <div className="form-group"><label>Tag Kategori</label><div className="category-grid">{availableCategories.map(cat => (<label key={cat.id} className={`cat-checkbox ${selectedCategories.includes(cat.id) ? 'active' : ''}`}><input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} /><span>{cat.name}</span></label>))}</div></div>
-                                    <div className="form-group"><label>Isi Konten (Markdown)</label><div className="admin-markdown-wrapper"><MDEditor value={editorContent} onChange={setEditorContent} height={400} preview="edit" className="custom-md-editor" /></div></div>
+                            <div className="adm-drawer-content-flow">
+                                {/* Drawer Top Bar */}
+                                <div className="adm-drawer-header">
+                                    <div className="adm-drawer-header-left">
+                                        <div className="adm-drawer-badge">Editor Mode</div>
+                                        <h3>Review & Sunting Konten</h3>
+                                    </div>
+                                    <button onClick={handleCloseReview} className="adm-drawer-close-btn" aria-label="Tutup">
+                                        <XCircle size={22} />
+                                    </button>
                                 </div>
-                                <div className="drawer-footer sticky-footer">
-                                    <button onClick={() => handleUpdateStatus('draft')} className="btn-decision revise"><ArrowLeftCircle size={18} /> Revisi</button>
-                                    <button onClick={() => handleUpdateStatus('rejected')} className="btn-decision reject"><XCircle size={18} /> Tolak</button>
-                                    <button onClick={() => handleUpdateStatus('published')} className="btn-decision publish"><CheckCircle size={18} /> Publish</button>
+
+                                {/* Drawer Body */}
+                                <div className="adm-drawer-body">
+                                    <div className="adm-drawer-meta-card">
+                                        <img src={selectedArticle.cover_url || 'https://placehold.co/100'} alt="Thumb" className="adm-drawer-thumb" />
+                                        <div>
+                                            <p className="adm-drawer-author">Penulis: <strong>{selectedArticle.profiles?.full_name || 'Redaksi'}</strong></p>
+                                            <div className="adm-drawer-status-wrap">
+                                                <span>Status saat ini:</span>
+                                                {getStatusBadge(selectedArticle.status)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="adm-drawer-input-unit">
+                                        <label>Judul Headline Artikel</label>
+                                        <input
+                                            type="text"
+                                            value={editorTitle}
+                                            onChange={(e) => setEditorTitle(e.target.value)}
+                                            className="adm-drawer-input"
+                                        />
+                                    </div>
+
+                                    <div className="adm-drawer-input-unit">
+                                        <label>Kategori Berita (Pilih minimal 1)</label>
+                                        <div className="adm-category-chips">
+                                            {availableCategories.map(cat => (
+                                                <button
+                                                    key={cat.id}
+                                                    type="button"
+                                                    onClick={() => toggleCategory(cat.id)}
+                                                    className={`adm-chip ${selectedCategories.includes(cat.id) ? 'active' : ''}`}
+                                                >
+                                                    {cat.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="adm-drawer-input-unit">
+                                        <label>Isi Konten Artikel (Markdown Editor)</label>
+                                        <div className="adm-editor-container">
+                                            <MDEditor
+                                                value={editorContent}
+                                                onChange={setEditorContent}
+                                                height={380}
+                                                preview="edit"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Drawer Sticky Action Footer */}
+                                <div className="adm-drawer-footer">
+                                    <button
+                                        onClick={() => handleUpdateStatus('draft')}
+                                        className="adm-decision-btn revise"
+                                    >
+                                        <ArrowLeftCircle size={16} />
+                                        <span>Kembalikan Revisi</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleUpdateStatus('rejected')}
+                                        className="adm-decision-btn reject"
+                                    >
+                                        <XCircle size={16} />
+                                        <span>Tolak Artikel</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleUpdateStatus('published')}
+                                        className="adm-decision-btn publish"
+                                    >
+                                        <CheckCircle size={16} />
+                                        <span>Terbitkan Sekarang</span>
+                                    </button>
                                 </div>
                             </div>
                         )}
                     </div>
-                </>, document.body
+                </div>,
+                document.body
             )}
 
             <style>{`
-                /* --- CSS GLOBAL (ADMIN LAYOUT) --- */
-                .admin-layout { 
-                    font-family: 'Poppins', sans-serif; color: var(--text); 
-                    display: flex; gap: 30px; 
-                    min-height: calc(100vh - 100px);
+                /* ===== ROOT ADMIN LAYOUT ===== */
+                .adm-container {
+                    font-family: 'Poppins', sans-serif;
+                    color: var(--text);
+                    display: flex;
+                    gap: 36px;
+                    min-height: calc(100vh - 120px);
+                    padding: 10px 0 50px 0;
                 }
 
                 /* SIDEBAR */
-                .admin-sidebar {
-                    width: 260px; flex-shrink: 0;
-                    background: var(--bg-light);
-                    border: 1px solid var(--border);
-                    border-radius: 16px;
-                    padding: 24px;
-                    display: flex; flex-direction: column; gap: 30px;
+                .adm-sidebar {
+                    width: 260px;
+                    flex-shrink: 0;
+                    position: sticky;
+                    top: 90px;
                     height: fit-content;
-                    position: sticky; top: 100px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 24px;
                 }
-                .sidebar-header {
-                    display: flex; align-items: center; gap: 12px;
-                    color: var(--text); border-bottom: 1px solid var(--border-muted);
-                    padding-bottom: 20px;
-                }
-                .sidebar-header h2 { font-size: 1.25rem; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
-                .text-primary { color: #3b82f6; }
 
-                .sidebar-nav { display: flex; flex-direction: column; gap: 8px; }
-                .nav-item {
-                    display: flex; align-items: center; gap: 12px;
-                    width: 100%; padding: 12px 16px;
-                    background: transparent; border: none; border-radius: 10px;
-                    color: var(--text-muted); font-size: 0.95rem; font-weight: 500;
-                    cursor: pointer; transition: all 0.2s; text-align: left;
+                .adm-brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 12px;
                 }
-                .nav-item:hover { background: rgba(0,0,0,0.02); color: var(--text); }
-                .nav-item.active { background: var(--bg); color: var(--text); border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); font-weight: 600; }
-                .nav-badge {
-                    margin-left: auto; background: #dc2626; color: white;
-                    font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+                .adm-brand-icon {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 12px;
+                    background: rgba(59, 130, 246, 0.12);
+                    color: #3b82f6;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                }
+                .adm-brand h2 {
+                    margin: 0;
+                    font-size: 1.15rem;
+                    font-weight: 700;
+                    letter-spacing: -0.3px;
+                }
+                .adm-brand span {
+                    font-size: 0.75rem;
+                    color: var(--text-muted);
+                    font-weight: 500;
+                }
+
+                .adm-nav-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .adm-nav-btn {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border-radius: 12px;
+                    border: none;
+                    background: transparent;
+                    color: var(--text-muted);
+                    font-family: inherit;
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    text-align: left;
+                }
+                .adm-nav-btn:hover {
+                    background: var(--bg-light);
+                    color: var(--text);
+                }
+                .adm-nav-btn.active {
+                    background: var(--text);
+                    color: var(--bg);
+                    font-weight: 600;
+                }
+                .adm-counter-badge {
+                    margin-left: auto;
+                    background: #ef4444;
+                    color: white;
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                    padding: 2px 8px;
+                    border-radius: 20px;
+                }
+                .adm-sub-badge {
+                    margin-left: auto;
+                    font-size: 0.75rem;
+                    opacity: 0.7;
+                    font-weight: 600;
                 }
 
                 /* MAIN AREA */
-                .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-                
-                .main-header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
-                .main-header h1 { font-size: 2rem; font-weight: 700; margin: 0; letter-spacing: -1px; line-height: 1.2; }
-                .main-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.95rem; }
-                
-                .btn-refresh { background: var(--bg-light); border: 1px solid var(--border); padding: 10px 18px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; border-radius: 8px; color: var(--text); cursor: pointer; transition: all 0.2s; }
-                .btn-refresh:hover { background: var(--bg); border-color: var(--text-muted); transform: translateY(-1px); }
-                
-                .empty-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 16px; margin-top: 20px; }
-                .empty-state p { margin: 0; font-size: 1.1rem; color: var(--text-muted); }
-
-                /* --- CARD & GRID (REVIEW) --- */
-                .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
-                .news-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.3s ease; position: relative; }
-                .news-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-color: var(--text-muted); }
-                .card-img-box { height: 180px; position: relative; overflow: hidden; }
-                .card-img-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-                .news-card:hover .card-img-box img { transform: scale(1.05); }
-                .overlay-hover { position: absolute; inset: 0; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(2px); }
-                .news-card:hover .overlay-hover { opacity: 1; }
-                .card-info { padding: 20px; }
-                .card-meta { display: flex; gap: 8px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-                .card-info h3 { font-size: 1.1rem; font-weight: 700; margin: 0; line-height: 1.5; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-                /* --- PROMO IG INPUT BARU (HORIZONTAL) --- */
-                .promo-input-wrapper { margin-bottom: 40px; }
-                .promo-input-card { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.03); }
-                .card-header-small { padding: 18px 24px; background: var(--bg-light); border-bottom: 1px solid var(--border); }
-                .card-header-small h3 { margin: 0; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 10px; color: var(--text); }
-                
-                .promo-form-body-horizontal { padding: 24px; display: flex; gap: 30px; align-items: start; }
-                .upload-wrapper-compact { width: 180px; flex-shrink: 0; }
-                .promo-upload-area { 
-                    position: relative; width: 100%; aspect-ratio: 4/5; 
-                    background: var(--bg-light); border: 2px dashed var(--border); border-radius: 12px; 
-                    overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                    cursor: pointer; transition: all 0.3s ease;
-                }
-                .promo-upload-area.empty:hover { border-color: var(--text); background: rgba(0,0,0,0.02); }
-                .promo-upload-area.has-image { border-style: solid; border-color: transparent; }
-                .placeholder-content { text-align: center; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; }
-                .upload-title { font-weight: 600; font-size: 0.85rem; color: var(--text); }
-                .promo-preview-lg { width: 100%; height: 100%; object-fit: cover; display: block; }
-                .upload-hover-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; opacity: 0; transition: opacity 0.2s; backdrop-filter: blur(2px); font-weight: 500; font-size: 0.9rem; }
-                .promo-upload-area:hover .upload-hover-overlay { opacity: 1; }
-                .file-input-hidden { display: none; }
-                
-                .promo-fields-expanded { flex: 1; display: flex; flex-direction: column; gap: 20px; }
-                .input-group label { display: block; font-size: 0.85rem; color: var(--text); font-weight: 600; margin-bottom: 8px; }
-                .styled-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.95rem; transition: all 0.2s; resize: none; }
-                .styled-input:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 3px rgba(100,100,100,0.1); }
-                .input-with-icon { position: relative; }
-                .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-                .styled-input.pl-icon { padding-left: 42px; }
-                .btn-submit-promo { background: var(--text); color: var(--bg); border: none; padding: 14px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 10px; font-size: 1rem; }
-                .btn-submit-promo:hover:not(:disabled) { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-                .btn-submit-promo:disabled { opacity: 0.6; cursor: not-allowed; }
-                .flex-center { display: flex; align-items: center; justify-content: center; gap: 8px; }
-                .spin { animation: spin 1s linear infinite; }
-                @keyframes spin { 100% { transform: rotate(360deg); } }
-                
-                @media (max-width: 768px) { 
-                    .admin-layout { flex-direction: column; }
-                    .admin-sidebar { width: 100%; position: static; }
-                    .promo-form-body-horizontal { flex-direction: column; } 
-                    .upload-wrapper-compact { width: 100%; max-width: 200px; margin: 0 auto; } 
+                .adm-main-content {
+                    flex: 1;
+                    min-width: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 28px;
                 }
 
-                /* --- LIST PROMO (GRID CARD BESAR) --- */
-                .promo-grid-display { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
-                .promo-display-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: all 0.2s; display: flex; flex-direction: column; }
-                .promo-display-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-                
-                .display-card-header { padding: 12px 16px; background: var(--bg-light); border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; }
-                .badge-slot { background: var(--text); color: var(--bg); font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
-                .btn-delete-circle { width: 30px; height: 30px; border-radius: 50%; background: #fee2e2; color: #ef4444; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
-                .btn-delete-circle:hover { background: #ef4444; color: white; transform: rotate(90deg); }
-                
-                .display-img-box { width: 100%; aspect-ratio: 4/5; position: relative; }
-                .display-img-box img { width: 100%; height: 100%; object-fit: cover; }
-                
-                .display-info { padding: 16px; border-top: 1px solid var(--border-muted); flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-                .display-caption { font-size: 0.9rem; color: var(--text); margin: 0 0 10px 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
-                .link-text { font-size: 0.8rem; font-weight: 600; color: #3b82f6; display: inline-block; }
-                .link-text:hover { text-decoration: underline; }
+                /* Mobile Header */
+                .adm-mobile-header {
+                    display: none;
+                    flex-direction: column;
+                    gap: 12px;
+                    padding-bottom: 8px;
+                }
+                .adm-mobile-title {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 1rem;
+                    font-weight: 700;
+                }
+                .adm-text-primary {
+                    color: #3b82f6;
+                }
+                .adm-select-wrapper {
+                    position: relative;
+                    width: 100%;
+                }
+                .adm-mobile-select {
+                    width: 100%;
+                    padding: 14px 16px;
+                    border-radius: 14px;
+                    border: 1px solid var(--border);
+                    background: var(--bg-light);
+                    color: var(--text);
+                    font-size: 0.95rem;
+                    font-family: inherit;
+                    font-weight: 600;
+                    appearance: none;
+                    cursor: pointer;
+                    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+                }
+                .adm-select-arrow {
+                    position: absolute;
+                    right: 16px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    pointer-events: none;
+                    color: var(--text-muted);
+                }
 
-                /* TABEL ARSIP */
-                .minimal-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.95rem; }
-                .minimal-table th { text-align: left; padding: 15px 20px; border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-                .minimal-table td { padding: 15px 20px; border-bottom: 1px solid var(--border-muted); vertical-align: middle; }
-                .minimal-table tr:hover td { background: var(--bg-light); }
-                
-                /* DRAWER & EDITOR */
-                .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-                .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
-                .drawer-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 90%; background: var(--bg); z-index: 999; border-left: 1px solid var(--border); transform: translateX(100%); transition: transform 0.3s ease; display: flex; flex-direction: column; }
-                .drawer-panel.open { transform: translateX(0); }
-                .drawer-container-flex { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-                .drawer-header.sticky-header { padding: 20px 30px; border-bottom: 1px solid var(--border-muted); display: flex; justify-content: space-between; align-items: center; background: var(--bg); flex-shrink: 0; }
-                .drawer-title { margin: 0; font-size: 1.1rem; font-weight: 600; }
-                .btn-close { background: transparent; border: none; cursor: pointer; color: var(--text-muted); }
-                .btn-close:hover { color: var(--text); }
-                .drawer-content.scrollable-content { flex: 1; overflow-y: auto; padding: 30px; }
-                .meta-compact { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-muted); }
-                .meta-thumb { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
-                .author-name { margin: 0; font-weight: 500; font-size: 0.95rem; }
-                .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-light); color: var(--text-muted); text-transform: uppercase; margin-top: 4px; display: inline-block; }
-                .form-group { margin-bottom: 20px; }
-                .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.85rem; color: var(--text-muted); }
-                .input-minimal { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; font-size: 1rem; transition: all 0.2s ease; }
-                .input-minimal:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
-                .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-                .cat-checkbox { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted); transition: all 0.2s ease; user-select: none; }
-                .cat-checkbox input { accent-color: var(--text); cursor: pointer; width: 14px; height: 14px; }
-                .cat-checkbox:hover { border-color: var(--text); color: var(--text); }
-                .cat-checkbox.active { border-color: var(--text); background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--text); }
-                .admin-markdown-wrapper { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); transition: all 0.2s ease; }
-                .admin-markdown-wrapper:focus-within { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); }
-                .custom-md-editor.w-md-editor { background-color: var(--bg) !important; color: var(--text) !important; border: none !important; box-shadow: none !important; }
-                .custom-md-editor .w-md-editor-toolbar { background-color: var(--bg-light) !important; border-bottom: 1px solid var(--border) !important; }
-                .custom-md-editor .w-md-editor-toolbar li button { color: var(--text) !important; }
-                .custom-md-editor .w-md-editor-toolbar li button:hover { background-color: var(--border) !important; color: var(--text) !important; }
-                .custom-md-editor .w-md-editor-text-input, .custom-md-editor .w-md-editor-text-pre > code, .custom-md-editor .w-md-editor-text-pre { color: var(--text) !important; font-family: ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace !important; font-size: 0.95rem !important; line-height: 1.6 !important; }
-                .custom-md-editor .wmde-markdown { background-color: var(--bg) !important; color: var(--text) !important; font-family: 'Poppins', sans-serif !important; font-size: 1rem !important; line-height: 1.8 !important; }
-                .custom-md-editor .wmde-markdown h1, .custom-md-editor .wmde-markdown h2, .custom-md-editor .wmde-markdown h3 { font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important; }
-                .drawer-footer.sticky-footer { padding: 20px 30px; border-top: 1px solid var(--border-muted); background: var(--bg); display: flex; gap: 15px; flex-shrink: 0; }
-                .btn-decision { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
-                .btn-decision:hover { background: var(--bg-light); border-color: var(--text); }
-                .publish { background: var(--text); color: var(--bg); border-color: var(--text); }
-                .publish:hover { opacity: 0.9; background: var(--text); }
-                .reject:hover { color: #ef4444; border-color: #ef4444; }
-                @media (max-width: 768px) { .drawer-panel { width: 100%; } }
+                /* Section Header */
+                .adm-section-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 20px;
+                    padding-bottom: 20px;
+                    border-bottom: 1px solid var(--border-muted);
+                }
+                .adm-section-header h1 {
+                    margin: 0;
+                    font-size: 1.8rem;
+                    font-weight: 700;
+                    letter-spacing: -0.5px;
+                }
+                .adm-section-header p {
+                    margin: 6px 0 0 0;
+                    font-size: 0.9rem;
+                    color: var(--text-muted);
+                }
+                .adm-refresh-btn {
+                    background: var(--bg-light);
+                    border: 1px solid var(--border);
+                    color: var(--text);
+                    padding: 10px 16px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-family: inherit;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    flex-shrink: 0;
+                }
+                .adm-refresh-btn:hover {
+                    background: var(--bg);
+                    border-color: var(--text-muted);
+                    transform: translateY(-1px);
+                }
+
+                /* PANES */
+                .adm-tab-body {
+                    flex: 1;
+                }
+
+                /* EMPTY STATE */
+                .adm-empty-box {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 60px 20px;
+                    text-align: center;
+                    border: 1px dashed var(--border);
+                    border-radius: 20px;
+                    background: var(--bg-light);
+                }
+                .adm-empty-icon {
+                    width: 64px;
+                    height: 64px;
+                    border-radius: 50%;
+                    background: rgba(16, 185, 129, 0.1);
+                    color: #10b981;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 16px;
+                }
+                .adm-empty-box h3 {
+                    margin: 0 0 6px 0;
+                    font-size: 1.2rem;
+                    font-weight: 700;
+                }
+                .adm-empty-box p {
+                    margin: 0;
+                    color: var(--text-muted);
+                    font-size: 0.9rem;
+                }
+
+                /* REVIEW CARDS */
+                .adm-review-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 20px;
+                }
+                .adm-review-card {
+                    background: var(--bg);
+                    border: 1px solid var(--border);
+                    border-radius: 18px;
+                    overflow: hidden;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+                }
+                .adm-review-card:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+                    border-color: #3b82f6;
+                }
+                .adm-review-thumb {
+                    position: relative;
+                    aspect-ratio: 16/9;
+                    overflow: hidden;
+                    background: var(--bg-light);
+                }
+                .adm-review-thumb img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    transition: transform 0.4s ease;
+                }
+                .adm-review-card:hover .adm-review-thumb img {
+                    transform: scale(1.04);
+                }
+                .adm-review-badge {
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    background: rgba(239, 68, 68, 0.9);
+                    color: white;
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                    padding: 4px 10px;
+                    border-radius: 20px;
+                    backdrop-filter: blur(4px);
+                }
+                .adm-review-details {
+                    padding: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    flex: 1;
+                }
+                .adm-review-meta {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 0.75rem;
+                    color: var(--text-muted);
+                    font-weight: 500;
+                }
+                .adm-review-details h4 {
+                    margin: 0;
+                    font-size: 1.05rem;
+                    font-weight: 700;
+                    line-height: 1.4;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                }
+                .adm-review-action {
+                    margin-top: auto;
+                    padding-top: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    color: #3b82f6;
+                }
+
+                /* TABLE (DESKTOP) */
+                .adm-desktop-table-box {
+                    background: var(--bg);
+                    border: 1px solid var(--border);
+                    border-radius: 18px;
+                    overflow: hidden;
+                }
+                .adm-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.9rem;
+                    text-align: left;
+                }
+                .adm-table th {
+                    padding: 16px 20px;
+                    font-size: 0.78rem;
+                    font-weight: 600;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    background: var(--bg-light);
+                    border-bottom: 1px solid var(--border-muted);
+                }
+                .adm-table td {
+                    padding: 16px 20px;
+                    border-bottom: 1px solid var(--border-muted);
+                    vertical-align: middle;
+                }
+                .adm-table tr:last-child td {
+                    border-bottom: none;
+                }
+                .adm-table tr:hover td {
+                    background: rgba(0, 0, 0, 0.015);
+                }
+                .adm-td-title {
+                    max-width: 320px;
+                }
+                .adm-table-title {
+                    font-weight: 600;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    line-height: 1.4;
+                }
+                .adm-td-author {
+                    color: var(--text-muted);
+                    font-weight: 500;
+                }
+                .adm-td-date {
+                    color: var(--text-muted);
+                    font-size: 0.82rem;
+                }
+                .adm-td-actions {
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 8px;
+                }
+                .adm-action-icon {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 10px;
+                    border: 1px solid var(--border);
+                    background: var(--bg-light);
+                    color: var(--text-muted);
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .adm-action-icon.edit:hover {
+                    background: var(--text);
+                    color: var(--bg);
+                }
+                .adm-action-icon.delete:hover {
+                    background: #ef4444;
+                    color: white;
+                    border-color: #ef4444;
+                }
+
+                /* STATUS PILLS */
+                .status-badge-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 4px 10px;
+                    border-radius: 20px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    letter-spacing: 0.2px;
+                }
+                .status-badge-pill.live {
+                    background: rgba(16, 185, 129, 0.12);
+                    color: #10b981;
+                }
+                .status-badge-pill.pending {
+                    background: rgba(245, 158, 11, 0.12);
+                    color: #f59e0b;
+                }
+                .status-badge-pill.draft {
+                    background: rgba(148, 163, 184, 0.15);
+                    color: #64748b;
+                }
+                .status-badge-pill.rejected {
+                    background: rgba(239, 68, 68, 0.12);
+                    color: #ef4444;
+                }
+
+                /* ACCORDION (MOBILE ONLY) */
+                .adm-mobile-accordion-list {
+                    display: none;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+                .adm-accordion-card {
+                    background: var(--bg);
+                    border: 1px solid var(--border);
+                    border-radius: 16px;
+                    overflow: hidden;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+                }
+                .adm-accordion-summary {
+                    padding: 16px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                    list-style: none;
+                }
+                .adm-accordion-summary::-webkit-details-marker {
+                    display: none;
+                }
+                .adm-accordion-main {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                    flex: 1;
+                }
+                .adm-accordion-header-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .adm-accordion-date {
+                    font-size: 0.72rem;
+                    color: var(--text-muted);
+                }
+                .adm-accordion-title {
+                    margin: 0;
+                    font-size: 0.95rem;
+                    font-weight: 700;
+                    line-height: 1.35;
+                    color: var(--text);
+                }
+                .adm-accordion-icon {
+                    color: var(--text-muted);
+                    transition: transform 0.2s ease;
+                }
+                .adm-accordion-card[open] .adm-accordion-icon {
+                    transform: rotate(180deg);
+                }
+                .adm-accordion-expanded {
+                    padding: 0 16px 16px 16px;
+                    border-top: 1px dashed var(--border-muted);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    padding-top: 14px;
+                }
+                .adm-expanded-meta-row {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.8rem;
+                }
+                .adm-meta-label {
+                    color: var(--text-muted);
+                }
+                .adm-meta-val {
+                    font-weight: 600;
+                }
+                .adm-accordion-btn-group {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    margin-top: 4px;
+                }
+                .adm-acc-btn {
+                    padding: 11px;
+                    border-radius: 10px;
+                    font-family: inherit;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    border: none;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    cursor: pointer;
+                }
+                .adm-acc-btn.edit {
+                    background: var(--bg-light);
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                }
+                .adm-acc-btn.delete {
+                    background: rgba(239, 68, 68, 0.1);
+                    color: #ef4444;
+                }
+
+                /* PROMO SECTION */
+                .adm-promo-input-box {
+                    background: var(--bg);
+                    border: 1px solid var(--border);
+                    border-radius: 20px;
+                    padding: 24px;
+                    margin-bottom: 36px;
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+                }
+                .adm-box-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 20px;
+                    color: var(--text);
+                }
+                .adm-box-header h3 {
+                    margin: 0;
+                    font-size: 1.05rem;
+                    font-weight: 700;
+                }
+                .adm-promo-form-grid {
+                    display: grid;
+                    grid-template-columns: 160px 1fr;
+                    gap: 24px;
+                }
+                .adm-promo-drop {
+                    width: 100%;
+                    aspect-ratio: 4/5;
+                    border: 2px dashed var(--border);
+                    border-radius: 14px;
+                    background: var(--bg-light);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    overflow: hidden;
+                    position: relative;
+                    transition: all 0.2s;
+                }
+                .adm-promo-drop:hover {
+                    border-color: #3b82f6;
+                    background: rgba(59, 130, 246, 0.04);
+                }
+                .adm-promo-drop.has-img {
+                    border-style: solid;
+                }
+                .adm-promo-drop-empty {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 12px;
+                    text-align: center;
+                    color: var(--text-muted);
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                }
+                .adm-promo-drop-empty .sub {
+                    font-size: 0.68rem;
+                    font-weight: 400;
+                    opacity: 0.8;
+                }
+                .adm-promo-preview-wrap {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                }
+                .adm-promo-preview-wrap img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                .adm-promo-hover-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.6);
+                    color: white;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    backdrop-filter: blur(2px);
+                }
+                .adm-promo-drop:hover .adm-promo-hover-overlay {
+                    opacity: 1;
+                }
+                .adm-hidden-input {
+                    display: none;
+                }
+
+                .adm-promo-fields-side {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .adm-input-unit {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+                .adm-input-unit label {
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    color: var(--text-muted);
+                }
+                .adm-input-unit textarea,
+                .adm-input-unit input {
+                    width: 100%;
+                    padding: 12px 14px;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: var(--bg-light);
+                    color: var(--text);
+                    font-family: inherit;
+                    font-size: 0.9rem;
+                    transition: all 0.2s;
+                }
+                .adm-input-unit textarea:focus,
+                .adm-input-unit input:focus {
+                    outline: none;
+                    border-color: #3b82f6;
+                    background: var(--bg);
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                }
+                .adm-input-icon-wrap {
+                    position: relative;
+                }
+                .adm-input-left-icon {
+                    position: absolute;
+                    left: 14px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: var(--text-muted);
+                    pointer-events: none;
+                }
+                .adm-input-unit input.has-icon {
+                    padding-left: 42px;
+                }
+                .adm-promo-submit-btn {
+                    padding: 13px 20px;
+                    border-radius: 12px;
+                    border: none;
+                    background: var(--text);
+                    color: var(--bg);
+                    font-family: inherit;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    margin-top: 4px;
+                    transition: all 0.2s;
+                }
+                .adm-promo-submit-btn:hover:not(:disabled) {
+                    opacity: 0.9;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+                }
+                .adm-flex-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                }
+                .adm-spin {
+                    animation: adm-spin-anim 1s linear infinite;
+                }
+                @keyframes adm-spin-anim {
+                    100% { transform: rotate(360deg); }
+                }
+
+                .adm-promo-list-header {
+                    margin-bottom: 20px;
+                }
+                .adm-promo-list-header h3 {
+                    margin: 0;
+                    font-size: 1.15rem;
+                    font-weight: 700;
+                }
+                .adm-promo-list-header p {
+                    margin: 4px 0 0 0;
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                }
+                .adm-promo-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                    gap: 20px;
+                }
+                .adm-promo-card {
+                    background: var(--bg);
+                    border: 1px solid var(--border);
+                    border-radius: 16px;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+                }
+                .adm-promo-card-top {
+                    padding: 10px 14px;
+                    background: var(--bg-light);
+                    border-bottom: 1px solid var(--border-muted);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .adm-slot-badge {
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: var(--text);
+                }
+                .adm-del-btn {
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 8px;
+                    border: none;
+                    background: rgba(239, 68, 68, 0.1);
+                    color: #ef4444;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .adm-del-btn:hover {
+                    background: #ef4444;
+                    color: white;
+                }
+                .adm-promo-img-box {
+                    width: 100%;
+                    aspect-ratio: 4/5;
+                    overflow: hidden;
+                }
+                .adm-promo-img-box img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+                .adm-promo-info {
+                    padding: 14px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    flex: 1;
+                }
+                .adm-promo-caption {
+                    margin: 0;
+                    font-size: 0.85rem;
+                    color: var(--text);
+                    display: -webkit-box;
+                    -webkit-line-clamp: 3;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    line-height: 1.4;
+                }
+                .adm-promo-link {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    font-size: 0.78rem;
+                    font-weight: 600;
+                    color: #3b82f6;
+                    text-decoration: none;
+                    margin-top: auto;
+                }
+                .adm-promo-link:hover {
+                    text-decoration: underline;
+                }
+
+                /* DRAWER MODAL */
+                .adm-drawer-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 99999;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(6px);
+                    -webkit-backdrop-filter: blur(6px);
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.3s ease;
+                    display: flex;
+                    justify-content: flex-end;
+                    font-family: 'Poppins', sans-serif;
+                }
+                .adm-drawer-overlay.open {
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+                .adm-drawer-panel {
+                    width: 640px;
+                    max-width: 100vw;
+                    height: 100vh;
+                    background: var(--bg);
+                    border-left: 1px solid var(--border);
+                    box-shadow: -15px 0 40px rgba(0, 0, 0, 0.2);
+                    transform: translateX(100%);
+                    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                    display: flex;
+                    flex-direction: column;
+                }
+                .adm-drawer-overlay.open .adm-drawer-panel {
+                    transform: translateX(0);
+                }
+                .adm-drawer-content-flow {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
+                    overflow: hidden;
+                }
+                .adm-drawer-header {
+                    padding: 20px 24px;
+                    border-bottom: 1px solid var(--border-muted);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-shrink: 0;
+                }
+                .adm-drawer-header-left {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+                .adm-drawer-badge {
+                    display: inline-block;
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                    color: #3b82f6;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .adm-drawer-header h3 {
+                    margin: 0;
+                    font-size: 1.15rem;
+                    font-weight: 700;
+                }
+                .adm-drawer-close-btn {
+                    background: transparent;
+                    border: none;
+                    color: var(--text-muted);
+                    cursor: pointer;
+                    padding: 4px;
+                    border-radius: 8px;
+                    transition: all 0.2s;
+                }
+                .adm-drawer-close-btn:hover {
+                    color: var(--text);
+                }
+                .adm-drawer-body {
+                    padding: 24px;
+                    overflow-y: auto;
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+                .adm-drawer-meta-card {
+                    padding: 14px 18px;
+                    background: var(--bg-light);
+                    border: 1px solid var(--border-muted);
+                    border-radius: 14px;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                }
+                .adm-drawer-thumb {
+                    width: 52px;
+                    height: 52px;
+                    border-radius: 10px;
+                    object-fit: cover;
+                }
+                .adm-drawer-author {
+                    margin: 0 0 6px 0;
+                    font-size: 0.85rem;
+                }
+                .adm-drawer-status-wrap {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 0.78rem;
+                    color: var(--text-muted);
+                }
+                .adm-drawer-input-unit {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .adm-drawer-input-unit label {
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    color: var(--text-muted);
+                }
+                .adm-drawer-input {
+                    width: 100%;
+                    padding: 12px 14px;
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: var(--bg-light);
+                    color: var(--text);
+                    font-family: inherit;
+                    font-size: 0.95rem;
+                    font-weight: 600;
+                }
+                .adm-category-chips {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                }
+                .adm-chip {
+                    padding: 8px 14px;
+                    border-radius: 20px;
+                    border: 1px solid var(--border);
+                    background: var(--bg-light);
+                    color: var(--text-muted);
+                    font-family: inherit;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .adm-chip.active {
+                    background: var(--text);
+                    color: var(--bg);
+                    border-color: var(--text);
+                }
+                .adm-editor-container {
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    overflow: hidden;
+                }
+                .adm-drawer-footer {
+                    padding: 16px 24px;
+                    border-top: 1px solid var(--border-muted);
+                    background: var(--bg);
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    flex-shrink: 0;
+                }
+                .adm-decision-btn {
+                    padding: 11px 18px;
+                    border-radius: 12px;
+                    border: none;
+                    font-family: inherit;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .adm-decision-btn.revise {
+                    background: var(--bg-light);
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                }
+                .adm-decision-btn.reject {
+                    background: rgba(239, 68, 68, 0.1);
+                    color: #ef4444;
+                }
+                .adm-decision-btn.publish {
+                    background: #10b981;
+                    color: white;
+                }
+                .adm-decision-btn.publish:hover {
+                    background: #059669;
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+                }
+
+                /* RESPONSIVE BREAKPOINT */
+                @media (max-width: 900px) {
+                    .adm-container {
+                        flex-direction: column;
+                        gap: 20px;
+                    }
+                    .adm-sidebar {
+                        display: none;
+                    }
+                    .adm-mobile-header {
+                        display: flex;
+                    }
+                    .adm-desktop-table-box {
+                        display: none;
+                    }
+                    .adm-mobile-accordion-list {
+                        display: flex;
+                    }
+                    .adm-promo-form-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .adm-promo-drop {
+                        max-width: 180px;
+                        margin: 0 auto;
+                    }
+                    .adm-drawer-panel {
+                        width: 100vw;
+                    }
+                }
             `}</style>
         </div>
     );
