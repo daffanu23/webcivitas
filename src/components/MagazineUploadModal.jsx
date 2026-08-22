@@ -62,7 +62,7 @@ export default function MagazineUploadModal({ userId }) {
     const handleCoverSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         const originalSizeMB = (file.size / 1024 / 1024).toFixed(1);
         setIsCompressing(true);
         setCoverSizeInfo(`Mengompres dari ${originalSizeMB} MB...`);

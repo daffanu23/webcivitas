@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import MDEditor from '@uiw/react-md-editor'; 
-import { Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye, ArrowLeftCircle, Inbox, Archive, Instagram, Upload, PlusCircle } from 'lucide-react';
+import MDEditor from '@uiw/react-md-editor';
+import { Edit3, Trash2, CheckCircle, XCircle, ShieldCheck, RefreshCw, Eye, ArrowLeftCircle, Inbox, Archive, Instagram, Upload, PlusCircle, LayoutDashboard, FileText, BookOpen } from 'lucide-react';
+import MagazineManager from './MagazineManager';
 
-export default function AdminDashboard({ serverCategories, serverArticles }) {
+export default function AdminDashboard({ serverCategories, serverArticles, userId }) {
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
+    const [activeTab, setActiveTab] = useState('review');
 
     const [articles, setArticles] = useState(serverArticles || []);
     const [availableCategories] = useState(serverCategories || []);
-    
+
     // --- STATE PROMO IG ---
-    const [promos, setPromos] = useState([]); 
+    const [promos, setPromos] = useState([]);
     const [newPromo, setNewPromo] = useState({
         image_url: '',
         link_url: '',
@@ -20,25 +22,25 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
         file: null
     });
     const [isUploadingPromo, setIsUploadingPromo] = useState(false);
-    
+
     // State Editor
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [editorContent, setEditorContent] = useState('');
-    const [editorTitle, setEditorTitle] = useState(''); 
+    const [editorTitle, setEditorTitle] = useState('');
 
     const fetchData = async () => {
         const { data: articlesData } = await supabase
             .from('articles')
             .select('*, profiles(full_name), article_categories(category_id)')
-            .order('created_at', { ascending: false }); 
+            .order('created_at', { ascending: false });
         setArticles(articlesData || []);
 
         const { data: promosData } = await supabase
             .from('ig_promos')
             .select('*')
-            .order('created_at', { ascending: false }) 
+            .order('created_at', { ascending: false })
             .limit(4);
         setPromos(promosData || []);
     };
@@ -59,20 +61,20 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
 
     const submitNewPromo = async () => {
         if (!newPromo.file && !newPromo.image_url) return alert("Pilih gambar dulu!");
-        
+
         setIsUploadingPromo(true);
         try {
             let finalImageUrl = newPromo.image_url;
-            
+
             if (newPromo.file) {
                 const fileExt = newPromo.file.name.split('.').pop();
                 const fileName = `promo-${Date.now()}.${fileExt}`;
-                
+
                 const { error: uploadError } = await supabase.storage.from('news-images').upload(fileName, newPromo.file, {
                     cacheControl: '3600',
                     upsert: false
                 });
-                
+
                 if (uploadError) throw uploadError;
 
                 const { data } = supabase.storage.from('news-images').getPublicUrl(fileName);
@@ -90,7 +92,7 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
 
             setNewPromo({ image_url: '', link_url: '', caption: '', file: null });
             alert("Promo berhasil ditambahkan! Foto lama otomatis tergeser.");
-            fetchData(); 
+            fetchData();
 
         } catch (error) {
             console.error(error);
@@ -101,7 +103,7 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
     };
 
     const deletePromo = async (id) => {
-        if(!confirm("Hapus promo ini dari etalase?")) return;
+        if (!confirm("Hapus promo ini dari etalase?")) return;
         try {
             await supabase.from('ig_promos').delete().eq('id', id);
             fetchData();
@@ -117,7 +119,7 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
         setEditorTitle(article.title || '');
         setSelectedCategories(article.article_categories ? article.article_categories.map(ac => ac.category_id) : []);
         setIsPanelOpen(true);
-        document.body.style.overflow = 'hidden'; 
+        document.body.style.overflow = 'hidden';
     };
 
     const handleCloseReview = () => {
@@ -146,12 +148,12 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
             }
             alert("Status berhasil diperbarui.");
             handleCloseReview();
-            fetchData(); 
+            fetchData();
         } catch (error) { alert("Gagal update: " + error.message); }
     };
-    
+
     const handleDeletePermanent = async (id) => {
-        if(!confirm("Hapus permanen? Data tidak bisa kembali.")) return;
+        if (!confirm("Hapus permanen? Data tidak bisa kembali.")) return;
         await supabase.from('articles').delete().eq('id', id);
         fetchData();
     }
@@ -159,146 +161,183 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
     const pendingArticles = articles.filter(a => a.status === 'pending');
 
     return (
-        <div className="dashboard-wrapper">
-            <header className="dash-header">
-                <div className="header-left">
-                    <div className="badge-admin"><ShieldCheck size={14}/> Admin Panel</div>
-                    <h1>Meja Redaksi</h1>
-                    <p>Total {articles.length} artikel terdaftar.</p>
+        <div className="admin-layout">
+            {/* SIDEBAR NAVIGATION */}
+            <aside className="admin-sidebar">
+                <div className="sidebar-header">
+                    <ShieldCheck size={24} className="text-primary" />
+                    <h2>Admin Panel</h2>
                 </div>
-                <button onClick={fetchData} className="btn-refresh"><RefreshCw size={16}/> Refresh</button>
-            </header>
+                <nav className="sidebar-nav">
+                    <button className={`nav-item ${activeTab === 'review' ? 'active' : ''}`} onClick={() => setActiveTab('review')}>
+                        <Inbox size={18} />
+                        <span>Meja Redaksi</span>
+                        {pendingArticles.length > 0 && <span className="nav-badge">{pendingArticles.length}</span>}
+                    </button>
+                    <button className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => setActiveTab('archive')}>
+                        <Archive size={18} />
+                        <span>Arsip Berita</span>
+                    </button>
+                    <button className={`nav-item ${activeTab === 'magazine' ? 'active' : ''}`} onClick={() => setActiveTab('magazine')}>
+                        <BookOpen size={18} />
+                        <span>Manajemen Terbitan</span>
+                    </button>
+                    <button className={`nav-item ${activeTab === 'promo' ? 'active' : ''}`} onClick={() => setActiveTab('promo')}>
+                        <Instagram size={18} />
+                        <span>Etalase IG</span>
+                    </button>
+                </nav>
+            </aside>
 
-            <section className="dashboard-section">
-                <div className="section-header">
-                    <Inbox size={20} strokeWidth={1.5} />
-                    <h2>Antrian Review <span className="count-badge">{pendingArticles.length}</span></h2>
-                </div>
-                {pendingArticles.length === 0 ? (
-                    <div className="empty-state"><CheckCircle size={32} strokeWidth={1.5} className="text-muted"/><p>Tidak ada antrian pending.</p></div>
-                ) : (
-                    <div className="card-scroller">
-                        {pendingArticles.map((item) => (
-                            <div key={item.id} className="news-card" onClick={() => handleOpenReview(item)}>
-                                <div className="card-img-box"><img src={item.cover_url || 'https://placehold.co/400'} alt="cover" /><div className="overlay-hover"><Eye size={24} color="white"/></div></div>
-                                <div className="card-info">
-                                    <div className="card-meta"><span>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span><span className="dot">•</span><span>{item.profiles?.full_name || 'Anonim'}</span></div>
-                                    <h3>{item.title}</h3>
-                                </div>
-                            </div>
-                        ))}
+            {/* MAIN CONTENT AREA */}
+            <main className="admin-main">
+                <header className="main-header">
+                    <div>
+                        <h1>{activeTab === 'review' ? 'Antrian Review' : activeTab === 'archive' ? 'Database Arsip' : activeTab === 'magazine' ? 'Manajemen Edisi Khusus' : 'Etalase Instagram'}</h1>
+                        <p className="text-muted">Kelola konten dan publikasi MEDIACIVITAS.</p>
                     </div>
-                )}
-            </section>
+                    {activeTab !== 'magazine' && (
+                        <button onClick={fetchData} className="btn-refresh"><RefreshCw size={16} /> Refresh Data</button>
+                    )}
+                </header>
 
-            <section className="dashboard-section">
-                <div className="section-header">
-                    <Instagram size={20} strokeWidth={1.5} />
-                    <h2>Etalase Instagram (Terbaru)</h2>
-                </div>
-                
-                {/* 1. INPUT FORM BARU (TETAP BAGUS) */}
-                <div className="promo-input-wrapper">
-                    <div className="promo-input-card">
-                        <div className="card-header-small">
-                            <h3><PlusCircle size={18}/> Tambah Postingan Baru</h3>
-                        </div>
-                        <div className="promo-form-body-horizontal">
-                            <div className="upload-wrapper-compact">
-                                <label className={`promo-upload-area ${newPromo.image_url ? 'has-image' : 'empty'}`}>
-                                    {newPromo.image_url ? (
-                                        <>
-                                            <img src={newPromo.image_url} className="promo-preview-lg" />
-                                            <div className="upload-hover-overlay"><Upload size={24} /><span>Ganti</span></div>
-                                        </>
-                                    ) : (
-                                        <div className="placeholder-content">
-                                            <Upload size={24}/>
-                                            <span className="upload-title">Upload Foto (4:5)</span>
+                <div className="content-area">
+                    {/* TAB: REVIEW ARTIKEL */}
+                    {activeTab === 'review' && (
+                        <div className="tab-pane">
+                            {pendingArticles.length === 0 ? (
+                                <div className="empty-state"><CheckCircle size={48} strokeWidth={1.5} className="text-muted" /><p>Semua berita sudah direview.</p></div>
+                            ) : (
+                                <div className="card-grid">
+                                    {pendingArticles.map((item) => (
+                                        <div key={item.id} className="news-card" onClick={() => handleOpenReview(item)}>
+                                            <div className="card-img-box"><img src={item.cover_url || 'https://placehold.co/400'} alt="cover" /><div className="overlay-hover"><Eye size={24} color="white" /></div></div>
+                                            <div className="card-info">
+                                                <div className="card-meta"><span>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span><span className="dot">•</span><span>{item.profiles?.full_name || 'Anonim'}</span></div>
+                                                <h3>{item.title}</h3>
+                                            </div>
                                         </div>
-                                    )}
-                                    <input type="file" accept="image/*" onChange={handleNewPromoImage} className="file-input-hidden" />
-                                </label>
-                            </div>
-                            
-                            <div className="promo-fields-expanded">
-                                <div className="input-group">
-                                    <label>Caption / Kutipan</label>
-                                    <textarea 
-                                        value={newPromo.caption} 
-                                        onChange={(e) => handleNewPromoChange('caption', e.target.value)} 
-                                        rows="4" 
-                                        placeholder="Tulis caption menarik di sini..."
-                                        className="styled-input"
-                                    ></textarea>
+                                    ))}
                                 </div>
-                                <div className="input-group">
-                                    <label>Link Postingan IG</label>
-                                    <div className="input-with-icon">
-                                        <Instagram size={16} className="input-icon"/>
-                                        <input 
-                                            type="text" 
-                                            value={newPromo.link_url} 
-                                            onChange={(e) => handleNewPromoChange('link_url', e.target.value)} 
-                                            placeholder="https://instagram.com/p/..." 
-                                            className="styled-input pl-icon"
-                                        />
+                            )}
+                        </div>
+                    )}
+
+                    {/* TAB: ARSIP BERITA */}
+                    {activeTab === 'archive' && (
+                        <div className="tab-pane">
+                            <div className="table-responsive">
+                                <table className="minimal-table">
+                                    <thead><tr><th>Judul Berita</th><th>Penulis</th><th>Status</th><th style={{ textAlign: 'right' }}>Aksi</th></tr></thead>
+                                    <tbody>
+                                        {articles.map((item) => (
+                                            <tr key={item.id} className={item.status === 'pending' ? 'row-highlight' : ''}>
+                                                <td className="td-title"><span className="title-text">{item.title}</span><span className="date-text">{new Date(item.created_at).toLocaleDateString()}</span></td>
+                                                <td className="td-author">{item.profiles?.full_name || 'Redaksi'}</td>
+                                                <td><span className={`status-dot ${item.status}`}></span><span className="status-text">{item.status === 'published' ? 'Live' : (item.status === 'rejected' ? 'Ditolak' : (item.status === 'draft' ? 'Draft' : 'Pending'))}</span></td>
+                                                <td className="col-actions">
+                                                    <button onClick={() => handleOpenReview(item)} className="icon-btn" title="Review"><Edit3 size={16} /></button>
+                                                    <button onClick={() => handleDeletePermanent(item.id)} className="icon-btn danger" title="Hapus"><Trash2 size={16} /></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB: MANAJEMEN MAJALAH */}
+                    {activeTab === 'magazine' && (
+                        <div className="tab-pane">
+                            <MagazineManager userId={userId} />
+                        </div>
+                    )}
+
+                    {/* TAB: PROMO IG */}
+                    {activeTab === 'promo' && (
+                        <div className="tab-pane">
+                            <div className="promo-input-wrapper">
+                                <div className="promo-input-card">
+                                    <div className="card-header-small">
+                                        <h3><PlusCircle size={18} /> Tambah Postingan Baru</h3>
+                                    </div>
+                                    <div className="promo-form-body-horizontal">
+                                        <div className="upload-wrapper-compact">
+                                            <label className={`promo-upload-area ${newPromo.image_url ? 'has-image' : 'empty'}`}>
+                                                {newPromo.image_url ? (
+                                                    <>
+                                                        <img src={newPromo.image_url} className="promo-preview-lg" />
+                                                        <div className="upload-hover-overlay"><Upload size={24} /><span>Ganti</span></div>
+                                                    </>
+                                                ) : (
+                                                    <div className="placeholder-content">
+                                                        <Upload size={24} />
+                                                        <span className="upload-title">Upload Foto (4:5)</span>
+                                                    </div>
+                                                )}
+                                                <input type="file" accept="image/*" onChange={handleNewPromoImage} className="file-input-hidden" />
+                                            </label>
+                                        </div>
+
+                                        <div className="promo-fields-expanded">
+                                            <div className="input-group">
+                                                <label>Caption / Kutipan</label>
+                                                <textarea
+                                                    value={newPromo.caption}
+                                                    onChange={(e) => handleNewPromoChange('caption', e.target.value)}
+                                                    rows="4"
+                                                    placeholder="Tulis caption menarik di sini..."
+                                                    className="styled-input"
+                                                ></textarea>
+                                            </div>
+                                            <div className="input-group">
+                                                <label>Link Postingan IG</label>
+                                                <div className="input-with-icon">
+                                                    <Instagram size={16} className="input-icon" />
+                                                    <input
+                                                        type="text"
+                                                        value={newPromo.link_url}
+                                                        onChange={(e) => handleNewPromoChange('link_url', e.target.value)}
+                                                        placeholder="https://instagram.com/p/..."
+                                                        className="styled-input pl-icon"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button type="button" onClick={submitNewPromo} disabled={isUploadingPromo} className="btn-submit-promo">
+                                                {isUploadingPromo ? (
+                                                    <span className="flex-center"><RefreshCw className="spin" size={18} /> Mengupload...</span>
+                                                ) : (
+                                                    <span className="flex-center">Tayangkan Sekarang</span>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <button type="button" onClick={submitNewPromo} disabled={isUploadingPromo} className="btn-submit-promo">
-                                    {isUploadingPromo ? (
-                                        <span className="flex-center"><RefreshCw className="spin" size={18}/> Mengupload...</span>
-                                    ) : (
-                                        <span className="flex-center">Tayangkan Sekarang <ArrowLeftCircle size={18} style={{transform: 'rotate(180deg)'}}/></span>
-                                    )}
-                                </button>
+                            </div>
+
+                            <div className="promo-grid-display">
+                                {promos.length === 0 && <p className="text-muted">Belum ada promo aktif.</p>}
+                                {promos.map((item, index) => (
+                                    <div key={item.id} className="promo-display-card">
+                                        <div className="display-card-header">
+                                            <span className="badge-slot">Posisi #{index + 1}</span>
+                                            <button onClick={() => deletePromo(item.id)} className="btn-delete-circle" title="Hapus"><Trash2 size={16} /></button>
+                                        </div>
+                                        <div className="display-img-box">
+                                            <img src={item.image_url} alt="Promo" />
+                                        </div>
+                                        <div className="display-info">
+                                            <p className="display-caption">{item.caption || 'Tanpa caption'}</p>
+                                            <a href={item.link_url} target="_blank" rel="noreferrer" className="link-text">Lihat Link ↗</a>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
-
-                {/* 2. LIST PROMO AKTIF (KEMBALI KE BAWAH & GRID) */}
-                <div className="promo-grid-display">
-                    {promos.length === 0 && <p className="text-muted">Belum ada promo aktif.</p>}
-                    {promos.map((item, index) => (
-                        <div key={item.id} className="promo-display-card">
-                            <div className="display-card-header">
-                                <span className="badge-slot">Posisi #{index + 1}</span>
-                                <button onClick={() => deletePromo(item.id)} className="btn-delete-circle" title="Hapus"><Trash2 size={16}/></button>
-                            </div>
-                            <div className="display-img-box">
-                                <img src={item.image_url} alt="Promo" />
-                            </div>
-                            <div className="display-info">
-                                <p className="display-caption">{item.caption || 'Tanpa caption'}</p>
-                                <a href={item.link_url} target="_blank" rel="noreferrer" className="link-text">Lihat Link ↗</a>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            <section className="dashboard-section">
-                <div className="section-header"><Archive size={20} strokeWidth={1.5} /><h2>Database Arsip</h2></div>
-                <div className="table-responsive">
-                    <table className="minimal-table">
-                        <thead><tr><th>Judul Berita</th><th>Penulis</th><th>Status</th><th style={{textAlign: 'right'}}>Aksi</th></tr></thead>
-                        <tbody>
-                            {articles.map((item) => (
-                                <tr key={item.id} className={item.status === 'pending' ? 'row-highlight' : ''}>
-                                    <td className="td-title"><span className="title-text">{item.title}</span><span className="date-text">{new Date(item.created_at).toLocaleDateString()}</span></td>
-                                    <td className="td-author">{item.profiles?.full_name || 'Redaksi'}</td>
-                                    <td><span className={`status-dot ${item.status}`}></span><span className="status-text">{item.status === 'published' ? 'Live' : (item.status === 'rejected' ? 'Ditolak' : (item.status === 'draft' ? 'Draft' : 'Pending'))}</span></td>
-                                    <td className="col-actions">
-                                        <button onClick={() => handleOpenReview(item)} className="icon-btn" title="Review"><Edit3 size={16} /></button>
-                                        <button onClick={() => handleDeletePermanent(item.id)} className="icon-btn danger" title="Hapus"><Trash2 size={16} /></button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            </main>
 
             {mounted && createPortal(
                 <>
@@ -325,27 +364,63 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
             )}
 
             <style>{`
-                /* --- CSS GLOBAL --- */
-                .dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); padding-bottom: 50px; }
-                .dash-header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 40px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
-                .badge-admin { color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-                .dash-header h1 { font-size: 2.2rem; font-weight: 700; margin: 0; letter-spacing: -1px; line-height: 1.2; }
-                .dash-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.95rem; }
-                .btn-refresh { background: var(--bg); border: 1px solid var(--border); padding: 10px 18px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; border-radius: 8px; color: var(--text); cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-                .btn-refresh:hover { background: var(--bg-light); border-color: var(--text-muted); transform: translateY(-1px); }
-                
-                .dashboard-section { margin-bottom: 60px; }
-                .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; color: var(--text); }
-                .section-header h2 { font-size: 1.25rem; font-weight: 600; margin: 0; letter-spacing: -0.5px; }
-                .count-badge { background: var(--text); color: var(--bg); padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-left: 8px; }
+                /* --- CSS GLOBAL (ADMIN LAYOUT) --- */
+                .admin-layout { 
+                    font-family: 'Poppins', sans-serif; color: var(--text); 
+                    display: flex; gap: 30px; 
+                    min-height: calc(100vh - 100px);
+                }
 
-                /* --- CARD & SCROLLER --- */
-                .card-scroller { display: flex; gap: 20px; overflow-x: auto; padding: 4px; padding-bottom: 20px; scroll-behavior: smooth; }
-                .card-scroller::-webkit-scrollbar { height: 8px; }
-                .card-scroller::-webkit-scrollbar-track { background: var(--bg-light); border-radius: 4px; }
-                .card-scroller::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+                /* SIDEBAR */
+                .admin-sidebar {
+                    width: 260px; flex-shrink: 0;
+                    background: var(--bg-light);
+                    border: 1px solid var(--border);
+                    border-radius: 16px;
+                    padding: 24px;
+                    display: flex; flex-direction: column; gap: 30px;
+                    height: fit-content;
+                    position: sticky; top: 100px;
+                }
+                .sidebar-header {
+                    display: flex; align-items: center; gap: 12px;
+                    color: var(--text); border-bottom: 1px solid var(--border-muted);
+                    padding-bottom: 20px;
+                }
+                .sidebar-header h2 { font-size: 1.25rem; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+                .text-primary { color: #3b82f6; }
+
+                .sidebar-nav { display: flex; flex-direction: column; gap: 8px; }
+                .nav-item {
+                    display: flex; align-items: center; gap: 12px;
+                    width: 100%; padding: 12px 16px;
+                    background: transparent; border: none; border-radius: 10px;
+                    color: var(--text-muted); font-size: 0.95rem; font-weight: 500;
+                    cursor: pointer; transition: all 0.2s; text-align: left;
+                }
+                .nav-item:hover { background: rgba(0,0,0,0.02); color: var(--text); }
+                .nav-item.active { background: var(--bg); color: var(--text); border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); font-weight: 600; }
+                .nav-badge {
+                    margin-left: auto; background: #dc2626; color: white;
+                    font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+                }
+
+                /* MAIN AREA */
+                .admin-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
                 
-                .news-card { min-width: 300px; width: 300px; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.3s ease; position: relative; }
+                .main-header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; border-bottom: 1px solid var(--border-muted); padding-bottom: 20px; }
+                .main-header h1 { font-size: 2rem; font-weight: 700; margin: 0; letter-spacing: -1px; line-height: 1.2; }
+                .main-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.95rem; }
+                
+                .btn-refresh { background: var(--bg-light); border: 1px solid var(--border); padding: 10px 18px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; border-radius: 8px; color: var(--text); cursor: pointer; transition: all 0.2s; }
+                .btn-refresh:hover { background: var(--bg); border-color: var(--text-muted); transform: translateY(-1px); }
+                
+                .empty-state { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 20px; text-align: center; border: 1px dashed var(--border); border-radius: 16px; margin-top: 20px; }
+                .empty-state p { margin: 0; font-size: 1.1rem; color: var(--text-muted); }
+
+                /* --- CARD & GRID (REVIEW) --- */
+                .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+                .news-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.3s ease; position: relative; }
                 .news-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-color: var(--text-muted); }
                 .card-img-box { height: 180px; position: relative; overflow: hidden; }
                 .card-img-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
@@ -393,7 +468,12 @@ export default function AdminDashboard({ serverCategories, serverArticles }) {
                 .spin { animation: spin 1s linear infinite; }
                 @keyframes spin { 100% { transform: rotate(360deg); } }
                 
-                @media (max-width: 768px) { .promo-form-body-horizontal { flex-direction: column; } .upload-wrapper-compact { width: 100%; max-width: 200px; margin: 0 auto; } }
+                @media (max-width: 768px) { 
+                    .admin-layout { flex-direction: column; }
+                    .admin-sidebar { width: 100%; position: static; }
+                    .promo-form-body-horizontal { flex-direction: column; } 
+                    .upload-wrapper-compact { width: 100%; max-width: 200px; margin: 0 auto; } 
+                }
 
                 /* --- LIST PROMO (GRID CARD BESAR) --- */
                 .promo-grid-display { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; }
