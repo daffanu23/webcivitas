@@ -1,7 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase'; 
-import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save, PenTool, Palette } from 'lucide-react'; // TAMBAHAN: Icon tambahan
+import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save, PenTool, Palette } from 'lucide-react'; 
+import ArticleMetaFields from '../../components/ArticleMetaFields.jsx';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
@@ -40,6 +41,9 @@ const layouterName = article.layouter?.full_name || null;
 const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 const htmlContent = article.content || '<p>Konten tidak tersedia.</p>';
+
+// Ambil data kategori untuk dipakai di dropdown mode admin
+const { data: categories } = await supabase.from('categories').select('*').order('name');
 
 // TAMBAHAN: Logika Mode Dewa
 const showAdminPanel = isAdmin && article.status === 'pending';
@@ -111,7 +115,7 @@ const initialEditMode = isAdmin && isPending;
                 <textarea id="edit-title" class={`main-headline invisible-input auto-resize ${initialEditMode ? '' : 'hidden'}`} rows="1" placeholder="Ketik Judul...">{article.title}</textarea>
             )}
 
-            <div class="meta-row">
+            <div id="meta-view-mode" class={`meta-row ${initialEditMode ? 'hidden' : ''}`}>
                 <div class="meta-pill"><User size={14} /> <span>{authorName}</span></div>
                 <div class="meta-pill"><Calendar size={14} /> <span>{publishDate}</span></div>
                 {editorName && <div class="meta-pill"><PenTool size={14} /> <span>Editor: {editorName}</span></div>}
@@ -125,6 +129,22 @@ const initialEditMode = isAdmin && isPending;
                     )
                 ))}
             </div>
+
+            {isAdmin && (
+                <div id="meta-edit-mode" class={initialEditMode ? '' : 'hidden'}>
+                    <ArticleMetaFields 
+                        client:load 
+                        isAdmin={isAdmin}
+                        categories={(categories || []) as any}
+                        initialCategory={article.article_categories?.[0]?.categories?.id || ''}
+                        initialAuthor={article.author_id || ''}
+                        initialEditor={article.editor_id || ''}
+                        initialLayouter={article.layouter_id || ''}
+                        currentUserId={user?.id}
+                        currentUserName={article.profiles?.full_name || 'Redaksi'}
+                    />
+                </div>
+            )}
         </header>
 
         {article.cover_url && (
@@ -216,6 +236,8 @@ const initialEditMode = isAdmin && isPending;
                 
                 document.getElementById('view-title')?.classList.toggle('hidden', isEditMode);
                 document.getElementById('edit-title')?.classList.toggle('hidden', !isEditMode);
+                document.getElementById('meta-view-mode')?.classList.toggle('hidden', isEditMode);
+                document.getElementById('meta-edit-mode')?.classList.toggle('hidden', !isEditMode);
                 document.getElementById('view-content')?.classList.toggle('hidden', isEditMode);
                 document.getElementById('edit-content-wrapper')?.classList.toggle('hidden', !isEditMode);
                 document.getElementById('admin-action-panel')?.classList.toggle('hidden', !isEditMode);
@@ -251,6 +273,15 @@ const initialEditMode = isAdmin && isPending;
             const titleInput = document.getElementById('edit-title') as HTMLTextAreaElement;
             if (titleInput) updateData.title = titleInput.value.trim();
 
+            const categoryInput = document.getElementById('input-category') as HTMLInputElement;
+            const authorInput = document.getElementById('input-author') as HTMLInputElement;
+            const editorInput = document.getElementById('input-editor') as HTMLInputElement;
+            const layouterInput = document.getElementById('input-layouter') as HTMLInputElement;
+
+            if (authorInput) updateData.author_id = authorInput.value || null;
+            if (editorInput) updateData.editor_id = editorInput.value || null;
+            if (layouterInput) updateData.layouter_id = layouterInput.value || null;
+
             if (adminQuill) {
                 let rawHtml = adminQuill.root.innerHTML;
                 if (rawHtml === '<p><br></p>') rawHtml = ''; 
@@ -261,6 +292,12 @@ const initialEditMode = isAdmin && isPending;
                 .from('articles')
                 .update(updateData)
                 .eq('id', articleId.value);
+                
+            // Update kategori di tabel article_categories jika categoryInput ada (Admin Mode)
+            if (categoryInput && categoryInput.value && !error) {
+                await supabase.from('article_categories').delete().eq('article_id', articleId.value);
+                await supabase.from('article_categories').insert({ article_id: articleId.value, category_id: categoryInput.value });
+            }
                 
             if (error) {
                 alert("Gagal memproses: " + error.message);

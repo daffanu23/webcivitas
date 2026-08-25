@@ -1,10 +1,22 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase';
-import { ArrowLeft, BookOpen, Users, Info } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Info, Edit3, X, Save, RefreshCw } from 'lucide-react';
+import MagazineMetaFields from '../../components/MagazineMetaFields.jsx';
 
 const { id } = Astro.params;
 const supabase = getSupabaseServer(Astro.cookies);
+const { data: { user } } = await supabase.auth.getUser();
+
+let isAdmin = false;
+if (user) {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    if (profile?.role === 'admin' || profile?.role === 'super_admin') isAdmin = true;
+}
 
 // Ambil detail spesifik berdasarkan ID
 const { data: mag, error } = await supabase
@@ -42,10 +54,16 @@ if (error || !mag) {
                     {mag.angkatan && <span class="badge-outline">Angkatan {mag.angkatan}</span>}
                 </div>
 
-                <h1 class="book-title">{mag.title}</h1>
+                {/* --- TITLE (VIEW VS EDIT) --- */}
+                <h1 id="view-title" class="book-title">{mag.title}</h1>
+                <textarea id="edit-title" class="book-title-edit invisible-input auto-resize hidden" rows="1" placeholder="Judul Terbitan...">{mag.title}</textarea>
                 
-                <div class="book-description">
+                {/* --- DESCRIPTION (VIEW VS EDIT) --- */}
+                <div id="view-desc" class="book-description">
                     <p>{mag.description || 'Tidak ada deskripsi untuk edisi ini.'}</p>
+                </div>
+                <div id="edit-desc" class="book-description-edit hidden">
+                    <textarea id="input-desc" class="invisible-input auto-resize" rows="3" placeholder="Tulis deskripsi majalah di sini...">{mag.description}</textarea>
                 </div>
 
                 <div class="metadata-box">
@@ -54,7 +72,8 @@ if (error || !mag) {
                         <span>Susunan Redaksi</span>
                     </h3>
                     
-                    <div class="meta-list">
+                    {/* STATIS UNTUK PEMBACA */}
+                    <div id="meta-view-mode" class="meta-list">
                         <div class="meta-item">
                             <span class="meta-label">Pimpinan Umum</span>
                             <span class="meta-value">{mag.pimpinan_umum || 'Belum didata'}</span>
@@ -75,17 +94,60 @@ if (error || !mag) {
                             <span class="meta-label">Tata Letak (Layout)</span>
                             <span class="meta-value">{mag.layouter || 'Tim Layout Civitas'}</span>
                         </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Tim Redaksi</span>
+                            <span class="meta-value">{mag.redaksi || 'Tim Redaksi Civitas'}</span>
+                        </div>
                     </div>
+
+                    {/* INTERAKTIF UNTUK ADMIN */}
+                    {isAdmin && (
+                        <div id="meta-edit-mode" class="hidden" style="margin-top: 15px;">
+                            <MagazineMetaFields 
+                                client:load 
+                                initialPimpinanUmum={mag.pimpinan_umum}
+                                initialPimpinanRedaksi={mag.pimpinan_redaksi}
+                                initialRedakturPelaksana={mag.redaktur_pelaksana}
+                                initialEditor={mag.editor}
+                                initialLayouter={mag.layouter}
+                                initialRedaksi={mag.redaksi}
+                            />
+                        </div>
+                    )}
                 </div>
 
-                <a href={mag.pdf_url} target="_blank" rel="noopener noreferrer" class="btn-read-pdf">
-                    <BookOpen size={20} />
-                    Baca Edisi Ini (PDF)
-                </a>
+                <div id="action-view-mode" style="display: flex; flex-direction: column; gap: 10px;">
+                    <a href={mag.pdf_url} target="_blank" rel="noopener noreferrer" class="btn-read-pdf">
+                        <BookOpen size={20} />
+                        Baca Edisi Ini (PDF)
+                    </a>
+                    {isAdmin && (
+                        <button id="btn-toggle-admin" class="btn-read-pdf" style="background: var(--bg-light); border: 1px solid var(--border); color: var(--text);">
+                            <Edit3 size={20} />
+                            Buka Mode Admin
+                        </button>
+                    )}
+                </div>
+
+                {/* AKSI SIMPAN & BATAL MODE ADMIN */}
+                {isAdmin && (
+                    <div id="action-edit-mode" class="hidden" style="display: flex; flex-direction: column; gap: 10px;">
+                        <button id="btn-save-magazine" class="btn-read-pdf">
+                            <Save size={20} />
+                            <span>Simpan Perubahan</span>
+                        </button>
+                        <button id="btn-cancel-admin" class="btn-read-pdf" style="background: var(--bg-light); border: 1px solid var(--border); color: var(--text);">
+                            <X size={20} />
+                            Batal Edit
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     </div>
 </Layout>
+
+<input type="hidden" id="mag-id" value={mag.id} />
 
 <style>
     .detail-container {
@@ -283,6 +345,148 @@ if (error || !mag) {
         .detail-grid { grid-template-columns: 1fr; gap: 30px; }
         .book-cover-large { max-width: 240px; }
         .meta-item { grid-template-columns: 1fr; gap: 4px; }
-        .book-title { font-size: 2rem; }
+        .book-title, .book-title-edit { font-size: 2rem; }
+    }
+
+    /* Invisible Input Styles for Edit Mode */
+    .invisible-input {
+        width: 100%;
+        background: transparent;
+        border: 1px dashed var(--border-muted);
+        color: inherit;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        padding: 8px;
+        margin: -8px;
+        border-radius: 8px;
+        resize: none;
+        overflow: hidden;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .invisible-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: rgba(0,0,0,0.02);
+    }
+    .book-title-edit {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text);
+        line-height: 1.2;
+        margin-bottom: 20px;
+    }
+    .book-description-edit {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        margin-bottom: 30px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid var(--border);
+    }
+    .hidden {
+        display: none !important;
     }
 </style>
+
+<script>
+    import { supabase } from '../../lib/supabase';
+
+    document.addEventListener('astro:page-load', () => {
+        // Logika Auto-Resize Textarea
+        const tx = document.getElementsByTagName("textarea");
+        for (let i = 0; i < tx.length; i++) {
+            tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
+            tx[i].addEventListener("input", function (this: HTMLTextAreaElement) {
+                this.style.height = "auto";
+                this.style.height = (this.scrollHeight) + "px";
+            });
+        }
+
+        // Toggle Admin Mode
+        let isEditMode = false;
+        
+        const toggleUI = () => {
+            isEditMode = !isEditMode;
+            
+            // Toggle UI Elements
+            document.getElementById('view-title')?.classList.toggle('hidden', isEditMode);
+            document.getElementById('edit-title')?.classList.toggle('hidden', !isEditMode);
+            
+            document.getElementById('view-desc')?.classList.toggle('hidden', isEditMode);
+            document.getElementById('edit-desc')?.classList.toggle('hidden', !isEditMode);
+            
+            document.getElementById('meta-view-mode')?.classList.toggle('hidden', isEditMode);
+            document.getElementById('meta-edit-mode')?.classList.toggle('hidden', !isEditMode);
+            
+            document.getElementById('action-view-mode')?.classList.toggle('hidden', isEditMode);
+            document.getElementById('action-edit-mode')?.classList.toggle('hidden', !isEditMode);
+            
+            if (isEditMode) {
+                // Trigger auto-resize saat textarea dimunculkan
+                try {
+                    const event = new Event('input', { bubbles: true });
+                    document.getElementById('edit-title')?.dispatchEvent(event);
+                    document.getElementById('input-desc')?.dispatchEvent(event);
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        const btnToggle = document.getElementById('btn-toggle-admin');
+        if (btnToggle) btnToggle.addEventListener('click', toggleUI);
+
+        const btnCancel = document.getElementById('btn-cancel-admin');
+        if (btnCancel) btnCancel.addEventListener('click', toggleUI);
+
+        // Save Logic
+        const btnSave = document.getElementById('btn-save-magazine');
+        if (btnSave) {
+            btnSave.addEventListener('click', async () => {
+                const magIdElement = document.getElementById('mag-id') as HTMLInputElement;
+                if (!magIdElement) return;
+                const magId = magIdElement.value;
+
+                const titleInput = document.getElementById('edit-title') as HTMLTextAreaElement;
+                const descInput = document.getElementById('input-desc') as HTMLTextAreaElement;
+                
+                if (!titleInput.value.trim()) {
+                    alert("Judul tidak boleh kosong!");
+                    return;
+                }
+
+                btnSave.setAttribute('disabled', 'true');
+                const originalHtml = btnSave.innerHTML;
+                btnSave.innerHTML = `<span class="mag-spin">⏳</span> Menyimpan...`;
+
+                try {
+                    const payload = {
+                        title: titleInput.value.trim(),
+                        description: descInput.value.trim(),
+                        pimpinan_umum: (document.getElementById('input-mag-pimpinan-umum') as HTMLInputElement)?.value || '',
+                        pimpinan_redaksi: (document.getElementById('input-mag-pimpinan-redaksi') as HTMLInputElement)?.value || '',
+                        redaktur_pelaksana: (document.getElementById('input-mag-redaktur-pelaksana') as HTMLInputElement)?.value || '',
+                        editor: (document.getElementById('input-mag-editor') as HTMLInputElement)?.value || '',
+                        layouter: (document.getElementById('input-mag-layouter') as HTMLInputElement)?.value || '',
+                        redaksi: (document.getElementById('input-mag-redaksi') as HTMLInputElement)?.value || ''
+                    };
+
+                    const { error } = await supabase
+                        .from('magazines')
+                        .update(payload)
+                        .eq('id', magId);
+
+                    if (error) throw error;
+                    
+                    alert("Perubahan Edisi Terbitan Berhasil Disimpan!");
+                    window.location.reload();
+
+                } catch (err: any) {
+                    alert("Gagal menyimpan: " + err.message);
+                    btnSave.removeAttribute('disabled');
+                    btnSave.innerHTML = originalHtml;
+                }
+            });
+        }
+    });
+</script>

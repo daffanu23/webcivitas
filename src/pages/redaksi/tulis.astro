@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase';
 import { Calendar, User, UploadCloud, FileText, Send, X, ChevronDown, Camera, Save, Loader2, CheckCircle } from 'lucide-react';
+import ArticleMetaFields from '../../components/ArticleMetaFields.jsx';
 
 // 1. Inisialisasi Auth Server
 const supabase = getSupabaseServer(Astro.cookies);
@@ -75,39 +76,21 @@ if (slug) {
                     required
                 >{initialArticle?.title || ''}</textarea>
 
-                <div class="meta-row">
-                    <div class="meta-pill"><User size={14} /> <span>{authorName}</span></div>
+                <div class="meta-row" style="margin-bottom: 20px;">
                     <div class="meta-pill"><Calendar size={14} /> <span>{todayDate}</span></div>
-                    
-                    {/* --- CUSTOM DROPDOWN KATEGORI (CLEAN UI) --- */}
-                    <div class="meta-pill custom-dropdown-wrapper" id="category-dropdown-wrapper">
-                        {/* Hidden input penyimpan ID Kategori untuk dikirim ke Database */}
-                        <input type="hidden" id="input-category" value={initialSelectedCategories.length > 0 ? initialSelectedCategories[0] : ''} required />
-                        
-                        {/* Tombol Pemicu Dropdown */}
-                        <div class="dropdown-trigger" id="dropdown-trigger">
-                            <span id="selected-category-text">
-                                {initialSelectedCategories.length > 0 
-                                    ? categories?.find(c => c.id === initialSelectedCategories[0])?.name || 'Pilih Kategori'
-                                    : 'Pilih Kategori'}
-                            </span>
-                            <ChevronDown size={14} className="dropdown-icon" />
-                        </div>
-
-                        {/* Menu Melayang (Custom UI) */}
-                        <div class="dropdown-menu" id="dropdown-menu">
-                            {categories && categories.map(cat => (
-                                <div 
-                                    class={`dropdown-item ${initialSelectedCategories.includes(cat.id) ? 'active' : ''}`}
-                                    data-value={cat.id}
-                                    data-name={cat.name}
-                                >
-                                    {cat.name}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
+
+                <ArticleMetaFields 
+                    client:load 
+                    isAdmin={isAdmin}
+                    categories={(categories || []) as any}
+                    initialCategory={initialSelectedCategories.length > 0 ? initialSelectedCategories[0] : ''}
+                    initialAuthor={initialArticle?.author_id || ''}
+                    initialEditor={initialArticle?.editor_id || ''}
+                    initialLayouter={initialArticle?.layouter_id || ''}
+                    currentUserId={user.id}
+                    currentUserName={authorName}
+                />
             </header>
 
             <div class="cover-upload-area" id="cover-dropzone">
@@ -200,43 +183,7 @@ if (slug) {
         });
 
         // --- 2. SETUP CUSTOM DROPDOWN KATEGORI ---
-        const dropdownWrapper = document.getElementById('category-dropdown-wrapper');
-        const trigger = document.getElementById('dropdown-trigger');
-        const menu = document.getElementById('dropdown-menu');
-        const inputCategory = document.getElementById('input-category') as HTMLInputElement;
-        const selectedText = document.getElementById('selected-category-text');
-
-        if (dropdownWrapper && trigger && menu && inputCategory && selectedText) {
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdownWrapper.classList.toggle('open');
-            });
-
-            const items = menu.querySelectorAll('.dropdown-item');
-            items.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    const val = item.getAttribute('data-value');
-                    const name = item.getAttribute('data-name');
-                    
-                    if (val && name) {
-                        inputCategory.value = val;
-                        selectedText.textContent = name;
-                        selectedText.style.color = 'var(--text)'; // Update teks jadi tegas
-                        
-                        items.forEach(i => i.classList.remove('active'));
-                        item.classList.add('active');
-                    }
-                    dropdownWrapper.classList.remove('open');
-                });
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!dropdownWrapper.contains(e.target as Node)) {
-                    dropdownWrapper.classList.remove('open');
-                }
-            });
-        }
+        // (Sekarang diurus oleh komponen React ArticleMetaFields)
 
         // --- 3. INISIALISASI QUILL ---
         let quillEditor: any;
@@ -301,9 +248,13 @@ if (slug) {
             const btn = document.getElementById(btnId);
 
             const articleId = (document.getElementById('post-id') as HTMLInputElement).value;
-            const userId = (document.getElementById('user-id') as HTMLInputElement).value;
             const title = (document.getElementById('input-title') as HTMLTextAreaElement).value.trim();
+            
+            // Mengambil data dari hidden inputs yang di-render oleh ArticleMetaFields
             const categoryId = (document.getElementById('input-category') as HTMLInputElement).value;
+            const authorId = (document.getElementById('input-author') as HTMLInputElement).value;
+            const editorId = (document.getElementById('input-editor') as HTMLInputElement).value;
+            const layouterId = (document.getElementById('input-layouter') as HTMLInputElement).value;
             
             let rawHtml = quillEditor ? quillEditor.root.innerHTML : '';
             if (rawHtml === '<p><br></p>') rawHtml = ''; 
@@ -368,7 +319,9 @@ if (slug) {
                     content: cleanContent, 
                     cover_url: finalCoverUrl,
                     status: status,
-                    author_id: userId
+                    author_id: authorId || null,
+                    editor_id: editorId || null,
+                    layouter_id: layouterId || null
                 };
 
                 let savedArticleId = articleId;
