@@ -115,7 +115,7 @@ export default function ProfileComboSelect({
                             ) : (
                                 <div className="pcs-selected-avatar-placeholder"><User size={10} /></div>
                             )}
-                            {displayName}
+                            <span className="pcs-selected-text">{displayName}</span>
                             <button type="button" className="pcs-remove-btn" onClick={(e) => handleRemove(e, val)}>
                                 <X size={12} />
                             </button>
@@ -328,6 +328,14 @@ export default function ProfileComboSelect({
                     padding: 2px 8px 2px 4px;
                     border-radius: 12px;
                     border: 1px solid var(--border);
+                    width: 160px; /* Panjang tag dibuat sama persis */
+                    justify-content: space-between;
+                }
+                .pcs-selected-text {
+                    flex: 1;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
                 .pcs-selected-avatar {
                     width: 20px;

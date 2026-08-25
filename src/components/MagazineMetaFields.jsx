@@ -16,75 +16,41 @@ export default function MagazineMetaFields({
     const [layouter, setLayouter] = useState(initialLayouter);
     const [redaksi, setRedaksi] = useState(initialRedaksi);
 
+    const renderMetaItem = (label, value, setter, isMulti) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '14px 0', borderBottom: '1px dashed var(--border-muted)' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.95rem' }}>{label}</span>
+            <ProfileComboSelect
+                value={value}
+                onChange={setter}
+                mode="text"
+                multiple={isMulti}
+                placeholder={`Pilih ${label}...`}
+                label={null}
+            />
+        </div>
+    );
+
     return (
-        <div className="mag-meta-fields-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div className="mag-meta-row" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 200px' }}>
-                    <ProfileComboSelect
-                        value={pimpinanUmum}
-                        onChange={(val) => setPimpinanUmum(val)}
-                        mode="text"
-                        multiple={false}
-                        label="Pimpinan Umum"
-                        placeholder="Pilih Pimpinan Umum..."
-                    />
-                </div>
-                <div style={{ flex: '1 1 200px' }}>
-                    <ProfileComboSelect
-                        value={pimpinanRedaksi}
-                        onChange={(val) => setPimpinanRedaksi(val)}
-                        mode="text"
-                        multiple={false}
-                        label="Pimpinan Redaksi"
-                        placeholder="Pilih Pimpinan Redaksi..."
-                    />
-                </div>
-                <div style={{ flex: '1 1 200px' }}>
-                    <ProfileComboSelect
-                        value={redakturPelaksana}
-                        onChange={(val) => setRedakturPelaksana(val)}
-                        mode="text"
-                        multiple={false}
-                        label="Redaktur Pelaksana"
-                        placeholder="Pilih Redaktur Pelaksana..."
-                    />
-                </div>
+        <div className="mag-meta-fields-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
+            {renderMetaItem("Pimpinan Umum", pimpinanUmum, setPimpinanUmum, false)}
+            {renderMetaItem("Pimpinan Redaksi", pimpinanRedaksi, setPimpinanRedaksi, false)}
+            {renderMetaItem("Redaktur Pelaksana", redakturPelaksana, setRedakturPelaksana, false)}
+            {renderMetaItem("Penyunting", editor, setEditor, true)}
+            {renderMetaItem("Tata Letak (Layout)", layouter, setLayouter, true)}
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '14px 0' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.95rem' }}>Tim Redaksi</span>
+                <ProfileComboSelect
+                    value={redaksi}
+                    onChange={(val) => setRedaksi(val)}
+                    mode="text"
+                    multiple={true}
+                    placeholder="Pilih Tim Redaksi..."
+                    label={null}
+                />
             </div>
 
-            <div className="mag-meta-row" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 200px' }}>
-                    <ProfileComboSelect
-                        value={editor}
-                        onChange={(val) => setEditor(val)}
-                        mode="text"
-                        multiple={true}
-                        label="Penyunting"
-                        placeholder="Pilih Penyunting..."
-                    />
-                </div>
-                <div style={{ flex: '1 1 200px' }}>
-                    <ProfileComboSelect
-                        value={layouter}
-                        onChange={(val) => setLayouter(val)}
-                        mode="text"
-                        multiple={true}
-                        label="Tata Letak (Layout)"
-                        placeholder="Pilih Layouter..."
-                    />
-                </div>
-                <div style={{ flex: '1 1 200px' }}>
-                    <ProfileComboSelect
-                        value={redaksi}
-                        onChange={(val) => setRedaksi(val)}
-                        mode="text"
-                        multiple={true}
-                        label="Tim Redaksi"
-                        placeholder="Pilih Tim Redaksi..."
-                    />
-                </div>
-            </div>
-
-            {/* Hidden Inputs untuk ditangkap oleh Vanilla JS di Astro */}
+            {/* Hidden inputs to sync state to Astro form */}
             <input type="hidden" id="input-mag-pimpinan-umum" value={pimpinanUmum || ''} />
             <input type="hidden" id="input-mag-pimpinan-redaksi" value={pimpinanRedaksi || ''} />
             <input type="hidden" id="input-mag-redaktur-pelaksana" value={redakturPelaksana || ''} />
