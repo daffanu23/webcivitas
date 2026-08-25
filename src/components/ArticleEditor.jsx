@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import { supabase } from '../lib/supabase';
 import { Image as ImageIcon, X, Send, Save } from 'lucide-react';
+import ProfileComboSelect from './ProfileComboSelect';
 
 // Terima "Paket Data" dari Server (Astro)
 const ArticleEditor = ({ serverUser, serverCategories, serverArticle, serverSelectedCategories }) => {
@@ -13,6 +14,8 @@ const ArticleEditor = ({ serverUser, serverCategories, serverArticle, serverSele
   const [coverUrl, setCoverUrl] = useState(serverArticle?.cover_url || ''); 
   const [status, setStatus] = useState(serverArticle?.status || 'draft');
   const [articleId, setArticleId] = useState(serverArticle?.id || null);
+  const [editorId, setEditorId] = useState(serverArticle?.editor_id || null);
+  const [layouterId, setLayouterId] = useState(serverArticle?.layouter_id || null);
   
   const [availableCategories] = useState(serverCategories || []);
   const [selectedCategories, setSelectedCategories] = useState(serverSelectedCategories || []);
@@ -82,6 +85,7 @@ const ArticleEditor = ({ serverUser, serverCategories, serverArticle, serverSele
     const payload = {
         title, content, cover_url: coverUrl, status: targetStatus,
         slug: articleId ? undefined : slugGen, author_id: user.id, updated_at: new Date(),
+        editor_id: editorId || null, layouter_id: layouterId || null,
     };
     if (articleId) delete payload.slug; 
 
@@ -141,6 +145,26 @@ const ArticleEditor = ({ serverUser, serverCategories, serverArticle, serverSele
                     <span>{cat.name}</span>
                 </label>
             ))}
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="label">Tim Produksi Berita</label>
+        <div className="crew-grid">
+            <ProfileComboSelect
+                value={editorId}
+                onChange={setEditorId}
+                mode="id"
+                label="Editor"
+                placeholder="Pilih editor artikel..."
+            />
+            <ProfileComboSelect
+                value={layouterId}
+                onChange={setLayouterId}
+                mode="id"
+                label="Layouter"
+                placeholder="Pilih layouter artikel..."
+            />
         </div>
       </div>
 
@@ -205,7 +229,8 @@ const ArticleEditor = ({ serverUser, serverCategories, serverArticle, serverSele
         .custom-md-editor .wmde-markdown { background-color: var(--bg-light) !important; color: var(--text) !important; font-family: 'Poppins', sans-serif !important; font-size: 1rem !important; line-height: 1.8 !important; }
         .custom-md-editor .wmde-markdown h1, .custom-md-editor .wmde-markdown h2, .custom-md-editor .wmde-markdown h3 { font-weight: 600 !important; border-bottom: none !important; font-family: 'Poppins', sans-serif !important; }
         .markdown-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
-        @media (max-width: 600px) { .action-buttons button span { display: none; } }
+        .crew-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .action-buttons button span { display: none; } .crew-grid { grid-template-columns: 1fr; } }
       `}</style>
     </div>
   );

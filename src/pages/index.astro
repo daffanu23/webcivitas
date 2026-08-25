@@ -35,7 +35,7 @@ if (isAdmin) {
         .from('articles')
         .select(`
             id, title, slug, created_at, cover_url, content, status,
-            profiles ( full_name ),
+            profiles!author_id ( full_name ),
             article_categories ( category_id, categories ( name, slug ) )
         `)
         .eq('status', 'pending')
@@ -49,7 +49,7 @@ let query = supabase
   .from('articles')
   .select(`
     id, title, slug, created_at, cover_url, content, status,
-    profiles ( full_name ),
+    profiles!author_id ( full_name ),
     article_categories ( category_id, categories ( name, slug ) )
   `)
   .eq('status', 'published')

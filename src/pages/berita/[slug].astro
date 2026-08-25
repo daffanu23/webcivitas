@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase'; 
-import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save } from 'lucide-react'; // TAMBAHAN: Icon tambahan
+import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save, PenTool, Palette } from 'lucide-react'; // TAMBAHAN: Icon tambahan
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
@@ -23,7 +23,9 @@ const { data: article, error } = await supabase
     .from('articles')
     .select(`
         *, 
-        profiles ( full_name ),
+        profiles!author_id ( full_name ),
+        editor:profiles!editor_id ( full_name ),
+        layouter:profiles!layouter_id ( full_name ),
         article_categories ( categories ( name, slug ) ) 
     `)
     .eq('slug', slug)
@@ -33,6 +35,8 @@ if (error || !article) return Astro.redirect('/404');
 if (!isAdmin && article.status !== 'published') return Astro.redirect('/404');
 
 const authorName = article.profiles?.full_name || 'Redaksi';
+const editorName = article.editor?.full_name || null;
+const layouterName = article.layouter?.full_name || null;
 const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 const htmlContent = article.content || '<p>Konten tidak tersedia.</p>';
@@ -110,6 +114,8 @@ const initialEditMode = isAdmin && isPending;
             <div class="meta-row">
                 <div class="meta-pill"><User size={14} /> <span>{authorName}</span></div>
                 <div class="meta-pill"><Calendar size={14} /> <span>{publishDate}</span></div>
+                {editorName && <div class="meta-pill"><PenTool size={14} /> <span>Editor: {editorName}</span></div>}
+                {layouterName && <div class="meta-pill"><Palette size={14} /> <span>Layouter: {layouterName}</span></div>}
                 
                 {article.article_categories && article.article_categories.map((ac: any) => (
                     ac.categories && (

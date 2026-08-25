@@ -8,6 +8,7 @@ import {
     BookOpen, ChevronDown, ChevronRight, Sparkles, ExternalLink, Filter
 } from 'lucide-react';
 import MagazineManager from './MagazineManager';
+import ProfileComboSelect from './ProfileComboSelect';
 
 export default function AdminDashboard({ serverCategories, serverArticles, userId }) {
     const [mounted, setMounted] = useState(false);
@@ -33,11 +34,13 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [editorContent, setEditorContent] = useState('');
     const [editorTitle, setEditorTitle] = useState('');
+    const [editorId, setEditorId] = useState(null);
+    const [layouterId, setLayouterId] = useState(null);
 
     const fetchData = async () => {
         const { data: articlesData } = await supabase
             .from('articles')
-            .select('*, profiles(full_name), article_categories(category_id)')
+            .select('*, profiles!author_id(full_name), article_categories(category_id)')
             .order('created_at', { ascending: false });
         setArticles(articlesData || []);
 
@@ -122,6 +125,8 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
         setEditorContent(article.content || '');
         setEditorTitle(article.title || '');
         setSelectedCategories(article.article_categories ? article.article_categories.map(ac => ac.category_id) : []);
+        setEditorId(article.editor_id || null);
+        setLayouterId(article.layouter_id || null);
         setIsPanelOpen(true);
         document.body.style.overflow = 'hidden';
     };
@@ -143,7 +148,7 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
         if (!confirm(confirmMsg)) return;
 
         try {
-            const { error } = await supabase.from('articles').update({ title: editorTitle, content: editorContent, status: newStatus, updated_at: new Date() }).eq('id', selectedArticle.id);
+            const { error } = await supabase.from('articles').update({ title: editorTitle, content: editorContent, status: newStatus, updated_at: new Date(), editor_id: editorId || null, layouter_id: layouterId || null }).eq('id', selectedArticle.id);
             if (error) throw error;
             await supabase.from('article_categories').delete().eq('article_id', selectedArticle.id);
             if (selectedCategories.length > 0) {
@@ -603,6 +608,26 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
                                                     {cat.name}
                                                 </button>
                                             ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="adm-drawer-input-unit">
+                                        <label>Tim Produksi Berita</label>
+                                        <div className="adm-crew-grid">
+                                            <ProfileComboSelect
+                                                value={editorId}
+                                                onChange={setEditorId}
+                                                mode="id"
+                                                label="Editor"
+                                                placeholder="Pilih editor..."
+                                            />
+                                            <ProfileComboSelect
+                                                value={layouterId}
+                                                onChange={setLayouterId}
+                                                mode="id"
+                                                label="Layouter"
+                                                placeholder="Pilih layouter..."
+                                            />
                                         </div>
                                     </div>
 
@@ -1614,6 +1639,11 @@ export default function AdminDashboard({ serverCategories, serverArticles, userI
                     border: 1px solid var(--border);
                     border-radius: 12px;
                     overflow: hidden;
+                }
+                .adm-crew-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 14px;
                 }
                 .adm-drawer-footer {
                     padding: 16px 24px;

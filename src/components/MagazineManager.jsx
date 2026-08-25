@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Upload, FileText, Image as ImageIcon, Save, Trash2, BookOpen, Edit3, X, Sparkles, AlertCircle } from 'lucide-react';
+import ProfileComboSelect from './ProfileComboSelect';
 
 export default function MagazineManager({ userId }) {
     const [magazines, setMagazines] = useState([]);
@@ -196,28 +197,58 @@ export default function MagazineManager({ userId }) {
                         </div>
 
                         <div className="mm-input-unit">
-                            <label>Pimpinan Umum</label>
-                            <input type="text" name="pimpinan_umum" value={form.pimpinan_umum} onChange={handleInputChange} />
+                            <ProfileComboSelect
+                                value={form.pimpinan_umum}
+                                onChange={(val) => setForm({...form, pimpinan_umum: val})}
+                                mode="text"
+                                label="Pimpinan Umum"
+                                placeholder="Pilih pimpinan umum..."
+                            />
                         </div>
                         <div className="mm-input-unit">
-                            <label>Pimpinan Redaksi</label>
-                            <input type="text" name="pimpinan_redaksi" value={form.pimpinan_redaksi} onChange={handleInputChange} />
+                            <ProfileComboSelect
+                                value={form.pimpinan_redaksi}
+                                onChange={(val) => setForm({...form, pimpinan_redaksi: val})}
+                                mode="text"
+                                label="Pimpinan Redaksi"
+                                placeholder="Pilih pimpinan redaksi..."
+                            />
                         </div>
                         <div className="mm-input-unit">
-                            <label>Redaktur Pelaksana</label>
-                            <input type="text" name="redaktur_pelaksana" value={form.redaktur_pelaksana} onChange={handleInputChange} />
+                            <ProfileComboSelect
+                                value={form.redaktur_pelaksana}
+                                onChange={(val) => setForm({...form, redaktur_pelaksana: val})}
+                                mode="text"
+                                label="Redaktur Pelaksana"
+                                placeholder="Pilih redaktur pelaksana..."
+                            />
                         </div>
                         <div className="mm-input-unit">
-                            <label>Editor</label>
-                            <input type="text" name="editor" value={form.editor} onChange={handleInputChange} />
+                            <ProfileComboSelect
+                                value={form.editor}
+                                onChange={(val) => setForm({...form, editor: val})}
+                                mode="text"
+                                label="Editor"
+                                placeholder="Pilih editor..."
+                            />
                         </div>
                         <div className="mm-input-unit">
-                            <label>Layouter</label>
-                            <input type="text" name="layouter" value={form.layouter} onChange={handleInputChange} />
+                            <ProfileComboSelect
+                                value={form.layouter}
+                                onChange={(val) => setForm({...form, layouter: val})}
+                                mode="text"
+                                label="Layouter"
+                                placeholder="Pilih layouter..."
+                            />
                         </div>
                         <div className="mm-input-unit">
-                            <label>Tim Redaksi</label>
-                            <input type="text" name="redaksi" value={form.redaksi} onChange={handleInputChange} />
+                            <ProfileComboSelect
+                                value={form.redaksi}
+                                onChange={(val) => setForm({...form, redaksi: val})}
+                                mode="text"
+                                label="Tim Redaksi"
+                                placeholder="Pilih tim redaksi..."
+                            />
                         </div>
 
                         <div className="mm-sub-divider full">

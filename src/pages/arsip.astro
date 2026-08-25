@@ -20,7 +20,7 @@ if (activeCategory) {
             const articleIds = pivot.map(p => p.article_id);
             const { data } = await supabase
                 .from('articles')
-                .select('*, profiles(full_name)')
+                .select('*, profiles!author_id(full_name)')
                 .eq('status', 'published')
                 .in('id', articleIds)
                 .order('created_at', { ascending: false });
@@ -30,7 +30,7 @@ if (activeCategory) {
 } else {
     const { data } = await supabase
         .from('articles')
-        .select('*, profiles(full_name)')
+        .select('*, profiles!author_id(full_name)')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
     articles = data || [];

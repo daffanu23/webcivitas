@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { Upload, FileText, Image as ImageIcon, X, BookOpen, RefreshCw, CheckCircle, AlertTriangle, Sparkles, Users } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import ProfileComboSelect from './ProfileComboSelect';
 
 export default function MagazineUploadModal({ userId }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -320,68 +321,62 @@ export default function MagazineUploadModal({ userId }) {
 
                             <div className="mag-input-grid editorial-grid">
                                 <div className="mag-input-group">
-                                    <label>Pimpinan Umum</label>
-                                    <input
-                                        type="text"
-                                        name="pimpinan_umum"
+                                    <ProfileComboSelect
                                         value={form.pimpinan_umum}
-                                        onChange={handleInputChange}
-                                        placeholder="Nama Pimpinan Umum..."
+                                        onChange={(val) => setForm({...form, pimpinan_umum: val})}
+                                        mode="text"
+                                        label="Pimpinan Umum"
+                                        placeholder="Pilih pimpinan umum..."
                                     />
                                 </div>
 
                                 <div className="mag-input-group">
-                                    <label>Pimpinan Redaksi</label>
-                                    <input
-                                        type="text"
-                                        name="pimpinan_redaksi"
+                                    <ProfileComboSelect
                                         value={form.pimpinan_redaksi}
-                                        onChange={handleInputChange}
-                                        placeholder="Nama Pemimpin Redaksi..."
+                                        onChange={(val) => setForm({...form, pimpinan_redaksi: val})}
+                                        mode="text"
+                                        label="Pimpinan Redaksi"
+                                        placeholder="Pilih pimpinan redaksi..."
                                     />
                                 </div>
 
                                 <div className="mag-input-group">
-                                    <label>Redaktur Pelaksana</label>
-                                    <input
-                                        type="text"
-                                        name="redaktur_pelaksana"
+                                    <ProfileComboSelect
                                         value={form.redaktur_pelaksana}
-                                        onChange={handleInputChange}
-                                        placeholder="Nama Redaktur Pelaksana..."
+                                        onChange={(val) => setForm({...form, redaktur_pelaksana: val})}
+                                        mode="text"
+                                        label="Redaktur Pelaksana"
+                                        placeholder="Pilih redaktur pelaksana..."
                                     />
                                 </div>
 
                                 <div className="mag-input-group">
-                                    <label>Editor</label>
-                                    <input
-                                        type="text"
-                                        name="editor"
+                                    <ProfileComboSelect
                                         value={form.editor}
-                                        onChange={handleInputChange}
-                                        placeholder="Nama tim editor..."
+                                        onChange={(val) => setForm({...form, editor: val})}
+                                        mode="text"
+                                        label="Editor"
+                                        placeholder="Pilih editor..."
                                     />
                                 </div>
 
                                 <div className="mag-input-group">
-                                    <label>Layouter / Desain</label>
-                                    <input
-                                        type="text"
-                                        name="layouter"
+                                    <ProfileComboSelect
                                         value={form.layouter}
-                                        onChange={handleInputChange}
-                                        placeholder="Nama tim layouter..."
+                                        onChange={(val) => setForm({...form, layouter: val})}
+                                        mode="text"
+                                        label="Layouter / Desain"
+                                        placeholder="Pilih layouter..."
                                     />
                                 </div>
 
                                 <div className="mag-input-group">
-                                    <label>Reporter / Tim Redaksi</label>
-                                    <input
-                                        type="text"
-                                        name="redaksi"
+                                    <ProfileComboSelect
                                         value={form.redaksi}
-                                        onChange={handleInputChange}
-                                        placeholder="Nama tim reporter..."
+                                        onChange={(val) => setForm({...form, redaksi: val})}
+                                        mode="text"
+                                        label="Reporter / Tim Redaksi"
+                                        placeholder="Pilih tim reporter..."
                                     />
                                 </div>
                             </div>
