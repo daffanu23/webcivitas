@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Calendar, Edit3, Save, X, Trophy, FileText, BarChart2, Type, Award, Camera } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 export default function ProfileDashboard({ userId }) {
     const [loading, setLoading] = useState(true);
@@ -44,9 +45,10 @@ export default function ProfileDashboard({ userId }) {
 
             const { data: articlesData, error: articlesErr } = await supabase
                 .from('articles')
-                .select('id, title, content, created_at, article_categories(categories(name))')
+                .select('id, slug, title, content, created_at, article_categories(categories(name))')
                 .eq('author_id', userId) 
-                .eq('status', 'published'); 
+                .eq('status', 'published')
+                .order('created_at', { ascending: false });
             
             if (!articlesErr && articlesData) {
                 setArticles(articlesData);
@@ -101,12 +103,7 @@ export default function ProfileDashboard({ userId }) {
         });
     };
 
-    const getRank = (wordCount) => {
-        if (wordCount < 1000) return { title: "Masih Magang", color: "#64748b" }; 
-        if (wordCount < 5000) return { title: "Jurnalis Junior", color: "#10b981" }; 
-        if (wordCount < 15000) return { title: "Ampun Senior", color: "#3b82f6" }; 
-        return { title: "Sepuh Legend", color: "#f59e0b" }; 
-    };
+    // Pangkat dihilangkan atas permintaan pengguna
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -121,10 +118,32 @@ export default function ProfileDashboard({ userId }) {
             let finalAvatarUrl = profile.avatar_url;
 
             if (editForm.file) {
+                // 1. Kompres Gambar
+                let fileToUpload = editForm.file;
+                try {
+                    const options = { maxSizeMB: 0.2, maxWidthOrHeight: 500, useWebWorker: true };
+                    fileToUpload = await imageCompression(editForm.file, options);
+                } catch (err) {
+                    console.error("Gagal kompres gambar profil:", err);
+                }
+
+                // 2. Hapus Foto Lama (Jika ada)
+                if (profile.avatar_url && profile.avatar_url.includes('avatars/')) {
+                    try {
+                        const oldFileName = profile.avatar_url.split('avatars/').pop();
+                        if (oldFileName) {
+                            await supabase.storage.from('avatars').remove([oldFileName]);
+                        }
+                    } catch (e) {
+                        console.error("Gagal menghapus foto lama:", e);
+                    }
+                }
+
+                // 3. Upload Foto Baru
                 const fileExt = editForm.file.name.split('.').pop();
                 const fileName = `user-${userId}-${Date.now()}.${fileExt}`;
                 
-                const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, editForm.file, { upsert: true });
+                const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, fileToUpload, { upsert: true });
                 if (uploadError) throw uploadError;
 
                 const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
@@ -154,7 +173,7 @@ export default function ProfileDashboard({ userId }) {
     if (loading) return <div className="loading-state">Memuat Profil...</div>;
     if (!profile) return <div className="loading-state">Profil tidak ditemukan.</div>;
 
-    const rank = getRank(stats.totalWords);
+    // rank dihapus
 
     return (
         <div className="profile-dashboard-wrapper">
@@ -184,7 +203,7 @@ export default function ProfileDashboard({ userId }) {
                                     <input type="text" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} className="styled-input" />
                                 </div>
                                 <div className="form-group">
-                                    <label>Tanggal Lahir</label>
+                                    <label>Tanggal Lahir <small style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>(Sensus internal)</small></label>
                                     <input type="date" value={editForm.birth_date} onChange={e => setEditForm({...editForm, birth_date: e.target.value})} className="styled-input" />
                                 </div>
                                 <div className="form-group full-width">
@@ -204,11 +223,7 @@ export default function ProfileDashboard({ userId }) {
                                 </div>
                                 <p className="bio-text">{profile.bio || 'Belum ada bio. Tuliskan sesuatu agar pembaca lebih mengenalmu!'}</p>
                                 
-                                <div className="meta-row">
-                                    <span className="meta-item"><Trophy size={16} color={rank.color}/> Pangkat: <strong style={{color: rank.color}}>{rank.title}</strong></span>
-                                    {profile.birth_date && <span className="meta-item"><Calendar size={16}/> Ultah: {new Date(profile.birth_date).toLocaleDateString('id-ID', {day: 'numeric', month: 'long'})}</span>}
-                                </div>
-                                
+                                {/* meta-row dihapus */}
                                 <button onClick={() => setIsEditing(true)} className="btn-edit-profile"><Edit3 size={16}/> Edit Profil</button>
                             </>
                         )}
@@ -237,49 +252,42 @@ export default function ProfileDashboard({ userId }) {
                     </div>
                     
                     <div className="stat-card">
-                        <div className="stat-icon" style={{background: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}><BarChart2 size={24}/></div>
+                        <div className="stat-icon" style={{background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b'}}><Award size={24}/></div>
                         <div className="stat-data">
-                            <h3>Kategori Aktif</h3>
-                            <p className="stat-value">{Object.keys(stats.categoryCounts).length}</p>
-                            <span className="stat-label">Topik Dibahas</span>
+                            <h3>Kategori Favorit</h3>
+                            <p className="stat-value" style={{fontSize: '1.5rem'}}>{stats.topCategory}</p>
+                            <span className="stat-label">Paling sering dibuat</span>
                         </div>
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon" style={{background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b'}}><Award size={24}/></div>
+                        <div className="stat-icon" style={{background: 'rgba(16, 185, 129, 0.1)', color: '#10b981'}}><Type size={24}/></div>
                         <div className="stat-data">
-                            <h3>Spesialisasi</h3>
-                            <p className="stat-value" style={{fontSize: '1.5rem'}}>{stats.topCategory}</p>
-                            <span className="stat-label">Kategori Terbanyak</span>
+                            <h3>Total Kata</h3>
+                            <p className="stat-value">{stats.totalWords.toLocaleString('id-ID')}</p>
+                            <span className="stat-label">Kata ditulis</span>
                         </div>
                     </div>
                 </div>
 
-                {Object.keys(stats.categoryCounts).length > 0 && (
-                    <div className="category-breakdown-card">
-                        <h3>Distribusi Kategori</h3>
-                        <div className="breakdown-list">
-                            {Object.entries(stats.categoryCounts)
-                                .sort(([,a], [,b]) => b - a) 
-                                .map(([cat, count]) => (
-                                <div key={cat} className="breakdown-item">
-                                    <span className="cat-name">{cat}</span>
-                                    <span className="cat-count">{count} Artikel</span>
-                                    <div className="cat-bar-container">
-                                        <div className="cat-bar" style={{ width: stats.totalArticles > 0 ? ((count / stats.totalArticles) * 100) + '%' : '0%' }}></div>
+                {articles.length > 0 && (
+                    <div className="latest-articles-section" style={{ marginTop: '40px' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '20px' }}>Berita Terbaru</h2>
+                        <div className="articles-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {articles.slice(0, 5).map(article => (
+                                <a key={article.id} href={`/berita/${article.slug || article.id}`} className="latest-article-card" style={{ display: 'flex', padding: '20px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', textDecoration: 'none', color: 'inherit', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
+                                            {article.article_categories?.[0]?.categories?.name || 'Berita'}
+                                        </div>
+                                        <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: '700' }}>{article.title}</h3>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Calendar size={14} />
+                                            {new Date(article.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </div>
                                     </div>
-                                </div>
+                                </a>
                             ))}
-
-                            <div className="breakdown-item special-words-row" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px dashed var(--border)' }}>
-                                <span className="cat-name" style={{ color: '#10b981' }}>Total Kata Ditulis</span>
-                                <span className="cat-count" style={{ color: '#10b981', fontWeight: '700' }}>
-                                    {stats.totalWords.toLocaleString('id-ID')} Kata
-                                </span>
-                                <div className="cat-bar-container">
-                                    <div className="cat-bar" style={{ width: '100%', background: '#10b981' }}></div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -320,11 +328,10 @@ export default function ProfileDashboard({ userId }) {
                 .btn-edit-profile:hover { background: var(--text); color: var(--bg); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
 
                 /* EDIT FORM */
-                .edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: var(--bg-light); padding: 25px; border-radius: 16px; border: 1px dashed var(--border); }
-                .form-group.full-width { grid-column: 1 / -1; }
-                .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-muted); }
-                .styled-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; transition: border-color 0.2s; }
-                .styled-input:focus { outline: none; border-color: var(--text); }
+                .edit-form-grid { display: flex; flex-direction: column; gap: 20px; background: transparent; padding: 10px 0; }
+                .form-group label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+                .styled-input { width: 100%; padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.95rem; transition: all 0.2s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+                .styled-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
                 .edit-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
                 .btn-cancel { background: transparent; border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; cursor: pointer; color: var(--text); display: flex; align-items: center; gap: 6px; font-weight: 600; }
                 .btn-save { background: #dc2626; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; gap: 6px; font-weight: 600; }
