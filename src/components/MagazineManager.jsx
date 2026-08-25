@@ -228,6 +228,7 @@ export default function MagazineManager({ userId }) {
                                 value={form.editor}
                                 onChange={(val) => setForm({...form, editor: val})}
                                 mode="text"
+                                multiple={true}
                                 label="Editor"
                                 placeholder="Pilih editor..."
                             />
@@ -237,6 +238,7 @@ export default function MagazineManager({ userId }) {
                                 value={form.layouter}
                                 onChange={(val) => setForm({...form, layouter: val})}
                                 mode="text"
+                                multiple={true}
                                 label="Layouter"
                                 placeholder="Pilih layouter..."
                             />
@@ -246,6 +248,7 @@ export default function MagazineManager({ userId }) {
                                 value={form.redaksi}
                                 onChange={(val) => setForm({...form, redaksi: val})}
                                 mode="text"
+                                multiple={true}
                                 label="Tim Redaksi"
                                 placeholder="Pilih tim redaksi..."
                             />

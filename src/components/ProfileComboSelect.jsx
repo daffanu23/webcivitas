@@ -1,31 +1,23 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, Search, User, X, Type } from 'lucide-react';
+import { ChevronDown, Search, User, Check, X } from 'lucide-react';
 
-/**
- * ProfileComboSelect — Searchable combo dropdown untuk memilih profil.
- *
- * Props:
- *   value       — UUID (mode='id') atau nama string (mode='text')
- *   onChange     — callback(newValue)
- *   mode         — 'id' | 'text'  (default 'id')
- *   label        — label di atas field
- *   placeholder  — placeholder teks
- */
 export default function ProfileComboSelect({
     value = '',
     onChange,
     mode = 'id',
+    multiple = false,
     label = 'Pilih Profil',
-    placeholder = 'Cari atau ketik nama...',
+    placeholder = 'Pilih...',
 }) {
     const [profiles, setProfiles] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const [isManual, setIsManual] = useState(false);
-    const [manualValue, setManualValue] = useState('');
+    const [isManualMode, setIsManualMode] = useState(false);
+    const [manualInput, setManualInput] = useState('');
     const containerRef = useRef(null);
-    const inputRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const manualInputRef = useRef(null);
 
     // Fetch profiles once
     useEffect(() => {
@@ -40,294 +32,312 @@ export default function ProfileComboSelect({
         fetchProfiles();
     }, []);
 
-    // Determine display name from value
-    const getDisplayName = useCallback(() => {
-        if (!value) return '';
-        if (mode === 'id') {
-            const found = profiles.find(p => p.id === value);
-            return found ? found.full_name : '';
-        }
-        return value; // mode text — value IS the name
-    }, [value, mode, profiles]);
-
-    // Detect manual mode on mount (for text mode, if value doesn't match any profile)
-    useEffect(() => {
-        if (mode === 'text' && value) {
-            const found = profiles.find(p => p.full_name === value);
-            if (!found && profiles.length > 0) {
-                setIsManual(true);
-                setManualValue(value);
-            }
-        }
-    }, [value, profiles, mode]);
-
-    // Close dropdown on outside click
+    // Close on outside click
     useEffect(() => {
         const handler = (e) => {
             if (containerRef.current && !containerRef.current.contains(e.target)) {
                 setIsOpen(false);
-                setSearch('');
             }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    // Parse values
+    const parsedValues = typeof value === 'string' && value.trim() !== '' 
+        ? value.split(',').map(v => v.trim()).filter(Boolean)
+        : [];
+
     const filteredProfiles = profiles.filter(p =>
         p.full_name?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const handleSelect = (profile) => {
-        if (mode === 'id') {
-            onChange(profile.id);
+    const handleSelect = (itemValue) => {
+        if (!itemValue) return;
+
+        let newValues = [];
+        if (multiple) {
+            // Toggle selection
+            if (parsedValues.includes(itemValue)) {
+                newValues = parsedValues.filter(v => v !== itemValue);
+            } else {
+                newValues = [...parsedValues, itemValue];
+            }
+            onChange(newValues.join(', '));
         } else {
-            onChange(profile.full_name);
+            newValues = [itemValue];
+            onChange(newValues.join(', '));
+            setIsOpen(false); // Close if single select
         }
-        setIsManual(false);
-        setManualValue('');
-        setIsOpen(false);
-        setSearch('');
+        setSearch(''); // Reset search
+        setIsManualMode(false);
+        setManualInput('');
+        if (multiple) {
+            searchInputRef.current?.focus();
+        }
     };
 
-    const handleClear = (e) => {
+    const handleManualSubmit = () => {
+        if (manualInput.trim()) {
+            handleSelect(manualInput.trim());
+        } else {
+            setIsManualMode(false);
+            setTimeout(() => searchInputRef.current?.focus(), 50);
+        }
+    };
+
+    const handleRemove = (e, itemValueToRemove) => {
         e.stopPropagation();
-        onChange(mode === 'id' ? null : '');
-        setIsManual(false);
-        setManualValue('');
-        setSearch('');
+        const newValues = parsedValues.filter(v => v !== itemValueToRemove);
+        onChange(newValues.join(', '));
     };
 
-    const handleManualToggle = () => {
-        setIsManual(true);
-        setIsOpen(false);
-        setSearch('');
-        // If there was a selected value, clear it
-        if (value) {
-            onChange(mode === 'id' ? null : '');
-        }
-        setTimeout(() => inputRef.current?.focus(), 50);
-    };
+    // Determine what to show in the main box
+    const getDisplayText = () => {
+        if (parsedValues.length === 0) return <span className="pcs-placeholder">{placeholder}</span>;
+        
+        return (
+            <div className="pcs-selected-list">
+                {parsedValues.map(val => {
+                    let profile = null;
+                    let displayName = val;
+                    if (mode === 'id') {
+                        profile = profiles.find(p => p.id === val);
+                        displayName = profile ? profile.full_name : val;
+                    } else {
+                        profile = profiles.find(p => p.full_name === val);
+                    }
 
-    const handleManualChange = (e) => {
-        const val = e.target.value;
-        setManualValue(val);
-        if (mode === 'text') {
-            onChange(val);
-        }
+                    return (
+                        <span key={val} className="pcs-selected-item">
+                            {profile?.avatar_url ? (
+                                <img src={profile.avatar_url} alt="" className="pcs-selected-avatar" />
+                            ) : (
+                                <div className="pcs-selected-avatar-placeholder"><User size={10} /></div>
+                            )}
+                            {displayName}
+                            <button type="button" className="pcs-remove-btn" onClick={(e) => handleRemove(e, val)}>
+                                <X size={12} />
+                            </button>
+                        </span>
+                    );
+                })}
+            </div>
+        );
     };
-
-    const handleBackToDropdown = () => {
-        setIsManual(false);
-        setManualValue('');
-        onChange(mode === 'id' ? null : '');
-    };
-
-    const displayName = getDisplayName();
-    const selectedProfile = mode === 'id' ? profiles.find(p => p.id === value) : null;
 
     return (
-        <div className="pcs-container" ref={containerRef}>
+        <div className="pcs-wrapper" ref={containerRef}>
             {label && <label className="pcs-label">{label}</label>}
 
-            {isManual ? (
-                /* MANUAL INPUT MODE */
-                <div className="pcs-manual-wrap">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className="pcs-manual-input"
-                        placeholder="Ketik nama manual..."
-                        value={manualValue}
-                        onChange={handleManualChange}
-                    />
-                    <button
-                        type="button"
-                        className="pcs-manual-back"
-                        onClick={handleBackToDropdown}
-                        title="Kembali ke dropdown"
-                    >
-                        <ChevronDown size={14} />
-                    </button>
+            {/* MAIN DROPDOWN BOX */}
+            <div 
+                className={`pcs-main-box ${isOpen ? 'focused' : ''}`} 
+                onClick={() => {
+                    setIsOpen(!isOpen);
+                    if (!isOpen) {
+                        setIsManualMode(false);
+                        setManualInput('');
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                    }
+                }}
+            >
+                <div className="pcs-display-area">
+                    {getDisplayText()}
                 </div>
-            ) : (
-                /* DROPDOWN MODE */
-                <div
-                    className={`pcs-trigger ${isOpen ? 'open' : ''} ${value ? 'has-value' : ''}`}
-                    onClick={() => { setIsOpen(!isOpen); }}
-                >
-                    <div className="pcs-trigger-content">
-                        {value ? (
-                            <div className="pcs-selected">
-                                {selectedProfile?.avatar_url ? (
-                                    <img src={selectedProfile.avatar_url} alt="" className="pcs-avatar-sm" />
-                                ) : (
-                                    <div className="pcs-avatar-placeholder"><User size={12} /></div>
-                                )}
-                                <span>{displayName}</span>
+                <div className="pcs-indicator">
+                    <ChevronDown size={16} className={`pcs-chevron ${isOpen ? 'rotated' : ''}`} />
+                </div>
+            </div>
+
+            {/* DROPDOWN MENU */}
+            {isOpen && (
+                <div className="pcs-dropdown-menu">
+                    {isManualMode ? (
+                        <div className="pcs-manual-form">
+                            <div className="pcs-manual-header">Tulis Nama Manual</div>
+                            <input 
+                                ref={manualInputRef}
+                                type="text"
+                                className="pcs-manual-input"
+                                placeholder="Masukkan nama..."
+                                value={manualInput}
+                                onChange={e => setManualInput(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') handleManualSubmit();
+                                    if (e.key === 'Escape') {
+                                        setIsManualMode(false);
+                                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                                    }
+                                }}
+                            />
+                            <div className="pcs-manual-actions">
+                                <button type="button" className="pcs-btn-cancel" onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsManualMode(false);
+                                    setTimeout(() => searchInputRef.current?.focus(), 50);
+                                }}>Batal</button>
+                                <button type="button" className="pcs-btn-save" onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleManualSubmit();
+                                }}>Tambahkan</button>
                             </div>
-                        ) : (
-                            <span className="pcs-placeholder">{placeholder}</span>
-                        )}
-                    </div>
-                    <div className="pcs-trigger-actions">
-                        {value && (
-                            <button type="button" className="pcs-clear-btn" onClick={handleClear}>
-                                <X size={13} />
-                            </button>
-                        )}
-                        <ChevronDown size={15} className={`pcs-chevron ${isOpen ? 'rotated' : ''}`} />
-                    </div>
-                </div>
-            )}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="pcs-search-container">
+                                <Search size={14} className="pcs-search-icon" />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    className="pcs-search-input"
+                                    placeholder="Cari nama..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
 
-            {/* DROPDOWN PANEL */}
-            {isOpen && !isManual && (
-                <div className="pcs-dropdown">
-                    <div className="pcs-search-wrap">
-                        <Search size={14} className="pcs-search-icon" />
-                        <input
-                            type="text"
-                            className="pcs-search-input"
-                            placeholder="Cari nama..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-
-                    <div className="pcs-list">
-                        {filteredProfiles.length === 0 ? (
-                            <div className="pcs-empty">Tidak ada profil ditemukan</div>
-                        ) : (
-                            filteredProfiles.map((p) => (
-                                <div
-                                    key={p.id}
-                                    className={`pcs-item ${
-                                        (mode === 'id' && value === p.id) ||
-                                        (mode === 'text' && value === p.full_name)
-                                            ? 'active' : ''
-                                    }`}
-                                    onClick={(e) => { e.stopPropagation(); handleSelect(p); }}
-                                >
-                                    {p.avatar_url ? (
-                                        <img src={p.avatar_url} alt="" className="pcs-avatar" />
-                                    ) : (
+                            <div className="pcs-list">
+                                {/* MANUAL ENTRY OPTION ALWAYS AT TOP IF MODE IS TEXT */}
+                                {mode === 'text' && (
+                                    <div 
+                                        className="pcs-item pcs-manual-item" 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsManualMode(true);
+                                            setManualInput(search);
+                                            setTimeout(() => manualInputRef.current?.focus(), 50);
+                                        }}
+                                    >
                                         <div className="pcs-avatar-placeholder"><User size={14} /></div>
-                                    )}
-                                    <span className="pcs-name">{p.full_name}</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                                        <div className="pcs-item-info">
+                                            <span className="pcs-name">Tulis nama manual...</span>
+                                            <span className="pcs-sub">Tambahkan user yang belum terdaftar</span>
+                                        </div>
+                                    </div>
+                                )}
 
-                    <div className="pcs-footer">
-                        <button
-                            type="button"
-                            className="pcs-manual-btn"
-                            onClick={(e) => { e.stopPropagation(); handleManualToggle(); }}
-                        >
-                            <Type size={13} />
-                            <span>Ketik Manual</span>
-                        </button>
-                    </div>
+                                {filteredProfiles.length === 0 ? (
+                                    <div className="pcs-empty">Tidak ada profil tersedia</div>
+                                ) : (
+                                    filteredProfiles.map((p) => {
+                                        const itemVal = mode === 'id' ? p.id : p.full_name;
+                                        const isSelected = parsedValues.includes(itemVal);
+                                        
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                className={`pcs-item ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => handleSelect(itemVal)}
+                                            >
+                                                {p.avatar_url ? (
+                                                    <img src={p.avatar_url} alt="" className="pcs-avatar" />
+                                                ) : (
+                                                    <div className="pcs-avatar-placeholder"><User size={14} /></div>
+                                                )}
+                                                <div className="pcs-item-info">
+                                                    <span className="pcs-name">{p.full_name}</span>
+                                                </div>
+                                                {isSelected && <Check size={16} className="pcs-check-icon" />}
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
             <style>{`
-                .pcs-container {
+                .pcs-wrapper {
                     position: relative;
                     display: flex;
                     flex-direction: column;
                     gap: 6px;
                     font-family: 'Poppins', sans-serif;
+                    width: 100%;
                 }
                 .pcs-label {
-                    font-size: 0.8rem;
+                    font-size: 0.85rem;
                     font-weight: 600;
-                    color: var(--text-muted);
+                    color: var(--text);
                 }
-                /* TRIGGER */
-                .pcs-trigger {
+                
+                /* MAIN BOX (Murni Dropdown Look) */
+                .pcs-main-box {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 10px 12px;
-                    border: 1px solid var(--border);
-                    border-radius: 12px;
+                    min-height: 42px;
+                    padding: 8px 12px;
                     background: var(--bg-light);
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    min-height: 44px;
+                    transition: all 0.2s ease;
                 }
-                .pcs-trigger:hover {
+                .pcs-main-box:hover {
                     border-color: var(--text-muted);
                 }
-                .pcs-trigger.open {
+                .pcs-main-box.focused {
                     border-color: #3b82f6;
                     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    background: var(--bg);
                 }
-                .pcs-trigger-content {
+                
+                .pcs-display-area {
                     flex: 1;
                     min-width: 0;
+                    display: flex;
+                    align-items: center;
                 }
                 .pcs-placeholder {
                     color: var(--text-muted);
-                    font-size: 0.88rem;
+                    font-size: 0.85rem;
                 }
-                .pcs-selected {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    font-size: 0.9rem;
-                    font-weight: 500;
-                    color: var(--text);
-                }
-                .pcs-trigger-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                    flex-shrink: 0;
-                }
-                .pcs-clear-btn {
-                    width: 22px;
-                    height: 22px;
-                    border-radius: 6px;
-                    border: none;
-                    background: rgba(239, 68, 68, 0.1);
-                    color: #ef4444;
+                .pcs-indicator {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    cursor: pointer;
-                    transition: all 0.15s;
-                }
-                .pcs-clear-btn:hover {
-                    background: #ef4444;
-                    color: white;
+                    color: var(--text-muted);
+                    margin-left: 8px;
                 }
                 .pcs-chevron {
-                    color: var(--text-muted);
                     transition: transform 0.2s;
                 }
                 .pcs-chevron.rotated {
                     transform: rotate(180deg);
                 }
-                /* AVATAR */
-                .pcs-avatar, .pcs-avatar-sm {
-                    width: 26px;
-                    height: 26px;
+
+                /* COMMA SEPARATED LIST IN MAIN BOX */
+                .pcs-selected-list {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    align-items: center;
+                }
+                .pcs-selected-item {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 0.85rem;
+                    color: var(--text);
+                    background: var(--border-muted, #f3f4f6);
+                    padding: 2px 8px 2px 4px;
+                    border-radius: 12px;
+                    border: 1px solid var(--border);
+                }
+                .pcs-selected-avatar {
+                    width: 20px;
+                    height: 20px;
                     border-radius: 50%;
                     object-fit: cover;
-                    flex-shrink: 0;
                 }
-                .pcs-avatar-sm {
-                    width: 22px;
-                    height: 22px;
-                }
-                .pcs-avatar-placeholder {
-                    width: 26px;
-                    height: 26px;
+                .pcs-selected-avatar-placeholder {
+                    width: 20px;
+                    height: 20px;
                     border-radius: 50%;
                     background: var(--bg-light);
                     border: 1px solid var(--border);
@@ -335,14 +345,24 @@ export default function ProfileComboSelect({
                     align-items: center;
                     justify-content: center;
                     color: var(--text-muted);
-                    flex-shrink: 0;
                 }
-                .pcs-selected .pcs-avatar-placeholder {
-                    width: 22px;
-                    height: 22px;
+                .pcs-remove-btn {
+                    background: transparent;
+                    border: none;
+                    color: var(--text-muted);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 2px;
+                    margin-right: -4px;
                 }
-                /* DROPDOWN */
-                .pcs-dropdown {
+                .pcs-remove-btn:hover {
+                    color: #ef4444;
+                }
+
+                /* DROPDOWN MENU */
+                .pcs-dropdown-menu {
                     position: absolute;
                     top: calc(100% + 4px);
                     left: 0;
@@ -350,152 +370,178 @@ export default function ProfileComboSelect({
                     z-index: 1000;
                     background: var(--bg);
                     border: 1px solid var(--border);
-                    border-radius: 14px;
-                    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+                    border-radius: 8px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
                     overflow: hidden;
                     animation: pcs-slideIn 0.15s ease;
                 }
                 @keyframes pcs-slideIn {
-                    from { opacity: 0; transform: translateY(-6px); }
+                    from { opacity: 0; transform: translateY(-4px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
-                .pcs-search-wrap {
-                    position: relative;
+                
+                /* SEARCH BOX INSIDE DROPDOWN */
+                .pcs-search-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
                     padding: 10px 12px;
-                    border-bottom: 1px solid var(--border-muted);
+                    border-bottom: 1px solid var(--border);
+                    background: var(--bg-light);
                 }
                 .pcs-search-icon {
-                    position: absolute;
-                    left: 22px;
-                    top: 50%;
-                    transform: translateY(-50%);
                     color: var(--text-muted);
-                    pointer-events: none;
                 }
                 .pcs-search-input {
-                    width: 100%;
-                    padding: 9px 10px 9px 32px;
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    background: var(--bg-light);
-                    color: var(--text);
-                    font-family: inherit;
-                    font-size: 0.85rem;
+                    flex: 1;
+                    border: none;
+                    background: transparent;
                     outline: none;
-                    transition: border-color 0.2s;
+                    font-size: 0.85rem;
+                    font-family: inherit;
+                    color: var(--text);
                 }
-                .pcs-search-input:focus {
-                    border-color: #3b82f6;
+                .pcs-search-input::placeholder {
+                    color: var(--text-muted);
                 }
+
+                /* LIST */
                 .pcs-list {
-                    max-height: 200px;
+                    max-height: 250px;
                     overflow-y: auto;
                     padding: 6px;
                 }
                 .pcs-list::-webkit-scrollbar {
-                    width: 5px;
+                    width: 6px;
                 }
                 .pcs-list::-webkit-scrollbar-thumb {
                     background: var(--border);
                     border-radius: 10px;
                 }
+                
                 .pcs-item {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
-                    padding: 9px 10px;
-                    border-radius: 10px;
+                    gap: 12px;
+                    padding: 8px 10px;
+                    border-radius: 6px;
                     cursor: pointer;
                     transition: all 0.15s;
                 }
                 .pcs-item:hover {
-                    background: var(--bg-light);
+                    background: var(--border-muted, #f3f4f6);
                 }
-                .pcs-item.active {
+                .pcs-item.selected {
                     background: rgba(59, 130, 246, 0.08);
-                    color: #3b82f6;
-                    font-weight: 600;
+                }
+                .pcs-manual-item {
+                    border-bottom: 1px dashed var(--border);
+                    margin-bottom: 4px;
+                    border-radius: 0;
+                }
+                .pcs-manual-item:hover {
+                    background: rgba(16, 185, 129, 0.08);
+                }
+                
+                .pcs-avatar {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    flex-shrink: 0;
+                }
+                .pcs-avatar-placeholder {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: var(--bg-light);
+                    border: 1px solid var(--border);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--text-muted);
+                    flex-shrink: 0;
+                }
+                .pcs-item-info {
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1;
+                    min-width: 0;
                 }
                 .pcs-name {
                     font-size: 0.88rem;
                     font-weight: 500;
+                    color: var(--text);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .pcs-sub {
+                    font-size: 0.7rem;
+                    color: var(--text-muted);
+                }
+                .pcs-check-icon {
+                    color: #3b82f6;
+                    flex-shrink: 0;
                 }
                 .pcs-empty {
-                    padding: 18px 12px;
+                    padding: 16px;
                     text-align: center;
                     color: var(--text-muted);
                     font-size: 0.85rem;
                 }
-                .pcs-footer {
-                    padding: 8px 10px;
-                    border-top: 1px solid var(--border-muted);
+
+                /* MANUAL FORM IN DROPDOWN */
+                .pcs-manual-form {
+                    padding: 12px;
                 }
-                .pcs-manual-btn {
-                    width: 100%;
-                    padding: 9px;
-                    border-radius: 10px;
-                    border: 1px dashed var(--border);
-                    background: transparent;
-                    color: var(--text-muted);
-                    font-family: inherit;
-                    font-size: 0.82rem;
+                .pcs-manual-header {
+                    font-size: 0.8rem;
                     font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 6px;
-                    cursor: pointer;
-                    transition: all 0.15s;
-                }
-                .pcs-manual-btn:hover {
-                    border-color: var(--text);
+                    margin-bottom: 8px;
                     color: var(--text);
-                    background: var(--bg-light);
-                }
-                /* MANUAL INPUT */
-                .pcs-manual-wrap {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
                 }
                 .pcs-manual-input {
-                    flex: 1;
-                    padding: 10px 12px;
-                    border: 1px solid #f59e0b;
-                    border-radius: 12px;
-                    background: rgba(245, 158, 11, 0.05);
-                    color: var(--text);
-                    font-family: inherit;
-                    font-size: 0.9rem;
+                    width: 100%;
+                    padding: 8px 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 6px;
+                    font-size: 0.85rem;
+                    margin-bottom: 12px;
                     outline: none;
-                    transition: all 0.2s;
+                    font-family: inherit;
                 }
                 .pcs-manual-input:focus {
-                    border-color: #f59e0b;
-                    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
                 }
-                .pcs-manual-input::placeholder {
-                    color: #f59e0b;
-                    opacity: 0.6;
-                }
-                .pcs-manual-back {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 10px;
-                    border: 1px solid var(--border);
-                    background: var(--bg-light);
-                    color: var(--text-muted);
+                .pcs-manual-actions {
                     display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    flex-shrink: 0;
-                    transition: all 0.2s;
+                    justify-content: flex-end;
+                    gap: 8px;
                 }
-                .pcs-manual-back:hover {
-                    background: var(--text);
-                    color: var(--bg);
-                    border-color: var(--text);
+                .pcs-btn-cancel, .pcs-btn-save {
+                    padding: 6px 12px;
+                    font-size: 0.8rem;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    border: none;
+                }
+                .pcs-btn-cancel {
+                    background: transparent;
+                    color: var(--text-muted);
+                }
+                .pcs-btn-cancel:hover {
+                    background: var(--border-muted, #f3f4f6);
+                    color: var(--text);
+                }
+                .pcs-btn-save {
+                    background: #3b82f6;
+                    color: white;
+                }
+                .pcs-btn-save:hover {
+                    background: #2563eb;
                 }
             `}</style>
         </div>

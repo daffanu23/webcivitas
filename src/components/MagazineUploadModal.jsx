@@ -355,6 +355,7 @@ export default function MagazineUploadModal({ userId }) {
                                         value={form.editor}
                                         onChange={(val) => setForm({...form, editor: val})}
                                         mode="text"
+                                        multiple={true}
                                         label="Editor"
                                         placeholder="Pilih editor..."
                                     />
@@ -365,6 +366,7 @@ export default function MagazineUploadModal({ userId }) {
                                         value={form.layouter}
                                         onChange={(val) => setForm({...form, layouter: val})}
                                         mode="text"
+                                        multiple={true}
                                         label="Layouter / Desain"
                                         placeholder="Pilih layouter..."
                                     />
@@ -375,6 +377,7 @@ export default function MagazineUploadModal({ userId }) {
                                         value={form.redaksi}
                                         onChange={(val) => setForm({...form, redaksi: val})}
                                         mode="text"
+                                        multiple={true}
                                         label="Reporter / Tim Redaksi"
                                         placeholder="Pilih tim reporter..."
                                     />
