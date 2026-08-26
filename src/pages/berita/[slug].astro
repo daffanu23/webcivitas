@@ -155,7 +155,7 @@ const initialEditMode = isAdmin && isPending;
                     <div id="admin-cover-overlay" class={initialEditMode ? '' : 'hidden'}>
                         <AdminCoverUploader 
                             client:load 
-                            articleId={article.id} 
+                            id={article.id} 
                             currentCoverUrl={article.cover_url} 
                         />
                     </div>
