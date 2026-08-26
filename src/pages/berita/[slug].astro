@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase'; 
 import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save, PenTool, Palette } from 'lucide-react'; 
 import ArticleMetaFields from '../../components/ArticleMetaFields.jsx';
+import AdminCoverUploader from '../../components/AdminCoverUploader.jsx';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
@@ -150,6 +151,15 @@ const initialEditMode = isAdmin && isPending;
         {article.cover_url && (
             <div class="featured-image">
                 <img src={article.cover_url} alt={article.title} transition:name={`hero-${slug}`} />
+                {isAdmin && (
+                    <div id="admin-cover-overlay" class={initialEditMode ? '' : 'hidden'}>
+                        <AdminCoverUploader 
+                            client:load 
+                            articleId={article.id} 
+                            currentCoverUrl={article.cover_url} 
+                        />
+                    </div>
+                )}
             </div>
         )}
 
@@ -242,6 +252,7 @@ const initialEditMode = isAdmin && isPending;
                 document.getElementById('edit-content-wrapper')?.classList.toggle('hidden', !isEditMode);
                 document.getElementById('admin-action-panel')?.classList.toggle('hidden', !isEditMode);
                 document.getElementById('footer-actions-view')?.classList.toggle('hidden', isEditMode);
+                document.getElementById('admin-cover-overlay')?.classList.toggle('hidden', !isEditMode);
 
                 if (isEditMode) {
                     btnToggleAdmin.classList.add('active');
@@ -443,7 +454,7 @@ const initialEditMode = isAdmin && isPending;
     .cat-link { text-decoration: none; cursor: pointer; transition: all 0.2s; }
     .cat-link:hover { background: var(--text) !important; color: var(--bg) !important; border-color: var(--text) !important; }
     
-    .featured-image { width: 100%; margin-bottom: 40px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-muted); }
+    .featured-image { position: relative; width: 100%; margin-bottom: 40px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-muted); }
     .featured-image img { width: 100%; height: auto; display: block; }
 
     /* --- FIX PROBLEM ENTER 2X (VERSI PAMUNGKAS) --- */

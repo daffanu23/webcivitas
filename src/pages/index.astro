@@ -7,42 +7,12 @@ import { getSupabaseServer } from '../lib/supabase';
 import CategoryNav from '../components/CategoryNav.astro';
 /*import InstagramPromo from '../components/InstagramPromo.astro';*/
 import WhatsAppButton from '../components/WhatsAppButton.astro';
-import { Clock, AlertCircle } from 'lucide-react';
+import AdminRadar from '../components/AdminRadar.jsx';
+
+Astro.response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300');
 
 const supabase = getSupabaseServer(Astro.cookies);
 const activeCat = Astro.url.searchParams.get('kategori') || '';
-
-// --- CEK ROLE (APAKAH ADMIN?) ---
-let isAdmin = false;
-const { data: { user } } = await supabase.auth.getUser();
-
-if (user) {
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-    
-    if (profile?.role === 'admin') {
-        isAdmin = true;
-    }
-}
-
-// --- LOGIKA FETCH BERITA PENDING (HANYA UNTUK ADMIN) ---
-let pendingArticles: any[] = []; // <-- TypeScript Error Fixed!
-if (isAdmin) {
-    const { data } = await supabase
-        .from('articles')
-        .select(`
-            id, title, slug, created_at, cover_url, content, status,
-            profiles!author_id ( full_name ),
-            article_categories ( category_id, categories ( name, slug ) )
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-        
-    pendingArticles = data || [];
-}
 
 // --- LOGIKA FETCH BERITA PUBLISHED (UNTUK SEMUA ORANG) ---
 let query = supabase
@@ -85,36 +55,8 @@ if (activeCat) {
 
 <Layout title="MEDIACIVITAS - Berita Terkini">
 
-    {/* --- RADAR ADMIN: ANTREAN MENUNGGU ACC --- */}
-    {isAdmin && pendingArticles.length > 0 && (
-        <div class="admin-radar-section container">
-            <div class="admin-radar-header">
-                <div class="radar-title">
-                    <AlertCircle size={20} />
-                    <h3>Menunggu Persetujuan Anda</h3>
-                </div>
-                <span class="radar-badge">{pendingArticles.length} Draft</span>
-            </div>
-            
-            <div class="radar-grid">
-                {pendingArticles.map((item) => (
-                    /* LINK SUDAH DIGANTI KE /berita */
-                    <a href={`/berita/${item.slug}`} class="radar-card">
-                        <div class="radar-img-box">
-                            <img src={item.cover_url} alt={item.title} />
-                            <div class="radar-status">
-                                <Clock size={12} /> Pending
-                            </div>
-                        </div>
-                        <div class="radar-info">
-                            <h4>{item.title}</h4>
-                            <p>Oleh: {item.profiles?.full_name || 'Redaksi'}</p>
-                        </div>
-                    </a>
-                ))}
-            </div>
-        </div>
-    )}
+    {/* --- RADAR ADMIN: ANTREAN MENUNGGU ACC (CLIENT-SIDE) --- */}
+    <AdminRadar client:idle />
 
     <div id="hero-slider-section">
         <HeroSlider slides={heroArticles} />
@@ -175,6 +117,9 @@ if (activeCat) {
         padding: 0 20px;
     }
 
+</style>
+
+<style is:global>
     /* --- GAYA RADAR ADMIN --- */
     .admin-radar-section {
         margin-top: 30px;
@@ -293,6 +238,9 @@ if (activeCat) {
         font-size: 0.8rem;
         margin: 0;
     }
+</style>
+
+<style>
 
 
     #hero-slider-section {

@@ -1,6 +1,5 @@
 ---
 import { User, Clock, Calendar } from 'lucide-react'; 
-import { Image } from 'astro:assets';
 
 const { article } = Astro.props;
 
@@ -62,15 +61,7 @@ const timeInfo = getRelativeTimeInfo(data.created_at);
     
     <div class="card-image">
         {data.cover_url ? (
-            <Image 
-                src={data.cover_url} 
-                alt={data.title} 
-                width={400} 
-                height={225} 
-                format="webp"
-                quality="mid"
-                loading="lazy" 
-            />
+            <img src={data.cover_url} alt={data.title} loading="lazy" />
         ) : (
             <img src="https://placehold.co/600x400?text=No+Image" alt="Placeholder" />
         )}

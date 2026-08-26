@@ -8,5 +8,5 @@ export default defineConfig({
   output: 'server',
   adapter: vercel(),
   // db() sudah kita hapus dari daftar integrasi di bawah ini:
-  integrations: [react()],
+  integrations: [react()]
 });

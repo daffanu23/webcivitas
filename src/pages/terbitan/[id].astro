@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase';
 import { ArrowLeft, BookOpen, Users, Info, Edit3, X, Save, RefreshCw } from 'lucide-react';
 import MagazineMetaFields from '../../components/MagazineMetaFields.jsx';
+import AdminCoverUploader from '../../components/AdminCoverUploader.jsx';
 
 const { id } = Astro.params;
 const supabase = getSupabaseServer(Astro.cookies);
@@ -44,6 +45,17 @@ if (error || !mag) {
                 <div class="book-cover-large">
                     <img src={mag.cover_url} alt={mag.title} />
                     <div class="book-spine-shadow"></div>
+                    
+                    {isAdmin && (
+                        <div id="admin-cover-overlay" class="hidden">
+                            <AdminCoverUploader 
+                                client:load 
+                                id={mag.id} 
+                                currentCoverUrl={mag.cover_url} 
+                                type="magazine"
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -422,6 +434,7 @@ if (error || !mag) {
             
             document.getElementById('action-view-mode')?.classList.toggle('hidden', isEditMode);
             document.getElementById('action-edit-mode')?.classList.toggle('hidden', !isEditMode);
+            document.getElementById('admin-cover-overlay')?.classList.toggle('hidden', !isEditMode);
             
             if (isEditMode) {
                 // Trigger auto-resize saat textarea dimunculkan

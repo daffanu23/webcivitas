@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Upload, FileText, Image as ImageIcon, Save, Trash2, BookOpen, Edit3, X, Sparkles, AlertCircle } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import ProfileComboSelect from './ProfileComboSelect';
 
 export default function MagazineManager({ userId }) {
@@ -62,9 +63,24 @@ export default function MagazineManager({ userId }) {
             let finalPdfUrl = form.pdf_url;
 
             if (coverFile) {
-                const coverExt = coverFile.name.split('.').pop();
+                // Lakukan kompresi sebelum upload!
+                let fileToUpload = coverFile;
+                let coverExt = coverFile.name.split('.').pop();
+                
+                try {
+                    fileToUpload = await imageCompression(coverFile, {
+                        maxSizeMB: 0.35,
+                        maxWidthOrHeight: 1400,
+                        useWebWorker: true,
+                        fileType: 'image/webp'
+                    });
+                    coverExt = 'webp'; // Karena kita konversi ke webp
+                } catch (e) {
+                    console.warn("Gagal mengompres gambar:", e);
+                }
+
                 const coverName = `cover-${Date.now()}.${coverExt}`;
-                const { error: coverErr } = await supabase.storage.from('magazine_covers').upload(coverName, coverFile);
+                const { error: coverErr } = await supabase.storage.from('magazine_covers').upload(coverName, fileToUpload);
                 if (coverErr) throw coverErr;
                 finalCoverUrl = supabase.storage.from('magazine_covers').getPublicUrl(coverName).data.publicUrl;
             }
@@ -261,7 +277,8 @@ export default function MagazineManager({ userId }) {
                         <div className="mm-file-box">
                             <label><ImageIcon size={16} /> Ganti Cover Gambar</label>
                             <input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files[0])} />
-                            {form.cover_url && <span className="mm-file-hint">Cover saat ini tersimpan ✓</span>}
+                            {form.cover_url && !coverFile && <span className="mm-file-hint">Cover saat ini tersimpan ✓</span>}
+                            {coverFile && <span className="mm-file-hint" style={{color: '#3b82f6'}}>File siap dikompres otomatis saat disimpan!</span>}
                         </div>
 
                         <div className="mm-file-box">
