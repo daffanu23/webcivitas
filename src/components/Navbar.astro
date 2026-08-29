@@ -37,7 +37,7 @@ const isActive = (path: string) => {
 };
 ---
 
-<header class="sleek-navbar" transition:persist="navbar">
+<header class="sleek-navbar" transition:animate="none">
     <div class="container navbar-inner">
         
         {/* KIRI: BRAND LOGO (Sekarang di kiri agar lebih clean) */}
@@ -95,6 +95,9 @@ const isActive = (path: string) => {
                     <LogIn size={18} strokeWidth={2.5} />
                 </a>
             )}
+
+            {/* Auth state marker for client-side sync */}
+            <span id="auth-uid" data-uid={user?.id || ''} hidden></span>
 
             {/* HAMBURGER MENU (Khusus HP) */}
             <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Buka Menu">
@@ -264,6 +267,47 @@ const isActive = (path: string) => {
                 window.dispatchEvent(new CustomEvent('open-magazine-upload'));
             });
         }
+    });
+</script>
+
+<script>
+    // --- AUTH STATE SYNC ---
+    // Mendeteksi jika Navbar menampilkan state auth yang basi
+    // (akibat View Transition cache, bfcache, atau ganti akun)
+    import { supabase } from '../lib/supabase';
+
+    async function syncAuthState() {
+        // Guard: cegah infinite reload loop
+        const reloadKey = 'auth-sync-reload';
+        if (sessionStorage.getItem(reloadKey)) {
+            sessionStorage.removeItem(reloadKey);
+            return;
+        }
+
+        try {
+            const uidEl = document.getElementById('auth-uid');
+            if (!uidEl) return;
+
+            const renderedUid = uidEl.dataset.uid || '';
+            const { data: { session } } = await supabase.auth.getSession();
+            const actualUid = session?.user?.id || '';
+
+            // Jika user ID yang di-render TIDAK cocok dengan session aktual → reload
+            if (renderedUid !== actualUid) {
+                sessionStorage.setItem(reloadKey, '1');
+                window.location.reload();
+            }
+        } catch (e) {
+            // Silent fail — jangan sampai error ini merusak halaman
+        }
+    }
+
+    // Cek setiap navigasi View Transition
+    document.addEventListener('astro:page-load', syncAuthState);
+
+    // Cek saat browser restore dari bfcache (tombol Back/Forward)
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) syncAuthState();
     });
 </script>
 
