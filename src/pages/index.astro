@@ -9,7 +9,8 @@ import CategoryNav from '../components/CategoryNav.astro';
 import WhatsAppButton from '../components/WhatsAppButton.astro';
 import AdminRadar from '../components/AdminRadar.jsx';
 
-Astro.response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300');
+Astro.response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+Astro.response.headers.set('Pragma', 'no-cache');
 
 const supabase = getSupabaseServer(Astro.cookies);
 const activeCat = Astro.url.searchParams.get('kategori') || '';

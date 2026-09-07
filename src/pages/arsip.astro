@@ -1,8 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { supabase } from '../lib/supabase';
+import { getSupabaseServer } from '../lib/supabase';
 import CategoryNav from '../components/CategoryNav.astro';
 import SubNewsCard from '../components/SubNewsCard.astro';
+
+const supabase = getSupabaseServer(Astro.cookies);
 
 const activeCategory = Astro.url.searchParams.get('kategori');
 

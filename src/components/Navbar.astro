@@ -277,25 +277,20 @@ const isActive = (path: string) => {
     import { supabase } from '../lib/supabase';
 
     async function syncAuthState() {
-        // Guard: cegah infinite reload loop
-        const reloadKey = 'auth-sync-reload';
-        if (sessionStorage.getItem(reloadKey)) {
-            sessionStorage.removeItem(reloadKey);
-            return;
-        }
-
         try {
             const uidEl = document.getElementById('auth-uid');
             if (!uidEl) return;
 
             const renderedUid = uidEl.dataset.uid || '';
-            const { data: { session } } = await supabase.auth.getSession();
-            const actualUid = session?.user?.id || '';
+            // getUser() melakukan network call ke Supabase untuk verifikasi token,
+            // berbeda dengan getSession() yang hanya baca localStorage.
+            const { data: { user } } = await supabase.auth.getUser();
+            const actualUid = user?.id || '';
 
-            // Jika user ID yang di-render TIDAK cocok dengan session aktual → reload
+            // Jika user ID yang di-render TIDAK cocok dengan session aktual → hard reload
             if (renderedUid !== actualUid) {
-                sessionStorage.setItem(reloadKey, '1');
-                window.location.reload();
+                // Gunakan replace agar tidak menambah entry di browser history
+                window.location.replace(window.location.href);
             }
         } catch (e) {
             // Silent fail — jangan sampai error ini merusak halaman
