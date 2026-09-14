@@ -1,30 +1,35 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import HeroSlider from '../components/HeroSlider.astro'; 
-import SubNewsCard from '../components/SubNewsCard.astro'; 
-import MagazinePromo from '../components/MagazinePromo.astro'; 
-import { getSupabaseServer } from '../lib/supabase'; 
-import CategoryNav from '../components/CategoryNav.astro';
+import Layout from "../layouts/Layout.astro";
+import HeroSlider from "../components/HeroSlider.astro";
+import SubNewsCard from "../components/SubNewsCard.astro";
+import MagazinePromo from "../components/MagazinePromo.astro";
+import { getSupabaseServer } from "../lib/supabase";
+import CategoryNav from "../components/CategoryNav.astro";
 /*import InstagramPromo from '../components/InstagramPromo.astro';*/
-import WhatsAppButton from '../components/WhatsAppButton.astro';
-import AdminRadar from '../components/AdminRadar.jsx';
+import WhatsAppButton from "../components/WhatsAppButton.astro";
+import AdminRadar from "../components/AdminRadar.jsx";
 
-Astro.response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-Astro.response.headers.set('Pragma', 'no-cache');
+Astro.response.headers.set(
+    "Cache-Control",
+    "no-cache, no-store, must-revalidate",
+);
+Astro.response.headers.set("Pragma", "no-cache");
 
 const supabase = getSupabaseServer(Astro.cookies);
-const activeCat = Astro.url.searchParams.get('kategori') || '';
+const activeCat = Astro.url.searchParams.get("kategori") || "";
 
 // --- LOGIKA FETCH BERITA PUBLISHED (UNTUK SEMUA ORANG) ---
 let query = supabase
-  .from('articles')
-  .select(`
+    .from("articles")
+    .select(
+        `
     id, title, slug, created_at, cover_url, content, status,
     profiles!author_id ( full_name ),
     article_categories ( category_id, categories ( name, slug ) )
-  `)
-  .eq('status', 'published')
-  .order('created_at', { ascending: false });
+  `,
+    )
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
 
 const { data: allArticles, error } = await query.limit(20);
 if (error) console.error("Error fetch news:", error);
@@ -32,7 +37,7 @@ if (error) console.error("Error fetch news:", error);
 let filteredArticles = allArticles || [];
 
 if (activeCat) {
-    filteredArticles = filteredArticles.filter(a => {
+    filteredArticles = filteredArticles.filter((a) => {
         const cats = a.article_categories;
         if (Array.isArray(cats)) {
             return cats.some((c: any) => c.categories?.slug === activeCat);
@@ -41,21 +46,20 @@ if (activeCat) {
     });
 }
 
-const heroArticles = filteredArticles.slice(0, 5); 
+const heroArticles = filteredArticles.slice(0, 5);
 let gridArticles = [];
 
 if (activeCat) {
     // Jika sedang memilih kategori, kita batasi juga agar tidak kepanjangan
     // (Misal kita kecualikan 5 yang masuk slider, lalu ambil 3 sisanya)
-    gridArticles = filteredArticles.slice(5, 8); 
+    gridArticles = filteredArticles.slice(5, 8);
 } else {
     // Untuk beranda normal, cukup ambil 3 kartu!
-    gridArticles = filteredArticles.slice(5, 8); 
+    gridArticles = filteredArticles.slice(5, 8);
 }
 ---
 
 <Layout title="MEDIACIVITAS - Berita Terkini">
-
     {/* --- RADAR ADMIN: ANTREAN MENUNGGU ACC (CLIENT-SIDE) --- */}
     <AdminRadar client:idle />
 
@@ -66,47 +70,61 @@ if (activeCat) {
     <MagazinePromo />
 
     <div class="section-latest container">
-        
         <CategoryNav activeSlug={activeCat} />
-        
+
         <div id="dynamic-grid-container">
-            {gridArticles.length > 0 ? (
-                <>
-                    <h3 class="section-label">
-                        {activeCat ? `Berita Kategori: ${activeCat}` : 'Berita Terbaru Lainnya'}
-                    </h3>
-                    <div class="news-grid">
-                        {gridArticles.map((item) => (
-                            <div class="grid-item">
-                                <SubNewsCard article={item} />
-                            </div>
-                        ))}
+            {
+                gridArticles.length > 0 ? (
+                    <>
+                        <h3 class="section-label">
+                            {activeCat
+                                ? `Berita Kategori: ${activeCat}`
+                                : "Berita Terbaru Lainnya"}
+                        </h3>
+                        <div class="news-grid">
+                            {gridArticles.map((item) => (
+                                <div class="grid-item">
+                                    <SubNewsCard article={item} />
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                ) : (
+                    <div style="text-align: center; padding: 60px 0; color: var(--text-muted);">
+                        <p>Belum ada berita lain untuk ditampilkan.</p>
                     </div>
-                </>
-            ) : (
-                <div style="text-align: center; padding: 60px 0; color: var(--text-muted);">
-                    <p>Belum ada berita lain untuk ditampilkan.</p>
-                </div>
-            )}
-            
+                )
+            }
+
             <div class="center-btn">
-                {/* LINK TOMBOL JUGA SUDAH DIGANTI KE /berita */}
-                <a href={`/berita${activeCat ? '?kategori=' + activeCat : ''}`} class="btn-archive-minimal">
+                <a
+                    href={`/arsip${activeCat ? "?kategori=" + activeCat : ""}`}
+                    class="btn-archive-minimal"
+                >
                     <span>Lihat Arsip Lengkap</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
                         <path d="M5 12h14"></path>
                         <path d="m12 5 7 7-7 7"></path>
                     </svg>
                 </a>
             </div>
         </div>
-
     </div>
-    
+
     <div class="container">
         {/* <InstagramPromo /> */}
     </div>
-    
+
     <WhatsAppButton />
 </Layout>
 
@@ -117,7 +135,6 @@ if (activeCat) {
         margin: 0 auto;
         padding: 0 20px;
     }
-
 </style>
 
 <style is:global>
@@ -144,9 +161,9 @@ if (activeCat) {
         display: flex;
         align-items: center;
         gap: 10px;
-        color: #ef4444; 
+        color: #ef4444;
     }
-    
+
     .radar-title h3 {
         font-size: 1.1rem;
         font-weight: 700;
@@ -168,10 +185,17 @@ if (activeCat) {
         overflow-x: auto;
         padding-bottom: 10px;
     }
-    
-    .radar-grid::-webkit-scrollbar { height: 6px; }
-    .radar-grid::-webkit-scrollbar-track { background: transparent; }
-    .radar-grid::-webkit-scrollbar-thumb { background: rgba(239, 68, 68, 0.2); border-radius: 10px; }
+
+    .radar-grid::-webkit-scrollbar {
+        height: 6px;
+    }
+    .radar-grid::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .radar-grid::-webkit-scrollbar-thumb {
+        background: rgba(239, 68, 68, 0.2);
+        border-radius: 10px;
+    }
 
     .radar-card {
         min-width: 250px;
@@ -181,7 +205,9 @@ if (activeCat) {
         border-radius: 12px;
         overflow: hidden;
         text-decoration: none;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition:
+            transform 0.2s,
+            box-shadow 0.2s;
     }
 
     .radar-card:hover {
@@ -242,14 +268,15 @@ if (activeCat) {
 </style>
 
 <style>
-
-
     #hero-slider-section {
-        margin-bottom: 0px; 
+        margin-bottom: 0px;
     }
-    
-    .section-latest { margin-bottom: 80px; margin-top: 50px; }
-    
+
+    .section-latest {
+        margin-bottom: 80px;
+        margin-top: 50px;
+    }
+
     .section-label {
         font-size: 1.3rem; /* Sedikit dibesarkan agar lebih elegan tanpa garis */
         font-weight: 700;
@@ -257,14 +284,17 @@ if (activeCat) {
         text-transform: capitalize;
     }
 
-    .news-grid { 
-        display: grid; 
-        grid-template-columns: repeat(3, 1fr); 
-        gap: 30px; 
-        margin-bottom: 40px; 
+    .news-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 30px;
+        margin-bottom: 40px;
     }
-    
-    .center-btn { text-align: center; margin-top: 20px; }
+
+    .center-btn {
+        text-align: center;
+        margin-top: 20px;
+    }
     .btn-archive-minimal {
         display: inline-flex;
         align-items: center;
@@ -278,11 +308,26 @@ if (activeCat) {
         border: 1px solid var(--border);
         border-radius: 50px;
     }
-    
-    .btn-archive-minimal svg { transition: transform 0.3s ease; }
-    .btn-archive-minimal:hover { border-color: var(--text); background: var(--bg-light); }
-    .btn-archive-minimal:hover svg { transform: translateX(4px); }
 
-    @media (max-width: 900px) { .news-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 600px) { .news-grid { grid-template-columns: 1fr; } }
+    .btn-archive-minimal svg {
+        transition: transform 0.3s ease;
+    }
+    .btn-archive-minimal:hover {
+        border-color: var(--text);
+        background: var(--bg-light);
+    }
+    .btn-archive-minimal:hover svg {
+        transform: translateX(4px);
+    }
+
+    @media (max-width: 900px) {
+        .news-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @media (max-width: 600px) {
+        .news-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
