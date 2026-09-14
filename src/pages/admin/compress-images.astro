@@ -1,0 +1,453 @@
+---
+// Halaman admin untuk mengompres gambar lama di Supabase Storage
+// Hanya admin yang bisa mengakses halaman ini
+
+import Layout from '../../layouts/Layout.astro';
+import { getSupabaseServer } from '../../lib/supabase';
+
+export const prerender = false;
+
+const supabase = getSupabaseServer(Astro.cookies);
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/login');
+}
+
+const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+if (!profile || profile.role !== 'admin') {
+    return Astro.redirect('/');
+}
+---
+
+<Layout title="Kompres Gambar — Admin">
+    <div class="compress-page">
+        <div class="compress-header">
+            <h1>🗜️ Kompres Gambar Lama</h1>
+            <p class="subtitle">Scan dan kompres gambar yang belum dioptimasi di Supabase Storage</p>
+        </div>
+
+        <div class="compress-controls">
+            <button id="btn-scan" class="btn-primary">
+                <span class="btn-text">🔍 Scan Gambar</span>
+                <span class="btn-spinner hidden">⏳ Scanning...</span>
+            </button>
+            <button id="btn-compress-all" class="btn-success hidden">
+                <span class="btn-text">🗜️ Kompres Semua</span>
+                <span class="btn-spinner hidden">⏳ Mengompres...</span>
+            </button>
+        </div>
+
+        <div id="scan-summary" class="summary-card hidden">
+            <div class="summary-item">
+                <span class="summary-label">Perlu Dikompres</span>
+                <span id="count-needs" class="summary-value needs">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Sudah Optimal (WebP)</span>
+                <span id="count-optimal" class="summary-value optimal">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Error</span>
+                <span id="count-errors" class="summary-value errors">0</span>
+            </div>
+        </div>
+
+        <div id="progress-bar-wrapper" class="hidden">
+            <div class="progress-info">
+                <span id="progress-text">0 / 0</span>
+                <span id="progress-savings">Hemat: 0 KB</span>
+            </div>
+            <div class="progress-track">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div id="file-list" class="file-list"></div>
+
+        <div id="compress-log" class="compress-log hidden">
+            <h3>📋 Log Kompresi</h3>
+            <div id="log-entries"></div>
+        </div>
+    </div>
+</Layout>
+
+<script is:inline src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script is:inline>
+    const SUPABASE_URL = document.querySelector('meta[name="supabase-url"]')?.content || '';
+
+    let filesToCompress = [];
+    let totalSavedBytes = 0;
+
+    // --- SCAN ---
+    document.getElementById('btn-scan')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btn-scan');
+        btn.querySelector('.btn-text').classList.add('hidden');
+        btn.querySelector('.btn-spinner').classList.remove('hidden');
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/admin/compress-images', { method: 'POST' });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Scan gagal');
+
+            // Update summary
+            document.getElementById('count-needs').textContent = data.summary.needsCompression;
+            document.getElementById('count-optimal').textContent = data.summary.alreadyOptimized;
+            document.getElementById('count-errors').textContent = data.summary.errors;
+            document.getElementById('scan-summary').classList.remove('hidden');
+
+            filesToCompress = data.files || [];
+
+            // Render file list
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+
+            if (filesToCompress.length === 0) {
+                fileList.innerHTML = '<div class="empty-state">✅ Semua gambar sudah dalam format WebP! Tidak ada yang perlu dikompres.</div>';
+            } else {
+                document.getElementById('btn-compress-all').classList.remove('hidden');
+
+                filesToCompress.forEach((file, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.id = `file-${idx}`;
+                    item.innerHTML = `
+                        <div class="file-info">
+                            <span class="file-bucket">${file.bucket}</span>
+                            <span class="file-path">${file.path}</span>
+                        </div>
+                        <div class="file-status" id="status-${idx}">⏳ Menunggu</div>
+                    `;
+                    fileList.appendChild(item);
+                });
+            }
+
+        } catch (err) {
+            alert('Error: ' + err.message);
+        } finally {
+            btn.querySelector('.btn-text').classList.remove('hidden');
+            btn.querySelector('.btn-spinner').classList.add('hidden');
+            btn.disabled = false;
+        }
+    });
+
+    // --- COMPRESS ALL ---
+    document.getElementById('btn-compress-all')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btn-compress-all');
+        btn.querySelector('.btn-text').classList.add('hidden');
+        btn.querySelector('.btn-spinner').classList.remove('hidden');
+        btn.disabled = true;
+
+        const progressWrapper = document.getElementById('progress-bar-wrapper');
+        progressWrapper.classList.remove('hidden');
+
+        const logSection = document.getElementById('compress-log');
+        logSection.classList.remove('hidden');
+        const logEntries = document.getElementById('log-entries');
+
+        totalSavedBytes = 0;
+        let processed = 0;
+        const total = filesToCompress.length;
+
+        for (let i = 0; i < total; i++) {
+            const file = filesToCompress[i];
+            const statusEl = document.getElementById(`status-${i}`);
+            const fileItem = document.getElementById(`file-${i}`);
+
+            try {
+                statusEl.textContent = '🔄 Mengunduh...';
+                statusEl.className = 'file-status processing';
+
+                // 1. Download gambar
+                const response = await fetch(file.publicUrl);
+                if (!response.ok) throw new Error('Download gagal');
+                const blob = await response.blob();
+                const originalSize = blob.size;
+
+                // 2. Kompres gambar
+                statusEl.textContent = '🗜️ Mengompres...';
+                const imageFile = new File([blob], file.path.split('/').pop(), { type: blob.type });
+
+                const compressed = await imageCompression(imageFile, {
+                    maxSizeMB: file.maxSizeMB,
+                    maxWidthOrHeight: file.maxDimension,
+                    useWebWorker: true,
+                    fileType: 'image/webp'
+                });
+
+                const compressedSize = compressed.size;
+                const saved = originalSize - compressedSize;
+                totalSavedBytes += Math.max(saved, 0);
+
+                // 3. Upload file baru (webp) ke Supabase
+                statusEl.textContent = '📤 Mengunggah WebP...';
+
+                // Buat nama file baru dengan ekstensi .webp
+                const oldName = file.path;
+                const baseName = oldName.replace(/\.[^/.]+$/, '');
+                const newName = baseName + '.webp';
+
+                // Upload via Supabase JS client
+                const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+                const supabaseUrl = document.querySelector('[data-supabase-url]')?.getAttribute('data-supabase-url') || '';
+                const supabaseKey = document.querySelector('[data-supabase-key]')?.getAttribute('data-supabase-key') || '';
+
+                // Kita skip client creation, karena kita bisa gunakan fetch langsung
+                // dengan session cookie yang sudah ada
+
+                // Upload via API route khusus
+                const formData = new FormData();
+                formData.append('file', compressed, newName.split('/').pop());
+                formData.append('bucket', file.bucket);
+                formData.append('oldPath', oldName);
+                formData.append('newPath', newName);
+
+                const uploadRes = await fetch('/api/admin/upload-compressed', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadRes.ok) {
+                    const uploadErr = await uploadRes.json();
+                    throw new Error(uploadErr.error || 'Upload gagal');
+                }
+
+                const originalKB = Math.round(originalSize / 1024);
+                const compressedKB = Math.round(compressedSize / 1024);
+                const savedKB = Math.round(saved / 1024);
+
+                statusEl.textContent = `✅ ${originalKB}KB → ${compressedKB}KB (hemat ${savedKB}KB)`;
+                statusEl.className = 'file-status success';
+                fileItem.classList.add('done');
+
+                // Log entry
+                logEntries.innerHTML += `<div class="log-entry success">✅ ${file.bucket}/${file.path} — ${originalKB}KB → ${compressedKB}KB</div>`;
+
+            } catch (err) {
+                statusEl.textContent = `❌ ${err.message}`;
+                statusEl.className = 'file-status error';
+                logEntries.innerHTML += `<div class="log-entry error">❌ ${file.bucket}/${file.path} — ${err.message}</div>`;
+            }
+
+            processed++;
+            const pct = Math.round((processed / total) * 100);
+            document.getElementById('progress-fill').style.width = pct + '%';
+            document.getElementById('progress-text').textContent = `${processed} / ${total}`;
+            document.getElementById('progress-savings').textContent = `Hemat: ${Math.round(totalSavedBytes / 1024)} KB`;
+        }
+
+        btn.querySelector('.btn-text').textContent = '✅ Selesai!';
+        btn.querySelector('.btn-text').classList.remove('hidden');
+        btn.querySelector('.btn-spinner').classList.add('hidden');
+    });
+</script>
+
+<style>
+    .compress-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px 100px;
+    }
+    .compress-header {
+        margin-bottom: 30px;
+    }
+    .compress-header h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .compress-controls {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    .btn-primary, .btn-success {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        border: none;
+    }
+    .btn-primary {
+        background: var(--text);
+        color: var(--bg);
+    }
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+    .btn-success:hover:not(:disabled) {
+        background: #059669;
+        transform: translateY(-2px);
+    }
+    .btn-primary:disabled, .btn-success:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .hidden { display: none !important; }
+
+    .summary-card {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .summary-item {
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    .summary-label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .summary-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .summary-value.needs { color: #f59e0b; }
+    .summary-value.optimal { color: #10b981; }
+    .summary-value.errors { color: #ef4444; }
+
+    .progress-track {
+        width: 100%;
+        height: 8px;
+        background: var(--bg-light);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .file-item.done {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.05);
+    }
+    .file-info {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+    }
+    .file-bucket {
+        background: var(--border);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .file-path {
+        font-size: 0.85rem;
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .file-status {
+        font-size: 0.8rem;
+        white-space: nowrap;
+        margin-left: 12px;
+    }
+    .file-status.processing { color: #f59e0b; }
+    .file-status.success { color: #10b981; }
+    .file-status.error { color: #ef4444; }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        background: var(--bg-light);
+        border-radius: 12px;
+        border: 1px dashed var(--border);
+    }
+
+    .compress-log {
+        margin-top: 24px;
+    }
+    .compress-log h3 {
+        font-size: 1rem;
+        margin-bottom: 12px;
+        color: var(--text);
+    }
+    .log-entry {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        font-family: monospace;
+    }
+    .log-entry.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    .log-entry.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    @media (max-width: 600px) {
+        .summary-card {
+            grid-template-columns: 1fr;
+        }
+        .file-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+    }
+</style>

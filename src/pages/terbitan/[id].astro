@@ -4,6 +4,9 @@ import { getSupabaseServer } from '../../lib/supabase';
 import { ArrowLeft, BookOpen, Users, Info, Edit3, X, Save, RefreshCw } from 'lucide-react';
 import MagazineMetaFields from '../../components/MagazineMetaFields.jsx';
 import AdminCoverUploader from '../../components/AdminCoverUploader.jsx';
+import '../../styles/components/magazine-meta-fields.css';
+import '../../styles/components/profile-combo-select.css';
+import '../../styles/components/admin-cover-uploader.css';
 
 const { id } = Astro.params;
 const supabase = getSupabaseServer(Astro.cookies);

@@ -26,7 +26,7 @@
 
 /* Opsi: LIGHT MODE */
 /* Nanti bisa diaktifkan dengan menambah class="light" di tag <body> */
-body.light {
+html.light, body.light {
   /* hsl */
   --bg-dark: hsl(0 0% 90%);
   --bg: hsl(300 0% 98%); /* Sedikit lebih terang */
@@ -53,17 +53,18 @@ body.light {
 /* --- 2. RESET & GLOBAL STYLES --- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+    background-color: var(--bg);
+}
 body {
     font-family: 'Poppins', sans-serif;
-    /* Gunakan Variabel Background & Text */
     background-color: var(--bg); 
     color: var(--text);
-    
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    transition: background-color 0.3s, color 0.3s; /* Efek transisi halus */
+    transition: background-color 0.3s, color 0.3s;
 }
 
 a { text-decoration: none; color: inherit; }
@@ -86,3 +87,5 @@ a { text-decoration: none; color: inherit; }
     0% { opacity: 0; transform: translateY(40px); }
     100% { opacity: 1; transform: translateY(0); }
 }
+
+

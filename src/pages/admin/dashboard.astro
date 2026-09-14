@@ -1,6 +1,11 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import AdminDashboardReact from '../../components/AdminDashboard'; 
+import AdminDashboardReact from '../../components/AdminDashboard';
+import '../../styles/components/admin-dashboard.css';
+import '../../styles/components/admin-cover-uploader.css';
+import '../../styles/components/magazine-manager.css';
+import '../../styles/components/magazine-upload-modal.css';
+import '../../styles/components/profile-combo-select.css'; 
 import { getSupabaseServer } from '../../lib/supabase';
 
 const supabase = getSupabaseServer(Astro.cookies);
@@ -54,3 +59,4 @@ const { data: articles } = await supabase
         min-height: 80vh;  
     }
 </style>
+

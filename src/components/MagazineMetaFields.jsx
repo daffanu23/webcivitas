@@ -58,18 +58,8 @@ export default function MagazineMetaFields({
             <input type="hidden" id="input-mag-layouter" value={layouter || ''} />
             <input type="hidden" id="input-mag-redaksi" value={redaksi || ''} />
 
-            <style>{`
-                /* Tambahan styling agar rapi */
-                .mag-meta-fields-wrapper .pcs-wrapper {
-                    margin-bottom: 0;
-                }
-                .mag-meta-fields-wrapper .pcs-label {
-                    display: block;
-                    font-size: 0.85rem;
-                    color: var(--text-muted);
-                    margin-bottom: 4px;
-                }
-            `}</style>
+            
         </div>
     );
 }
+

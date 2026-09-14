@@ -3,6 +3,9 @@ import Layout from '../../layouts/Layout.astro';
 import { getSupabaseServer } from '../../lib/supabase';
 import { Calendar, User, UploadCloud, FileText, Send, X, ChevronDown, Camera, Save, Loader2, CheckCircle } from 'lucide-react';
 import ArticleMetaFields from '../../components/ArticleMetaFields.jsx';
+import '../../styles/components/article-editor.css';
+import '../../styles/components/article-meta-fields.css';
+import '../../styles/components/profile-combo-select.css';
 
 // 1. Inisialisasi Auth Server
 const supabase = getSupabaseServer(Astro.cookies);
@@ -215,7 +218,7 @@ if (slug) {
                     `;
 
                     try {
-                        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1280, useWebWorker: true };
+                        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1280, useWebWorker: true, fileType: 'image/webp' };
                         if ((window as any).imageCompression) {
                             coverFile = await (window as any).imageCompression(originalFile, options);
                         } else {
@@ -299,8 +302,7 @@ if (slug) {
                         } catch(err) {}
                     }
 
-                    const fileExt = coverFile.name.split('.').pop();
-                    const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
                     const filePath = `covers/${uniqueName}`;
                     
                     const { error: uploadError } = await supabase.storage.from('news-images').upload(filePath, coverFile);

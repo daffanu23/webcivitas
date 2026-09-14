@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ProfileDashboardReact from '../components/ProfileDashboard';
+import '../styles/components/profile-dashboard.css';
 import { getSupabaseServer } from '../lib/supabase';
 
 const supabase = getSupabaseServer(Astro.cookies);

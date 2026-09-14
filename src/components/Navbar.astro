@@ -3,6 +3,8 @@
 import { LogIn, Sun, Moon, Menu, X } from 'lucide-react';
 import { getSupabaseServer } from '../lib/supabase';
 import MagazineUploadModal from './MagazineUploadModal';
+import '../styles/components/magazine-upload-modal.css';
+import '../styles/components/profile-combo-select.css';
 
 // 1. Inisialisasi Supabase & Ambil User
 const supabase = getSupabaseServer(Astro.cookies);

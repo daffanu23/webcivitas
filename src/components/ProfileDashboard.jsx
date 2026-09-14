@@ -121,7 +121,7 @@ export default function ProfileDashboard({ userId }) {
                 // 1. Kompres Gambar
                 let fileToUpload = editForm.file;
                 try {
-                    const options = { maxSizeMB: 0.2, maxWidthOrHeight: 500, useWebWorker: true };
+                    const options = { maxSizeMB: 0.2, maxWidthOrHeight: 500, useWebWorker: true, fileType: 'image/webp' };
                     fileToUpload = await imageCompression(editForm.file, options);
                 } catch (err) {
                     console.error("Gagal kompres gambar profil:", err);
@@ -140,8 +140,7 @@ export default function ProfileDashboard({ userId }) {
                 }
 
                 // 3. Upload Foto Baru
-                const fileExt = editForm.file.name.split('.').pop();
-                const fileName = `user-${userId}-${Date.now()}.${fileExt}`;
+                const fileName = `user-${userId}-${Date.now()}.webp`;
                 
                 const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, fileToUpload, { upsert: true });
                 if (uploadError) throw uploadError;
@@ -293,113 +292,7 @@ export default function ProfileDashboard({ userId }) {
                 )}
             </div>
 
-            <style>{`
-                .profile-dashboard-wrapper { font-family: 'Poppins', sans-serif; color: var(--text); padding-bottom: 60px; }
-                .loading-state { text-align: center; padding: 50px; color: var(--text-muted); }
-                
-                /* HEADER PROFIL */
-                .profile-header-card { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; margin-bottom: 40px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); }
-                .profile-cover { height: 150px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); }
-                .profile-info-container { display: flex; padding: 0 40px 40px 40px; gap: 30px; position: relative; }
-                
-                .avatar-section { margin-top: -60px; }
-                .avatar-wrapper { width: 140px; height: 140px; border-radius: 50%; border: 6px solid var(--bg); position: relative; background: var(--bg); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-                .avatar-wrapper img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-                .avatar-upload-btn { position: absolute; bottom: 5px; right: 5px; background: var(--text); color: var(--bg); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; border: 2px solid var(--bg); }
-                .avatar-upload-btn:hover { transform: scale(1.1); }
-
-                .user-details { flex: 1; padding-top: 20px; }
-                .name-row { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
-                .name-row h1 { margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
-                .badge-role { background: var(--bg-light); border: 1px solid var(--border); padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
-                
-                .bio-text { color: var(--text-muted); font-size: 1rem; line-height: 1.6; margin-bottom: 20px; max-width: 800px; }
-                
-                .meta-row { display: flex; gap: 20px; margin-bottom: 25px; }
-                .meta-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text); background: var(--bg-light); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); }
-                
-                /* FIX UX: Tombol Edit Profil Dipercantik */
-                .btn-edit-profile { 
-                    background: var(--bg-light); border: 1px solid var(--border); color: var(--text); 
-                    padding: 10px 24px; border-radius: 50px; font-weight: 600; cursor: pointer; 
-                    display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; 
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-                }
-                .btn-edit-profile:hover { background: var(--text); color: var(--bg); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
-
-                /* EDIT FORM */
-                .edit-form-grid { display: flex; flex-direction: column; gap: 20px; background: transparent; padding: 10px 0; }
-                .form-group label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; color: var(--text); }
-                .styled-input { width: 100%; padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.95rem; transition: all 0.2s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-                .styled-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
-                .edit-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
-                .btn-cancel { background: transparent; border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; cursor: pointer; color: var(--text); display: flex; align-items: center; gap: 6px; font-weight: 600; }
-                .btn-save { background: #dc2626; border: none; padding: 10px 25px; border-radius: 8px; cursor: pointer; color: white; display: flex; align-items: center; gap: 6px; font-weight: 600; }
-                .btn-save:hover:not(:disabled) { background: #b91c1c; }
-                .btn-save:disabled { opacity: 0.6; }
-
-                /* STATS SECTION */
-                .stats-section { margin-top: 40px; }
-                .stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-                .stats-header h2 { margin: 0; font-size: 1.5rem; font-weight: 700; }
-                
-                .filter-toggle { display: flex; background: var(--bg-light); border: 1px solid var(--border); border-radius: 50px; overflow: hidden; padding: 4px; }
-                .filter-toggle button { background: transparent; border: none; padding: 8px 20px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; border-radius: 50px; transition: all 0.3s; }
-                .filter-toggle button.active { background: var(--bg); color: var(--text); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-
-                .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
-                .stat-card { background: var(--bg); border: 1px solid var(--border); padding: 25px; border-radius: 20px; display: flex; align-items: center; gap: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.02); transition: transform 0.2s; }
-                .stat-card:hover { transform: translateY(-5px); }
-                .stat-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-                .stat-data h3 { margin: 0 0 5px 0; font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
-                .stat-value { margin: 0; font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1.1; }
-                .stat-label { font-size: 0.8rem; color: var(--text-muted); }
-
-                /* BREAKDOWN */
-                .category-breakdown-card { background: var(--bg); border: 1px solid var(--border); padding: 30px; border-radius: 20px; }
-                .category-breakdown-card h3 { margin: 0 0 20px 0; font-size: 1.2rem; font-weight: 700; }
-                .breakdown-list { display: flex; flex-direction: column; gap: 15px; }
-                .breakdown-item { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-                .cat-name { width: 150px; font-weight: 600; font-size: 0.9rem; }
-                .cat-bar-container { flex: 1; height: 10px; background: var(--bg-light); border-radius: 10px; overflow: hidden; min-width: 100px; }
-                .cat-bar { height: 100%; background: #dc2626; border-radius: 10px; transition: width 1s ease-out; }
-                .cat-count { width: 100px; text-align: right; font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
-
-                /* =========================================
-                   RESPONSIVE MOBILE 
-                   ========================================= */
-                @media (max-width: 768px) {
-                    /* FIX OVERLAP: Tambah ruang ekstra di paling bawah agar aman dari tombol + FAB */
-                    .profile-dashboard-wrapper { padding-bottom: 140px; }
-
-                    .profile-info-container { flex-direction: column; align-items: center; text-align: center; padding: 0 20px 30px 20px; }
-                    .name-row { flex-direction: column; gap: 5px; }
-                    .meta-row { flex-direction: column; gap: 10px; align-items: stretch; width: 100%; }
-                    .meta-item { justify-content: center; }
-                    
-                    /* FIX UX: Tombol Edit Profil di HP Dibuat Full Width & Menonjol */
-                    .btn-edit-profile { 
-                        width: 100%; justify-content: center; padding: 14px; font-size: 1rem; 
-                        background: var(--text); color: var(--bg); /* Mode Solid di HP */
-                    }
-
-                    .edit-form-grid { grid-template-columns: 1fr; }
-                    .stats-header { flex-direction: column; gap: 15px; align-items: flex-start; }
-                    
-                    /* FIX UX: Tata Ulang Grafik Breakdown Kategori */
-                    .breakdown-item { 
-                        flex-direction: row; 
-                        align-items: center; 
-                        justify-content: space-between; 
-                        gap: 5px;
-                    }
-                    .cat-name { width: auto; flex: 1; }
-                    .cat-count { width: auto; text-align: right; }
-                    .cat-bar-container { 
-                        width: 100%; flex: none; order: 3; margin-top: 4px; /* Garis turun ke bawah */
-                    }
-                }
-            `}</style>
+            
         </div>
     );
 }

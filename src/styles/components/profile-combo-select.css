@@ -1,0 +1,300 @@
+.pcs-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'Poppins', sans-serif;
+    width: 100%;
+}
+.pcs-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* MAIN BOX (Murni Dropdown Look) */
+.pcs-main-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.pcs-main-box:hover {
+    border-color: var(--text-muted);
+}
+.pcs-main-box.focused {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: var(--bg);
+}
+
+.pcs-display-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+.pcs-placeholder {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.pcs-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    margin-left: 8px;
+}
+.pcs-chevron {
+    transition: transform 0.2s;
+}
+.pcs-chevron.rotated {
+    transform: rotate(180deg);
+}
+
+/* COMMA SEPARATED LIST IN MAIN BOX */
+.pcs-selected-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+.pcs-selected-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--border-muted, #f3f4f6);
+    padding: 2px 8px 2px 4px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    width: 160px; /* Panjang tag dibuat sama persis */
+    justify-content: space-between;
+}
+.pcs-selected-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pcs-selected-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.pcs-selected-avatar-placeholder {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+}
+.pcs-remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    margin-right: -4px;
+}
+.pcs-remove-btn:hover {
+    color: #ef4444;
+}
+
+/* DROPDOWN MENU */
+.pcs-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: pcs-slideIn 0.15s ease;
+}
+@keyframes pcs-slideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* SEARCH BOX INSIDE DROPDOWN */
+.pcs-search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-light);
+}
+.pcs-search-icon {
+    color: var(--text-muted);
+}
+.pcs-search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--text);
+}
+.pcs-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* LIST */
+.pcs-list {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 6px;
+}
+.pcs-list::-webkit-scrollbar {
+    width: 6px;
+}
+.pcs-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+.pcs-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.pcs-item:hover {
+    background: var(--border-muted, #f3f4f6);
+}
+.pcs-item.selected {
+    background: rgba(59, 130, 246, 0.08);
+}
+.pcs-manual-item {
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 4px;
+    border-radius: 0;
+}
+.pcs-manual-item:hover {
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.pcs-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.pcs-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.pcs-item-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+.pcs-name {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pcs-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+.pcs-check-icon {
+    color: #3b82f6;
+    flex-shrink: 0;
+}
+.pcs-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* MANUAL FORM IN DROPDOWN */
+.pcs-manual-form {
+    padding: 12px;
+}
+.pcs-manual-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+.pcs-manual-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    outline: none;
+    font-family: inherit;
+}
+.pcs-manual-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+.pcs-manual-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.pcs-btn-cancel, .pcs-btn-save {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    border: none;
+}
+.pcs-btn-cancel {
+    background: transparent;
+    color: var(--text-muted);
+}
+.pcs-btn-cancel:hover {
+    background: var(--border-muted, #f3f4f6);
+    color: var(--text);
+}
+.pcs-btn-save {
+    background: #3b82f6;
+    color: white;
+}
+.pcs-btn-save:hover {
+    background: #2563eb;
+}

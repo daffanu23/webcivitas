@@ -27,7 +27,7 @@ if (error) {
                 magazines.map((mag: any) => (
                     <a href={`/terbitan/${mag.id}`} class="book-item" title={mag.title}>
                         <div class="book-cover">
-                            <img src={mag.cover_url} alt={mag.title} loading="lazy" />
+                            <img src={mag.cover_url} alt={mag.title} loading="lazy" decoding="async" />
                             <div class="book-spine-shadow"></div>
                         </div>
                     </a>

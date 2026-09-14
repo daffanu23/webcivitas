@@ -4,6 +4,9 @@ import { getSupabaseServer } from '../../lib/supabase';
 import { Calendar, User, Share2, Bookmark, CheckCircle, XCircle, RotateCcw, Lock, Unlock, Save, PenTool, Palette } from 'lucide-react'; 
 import ArticleMetaFields from '../../components/ArticleMetaFields.jsx';
 import AdminCoverUploader from '../../components/AdminCoverUploader.jsx';
+import '../../styles/components/article-meta-fields.css';
+import '../../styles/components/profile-combo-select.css';
+import '../../styles/components/admin-cover-uploader.css';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
@@ -150,7 +153,7 @@ const initialEditMode = isAdmin && isPending;
 
         {article.cover_url && (
             <div class="featured-image">
-                <img src={article.cover_url} alt={article.title} transition:name={`hero-${slug}`} />
+                <img src={article.cover_url} alt={article.title} transition:name={`hero-${slug}`} decoding="async" />
                 {isAdmin && (
                     <div id="admin-cover-overlay" class={initialEditMode ? '' : 'hidden'}>
                         <AdminCoverUploader 

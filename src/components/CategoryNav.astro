@@ -143,6 +143,15 @@ if (activeSlug && categories) {
         gap: 25px; 
         border-bottom: 1px solid var(--border-muted); 
         padding-bottom: 2px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+    }
+
+    /* Sembunyikan scrollbar tapi tetap bisa digeser */
+    .category-nav-list::-webkit-scrollbar {
+        display: none;
     }
 
     .cat-tab {

@@ -1,0 +1,10 @@
+/* Tambahan styling agar rapi */
+.mag-meta-fields-wrapper .pcs-wrapper {
+    margin-bottom: 0;
+}
+.mag-meta-fields-wrapper .pcs-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}

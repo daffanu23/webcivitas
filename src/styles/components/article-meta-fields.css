@@ -1,0 +1,58 @@
+.amf-container {
+    width: 100%;
+    margin-bottom: 30px;
+}
+.amf-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+}
+.amf-field {
+    min-width: 200px;
+    flex: 1;
+    max-width: 250px;
+}
+
+/* OVERRIDES AGAR DROPDOWN MENYERUPAI TAG JAM/WAKTU (PILL) */
+.amf-container .pcs-main-box {
+    border-radius: 50px;
+    padding: 6px 14px;
+    min-height: 38px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-muted);
+}
+.amf-container .pcs-main-box:hover {
+    border-color: var(--text);
+}
+.amf-container .pcs-main-box.focused {
+    border-color: var(--text);
+    box-shadow: none;
+    background: var(--bg);
+}
+.amf-container .pcs-label {
+    display: none;
+}
+.amf-container .pcs-selected-item {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.amf-container .pcs-placeholder {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .amf-grid {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    .amf-field {
+        max-width: none;
+    }
+}

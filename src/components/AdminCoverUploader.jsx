@@ -127,50 +127,8 @@ export default function AdminCoverUploader({ id, currentCoverUrl, type = 'articl
                 )}
             </button>
 
-            <style>{`
-                .admin-cover-uploader-wrapper {
-                    position: absolute;
-                    top: 15px;
-                    right: 15px;
-                    z-index: 50;
-                }
-                .btn-change-cover {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    background: rgba(15, 23, 42, 0.75);
-                    backdrop-filter: blur(8px);
-                    -webkit-backdrop-filter: blur(8px);
-                    color: white;
-                    border: 1px solid rgba(255,255,255,0.2);
-                    padding: 8px 16px;
-                    border-radius: 50px;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                }
-                .btn-change-cover:hover:not(:disabled) {
-                    background: rgba(15, 23, 42, 0.95);
-                    transform: translateY(-2px);
-                    border-color: rgba(255,255,255,0.4);
-                }
-                .btn-change-cover.processing {
-                    background: #f59e0b;
-                    color: white;
-                    border-color: #f59e0b;
-                }
-                .btn-change-cover.success {
-                    background: #10b981;
-                    color: white;
-                    border-color: #10b981;
-                }
-                @keyframes spin { 100% { transform: rotate(360deg); } }
-                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-                .spin { animation: spin 1s linear infinite; }
-                .pulse { animation: pulse 1.5s ease-in-out infinite; }
-            `}</style>
+            
         </div>
     );
 }
+

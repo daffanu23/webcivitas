@@ -20,7 +20,7 @@ const heroSlides = slides;
                     {/* Layer 1: Background Image dengan Optimasi Astro */}
                     <div class="slide-bg">
                         {item.cover_url ? (
-                            <img src={item.cover_url} alt={item.title} loading={index === 0 ? "eager" : "lazy"} class="hero-img" />
+                            <img src={item.cover_url} alt={item.title} loading={index === 0 ? "eager" : "lazy"} fetchpriority={index === 0 ? "high" : "low"} decoding="async" class="hero-img" />
                         ) : (
                             <img src="https://placehold.co/1200x600" alt="Placeholder" class="hero-img" />
                         )}
