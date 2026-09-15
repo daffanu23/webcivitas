@@ -5,7 +5,7 @@ import DraftReminder from '../components/DraftReminder.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 
-const { title = "MEDIACIVITAS" } = Astro.props;
+const { title = "MEDIACIVITAS", description = "Portal berita resmi MEDIACIVITAS", ogImage, ogUrl } = Astro.props;
 ---
 
 <!DOCTYPE html>
@@ -14,6 +14,22 @@ const { title = "MEDIACIVITAS" } = Astro.props;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="MEDIACIVITAS" />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogUrl && <meta property="og:url" content={ogUrl} />}
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+
     <link rel="icon" type="image/svg+xml" href="/logo_civitas.svg" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <ClientRouter />

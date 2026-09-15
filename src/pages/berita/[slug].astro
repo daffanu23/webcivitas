@@ -8,6 +8,8 @@ import '../../styles/components/article-meta-fields.css';
 import '../../styles/components/profile-combo-select.css';
 import '../../styles/components/admin-cover-uploader.css';
 
+export const prerender = false;
+
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/404');
 
@@ -46,6 +48,8 @@ const publishDate = new Date(article.created_at).toLocaleDateString('id-ID', { w
 
 const htmlContent = article.content || '<p>Konten tidak tersedia.</p>';
 
+
+
 // Ambil data kategori untuk dipakai di dropdown mode admin
 const { data: categories } = await supabase.from('categories').select('*').order('name');
 
@@ -53,6 +57,14 @@ const { data: categories } = await supabase.from('categories').select('*').order
 const showAdminPanel = isAdmin && article.status === 'pending';
 const isPending = article.status === 'pending';
 const initialEditMode = isAdmin && isPending;
+
+// Build canonical URL untuk share & OG tags
+const siteUrl = Astro.site?.origin || 'https://webcivitas.vercel.app';
+const canonicalUrl = `${siteUrl}/berita/${slug}`;
+
+// Extract excerpt untuk OG description
+const plainText = (article.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+const articleExcerpt = plainText.substring(0, 160) + (plainText.length > 160 ? '...' : '');
 ---
 
 {/* 1. KITA LOAD CSS QUILL UNTUK SEMUA ORANG (Agar tampilan baca sama persis dengan editor) */}
@@ -64,7 +76,9 @@ const initialEditMode = isAdmin && isPending;
     <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
 )}
 
-<Layout title={`${article.title} | MEDIACIVITAS`}>
+<script is:inline src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+
+<Layout title={`${article.title} | MEDIACIVITAS`} description={articleExcerpt} ogImage={article.cover_url} ogUrl={canonicalUrl}>
 
     <article class="article-wrapper">
         
@@ -197,11 +211,77 @@ const initialEditMode = isAdmin && isPending;
         <div id="footer-actions-view" class={`footer-actions ${initialEditMode ? 'hidden' : ''}`}>
             {article.status === 'published' && (
                 <>
-                    <button class="action-btn" id="share-btn" data-url={Astro.url.href}><Share2 size={18} /> <span>Bagikan</span></button>
+                    <button class="action-btn" id="share-btn" data-url={canonicalUrl} data-title={article.title}><Share2 size={18} /> <span>Bagikan</span></button>
                     <button class="action-btn" id="bookmark-btn" data-id={article.id}><Bookmark size={18} className="icon-bookmark" /> <span id="bookmark-text">Simpan</span></button>
                 </>
             )}
         </div>
+
+        {article.status === 'published' && (
+            <div id="share-modal" class="share-modal-overlay hidden">
+                <div class="share-modal">
+                    <div class="share-modal-header">
+                        <h3>Bagikan Artikel</h3>
+                        <button id="share-modal-close" class="share-modal-close">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="share-tabs">
+                        <button class="share-tab active" data-tab="qr">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="19" y="14" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="19" width="2" height="2"/></svg>
+                            QR Code
+                        </button>
+                        <button class="share-tab" data-tab="link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Link
+                        </button>
+                    </div>
+
+                    <div id="tab-qr" class="share-tab-content">
+                        <div class="qr-display">
+                            <div id="qr-code-container"></div>
+                            <p class="qr-caption">{article.title}</p>
+                        </div>
+                        <button id="download-qr-btn" class="download-qr-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Unduh QR Code
+                        </button>
+                    </div>
+
+                    <div id="tab-link" class="share-tab-content hidden">
+                        <div class="share-url-box">
+                            <input type="text" id="share-url-input" value={canonicalUrl} readonly />
+                            <button id="copy-url-btn" class="copy-url-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                <span>Salin</span>
+                            </button>
+                        </div>
+
+                        <div class="share-divider"><span>Bagikan ke</span></div>
+
+                        <div class="share-platforms">
+                            <a id="share-wa" class="share-platform-btn whatsapp" target="_blank" rel="noopener noreferrer">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                <span>WhatsApp</span>
+                            </a>
+                            <a id="share-tg" class="share-platform-btn telegram" target="_blank" rel="noopener noreferrer">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                                <span>Telegram</span>
+                            </a>
+                            <a id="share-tw" class="share-platform-btn twitter" target="_blank" rel="noopener noreferrer">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                <span>X / Twitter</span>
+                            </a>
+                            <a id="share-fb" class="share-platform-btn facebook" target="_blank" rel="noopener noreferrer">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                <span>Facebook</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </article>
 
 </Layout>
@@ -350,17 +430,111 @@ const initialEditMode = isAdmin && isPending;
             );
         }
 
+        // === SHARE MODAL LOGIC ===
         const btnShare = document.getElementById('share-btn');
-        if (btnShare) {
+        const shareModal = document.getElementById('share-modal');
+
+        if (btnShare && shareModal) {
+            const shareUrl = btnShare.getAttribute('data-url') || '';
+            const shareTitle = btnShare.getAttribute('data-title') || '';
+            const shareText = `${shareTitle} - Baca selengkapnya di MEDIACIVITAS`;
+
+            // Set share platform URLs
+            const waBtn = document.getElementById('share-wa') as HTMLAnchorElement;
+            const tgBtn = document.getElementById('share-tg') as HTMLAnchorElement;
+            const twBtn = document.getElementById('share-tw') as HTMLAnchorElement;
+            const fbBtn = document.getElementById('share-fb') as HTMLAnchorElement;
+
+            if (waBtn) waBtn.href = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`;
+            if (tgBtn) tgBtn.href = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+            if (twBtn) twBtn.href = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`;
+            if (fbBtn) fbBtn.href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+
+            // Open modal
             btnShare.addEventListener('click', () => {
-                const url = btnShare.getAttribute('data-url');
-                if (url) {
-                    navigator.clipboard.writeText(url).then(() => {
-                        const originalHTML = btnShare.innerHTML;
-                        btnShare.innerHTML = `<span>Disalin!</span>`;
-                        setTimeout(() => btnShare.innerHTML = originalHTML, 2000);
+                if (shareModal) document.body.appendChild(shareModal);
+                shareModal?.classList.remove('hidden');
+                requestAnimationFrame(() => shareModal?.classList.add('show'));
+                generateQR(shareUrl);
+            });
+
+            // Close modal
+            function closeShareModal() {
+                shareModal?.classList.remove('show');
+                setTimeout(() => shareModal?.classList.add('hidden'), 300);
+            }
+            document.getElementById('share-modal-close')?.addEventListener('click', closeShareModal);
+            shareModal.addEventListener('click', (e: Event) => {
+                if (e.target === shareModal) closeShareModal();
+            });
+            document.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Escape' && !shareModal?.classList.contains('hidden')) closeShareModal();
+            });
+
+            // Tab switching
+            const shareTabs = shareModal.querySelectorAll('.share-tab');
+            shareTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.getAttribute('data-tab');
+                    shareTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    shareModal.querySelectorAll('.share-tab-content').forEach(c => c.classList.add('hidden'));
+                    document.getElementById(`tab-${targetTab}`)?.classList.remove('hidden');
+                    if (targetTab === 'qr') generateQR(shareUrl);
+                });
+            });
+
+            // Copy URL
+            const copyBtn = document.getElementById('copy-url-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        const span = copyBtn.querySelector('span');
+                        if (span) { span.textContent = 'Tersalin!'; copyBtn.classList.add('copied'); }
+                        setTimeout(() => { if (span) { span.textContent = 'Salin'; copyBtn.classList.remove('copied'); } }, 2000);
                     });
+                });
+            }
+
+            // QR Code generation
+            let qrGenerated = false;
+            function generateQR(url: string) {
+                if (qrGenerated) return;
+                const container = document.getElementById('qr-code-container');
+                if (!container) return;
+                const qrFunc = (window as any).qrcode;
+                if (typeof qrFunc !== 'function') {
+                    container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;text-align:center;">Gagal memuat QR generator.</p>';
+                    return;
                 }
+                const qr = qrFunc(0, 'M');
+                qr.addData(url);
+                qr.make();
+                container.innerHTML = qr.createSvgTag(5, 4);
+                qrGenerated = true;
+            }
+
+            // Download QR as PNG
+            document.getElementById('download-qr-btn')?.addEventListener('click', () => {
+                const svg = document.querySelector('#qr-code-container svg') as SVGElement;
+                if (!svg) return;
+                const canvas = document.createElement('canvas');
+                const size = 600;
+                canvas.width = size; canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const img = new Image();
+                img.onload = () => {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.drawImage(img, 0, 0, size, size);
+                    const a = document.createElement('a');
+                    a.download = 'qrcode-mediacivitas.png';
+                    a.href = canvas.toDataURL('image/png');
+                    a.click();
+                };
+                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
             });
         }
         
@@ -527,5 +701,137 @@ const initialEditMode = isAdmin && isPending;
             position: absolute;
             top: -15px; right: -15px; bottom: -15px; left: -15px;
         }
+    }
+
+    /* =========================================
+       SHARE MODAL STYLES
+       ========================================= */
+    .share-modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        z-index: 10000;
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .share-modal-overlay.show { opacity: 1; }
+
+    .share-modal {
+        background: var(--bg-light); border: 1px solid var(--border);
+        border-radius: 20px; padding: 28px;
+        width: 100%; max-width: 440px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+        transform: translateY(20px) scale(0.95);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .share-modal-overlay.show .share-modal { transform: translateY(0) scale(1); }
+
+    .share-modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 20px;
+    }
+    .share-modal-header h3 {
+        font-family: 'Poppins', sans-serif; font-size: 1.2rem;
+        font-weight: 700; color: var(--text); margin: 0;
+    }
+    .share-modal-close {
+        background: transparent; border: none; color: var(--text-muted);
+        cursor: pointer; padding: 6px; border-radius: 8px;
+        transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+    }
+    .share-modal-close:hover { background: var(--bg); color: var(--text); }
+
+    .share-tabs {
+        display: flex; gap: 6px; background: var(--bg);
+        padding: 4px; border-radius: 12px; margin-bottom: 20px;
+    }
+    .share-tab {
+        flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 10px 16px; border: none; background: transparent;
+        color: var(--text-muted); font-family: 'Poppins', sans-serif;
+        font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        border-radius: 10px; transition: all 0.2s;
+    }
+    .share-tab:hover { color: var(--text); }
+    .share-tab.active {
+        background: var(--bg-light); color: var(--text);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .share-url-box { display: flex; gap: 8px; margin-bottom: 20px; }
+    .share-url-box input {
+        flex: 1; background: var(--bg); border: 1px solid var(--border-muted);
+        border-radius: 10px; padding: 10px 14px; font-family: 'Poppins', sans-serif;
+        font-size: 0.8rem; color: var(--text); outline: none; min-width: 0;
+    }
+    .share-url-box input:focus { border-color: var(--border); }
+    .copy-url-btn {
+        display: flex; align-items: center; gap: 6px; padding: 10px 16px;
+        background: var(--text); color: var(--bg); border: none; border-radius: 10px;
+        font-family: 'Poppins', sans-serif; font-size: 0.8rem; font-weight: 600;
+        cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .copy-url-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .copy-url-btn.copied { background: #10b981; color: #fff; }
+
+    .share-divider {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 16px; color: var(--text-muted);
+        font-size: 0.8rem; font-weight: 500;
+    }
+    .share-divider::before, .share-divider::after {
+        content: ''; flex: 1; height: 1px; background: var(--border-muted);
+    }
+
+    .share-platforms { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .share-platform-btn {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 14px; border-radius: 12px;
+        font-family: 'Poppins', sans-serif; font-size: 0.85rem; font-weight: 600;
+        color: #fff; text-decoration: none; transition: all 0.2s; cursor: pointer;
+    }
+    .share-platform-btn:hover {
+        transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    }
+    .share-platform-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .share-platform-btn.whatsapp { background: #25D366; }
+    .share-platform-btn.telegram { background: #0088cc; }
+    .share-platform-btn.twitter { background: #000; border: 1px solid var(--border); }
+    .share-platform-btn.facebook { background: #1877F2; }
+
+    /* QR Code Tab */
+    .qr-display { display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+    #qr-code-container {
+        background: #fff; padding: 16px; border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    #qr-code-container :global(svg) { width: 200px !important; height: 200px !important; display: block; }
+    .qr-caption {
+        margin-top: 16px; font-size: 0.85rem; color: var(--text-muted);
+        text-align: center; max-width: 280px; line-height: 1.4; font-weight: 500;
+    }
+    .download-qr-btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; margin-top: 16px; padding: 12px;
+        background: var(--text); color: var(--bg); border: none; border-radius: 12px;
+        font-family: 'Poppins', sans-serif; font-size: 0.9rem; font-weight: 600;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .download-qr-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    /* Share Modal Responsive */
+    @media (max-width: 768px) {
+        .share-modal-overlay { align-items: flex-end; padding: 0; }
+        .share-modal {
+            border-radius: 20px 20px 0 0; max-width: 100%;
+            transform: translateY(100%); max-height: 90vh; overflow-y: auto;
+            padding: 24px 20px;
+        }
+        .share-modal-overlay.show .share-modal { transform: translateY(0); }
+        .share-platforms { grid-template-columns: 1fr 1fr; gap: 8px; }
+        .share-platform-btn { padding: 10px 12px; font-size: 0.8rem; }
     }
 </style>

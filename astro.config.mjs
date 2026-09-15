@@ -5,6 +5,7 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://mediacivitas.web.id',
   output: 'server',
   adapter: vercel(),
   // db() sudah kita hapus dari daftar integrasi di bawah ini:
