@@ -23,9 +23,18 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.95.3
         version: 2.112.3
+      '@tiptap/extension-color':
+        specifier: ^3.31.3
+        version: 3.31.3(@tiptap/extension-text-style@3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2)))
       '@tiptap/extension-image':
         specifier: ^3.19.0
         version: 3.30.2(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))
+      '@tiptap/extension-text-align':
+        specifier: ^3.31.3
+        version: 3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))
+      '@tiptap/extension-text-style':
+        specifier: ^3.31.3
+        version: 3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))
       '@tiptap/react':
         specifier: ^3.19.0
         version: 3.30.2(@floating-ui/dom@1.8.0)(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))(@tiptap/pm@3.30.2)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -50,6 +59,9 @@ importers:
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
+      html-to-image:
+        specifier: ^1.11.13
+        version: 1.11.13
       lucide-react:
         specifier: ^0.564.0
         version: 0.564.0(react@19.2.8)
@@ -968,6 +980,11 @@ packages:
     peerDependencies:
       '@tiptap/core': 3.30.2
 
+  '@tiptap/extension-color@3.31.3':
+    resolution: {integrity: sha512-rsZ/HlCYagMoyqn8kKxLYaZwHvowGUTeHVVxEuMJqTantIrnnQMSQUA3a7+X22l2eD7ec/LlG4bBGPjw+gf3tw==}
+    peerDependencies:
+      '@tiptap/extension-text-style': 3.31.3
+
   '@tiptap/extension-document@3.30.2':
     resolution: {integrity: sha512-+xIv67V+/2L1uvz98FAT5W7kWEfHwfNV3MD7b4UsKPU0lhcCWuVOXy0JB8yYmdNExqpI7xT9g3MWzREoBvBQSg==}
     peerDependencies:
@@ -1052,6 +1069,16 @@ packages:
     resolution: {integrity: sha512-fBLxMXz6hYIURzLOD+/L6aVATztsKham00ANWmGi13vN0hx2lQMYZffN+gR+QqiCDfMQxBXzrf5a7tJuDiQHLQ==}
     peerDependencies:
       '@tiptap/core': 3.30.2
+
+  '@tiptap/extension-text-align@3.31.3':
+    resolution: {integrity: sha512-26BJ7c28EyvHzJovNpuenKiIgfRI4KsT/OjBB00y58MyZ0kRXc6dwZVclw8y66clupKTLTWYCDUsy0P/xHj+cA==}
+    peerDependencies:
+      '@tiptap/core': 3.31.3
+
+  '@tiptap/extension-text-style@3.31.3':
+    resolution: {integrity: sha512-wgjWWrjZwRZHiaDTQPX2am1y/4ePgRgGWF/2MOfSb7g4d5229p4aVtbT1JT7wu9z8OC482pEqcTlhdvgftvW7A==}
+    peerDependencies:
+      '@tiptap/core': 3.31.3
 
   '@tiptap/extension-text@3.30.2':
     resolution: {integrity: sha512-n/iZnirgRmXet6f97kolAnP3j8DsgLSiTbz/KLWc8eBYiFmkjRzkuisOm5xuGdfGIxwpB4x3tlSF4ef4DLnbRg==}
@@ -1724,6 +1751,9 @@ packages:
 
   html-escaper@3.0.3:
     resolution: {integrity: sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ==}
+
+  html-to-image@1.11.13:
+    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
@@ -3662,6 +3692,10 @@ snapshots:
     dependencies:
       '@tiptap/core': 3.30.2(@tiptap/pm@3.30.2)
 
+  '@tiptap/extension-color@3.31.3(@tiptap/extension-text-style@3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2)))':
+    dependencies:
+      '@tiptap/extension-text-style': 3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))
+
   '@tiptap/extension-document@3.30.2(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))':
     dependencies:
       '@tiptap/core': 3.30.2(@tiptap/pm@3.30.2)
@@ -3730,6 +3764,14 @@ snapshots:
       '@tiptap/core': 3.30.2(@tiptap/pm@3.30.2)
 
   '@tiptap/extension-strike@3.30.2(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))':
+    dependencies:
+      '@tiptap/core': 3.30.2(@tiptap/pm@3.30.2)
+
+  '@tiptap/extension-text-align@3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))':
+    dependencies:
+      '@tiptap/core': 3.30.2(@tiptap/pm@3.30.2)
+
+  '@tiptap/extension-text-style@3.31.3(@tiptap/core@3.30.2(@tiptap/pm@3.30.2))':
     dependencies:
       '@tiptap/core': 3.30.2(@tiptap/pm@3.30.2)
 
@@ -4661,6 +4703,8 @@ snapshots:
       space-separated-tokens: 2.0.2
 
   html-escaper@3.0.3: {}
+
+  html-to-image@1.11.13: {}
 
   html-url-attributes@3.0.1: {}
 
