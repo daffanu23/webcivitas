@@ -350,6 +350,212 @@ export default function NewsGraphicGenerator() {
 
     return (
         <div className="ngg-container">
+            <div className="ngg-preview-area">
+                <div 
+                    className="ngg-card ngg-preview-wrapper"
+                    onClick={() => {
+                        if (window.innerWidth < 768) {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                    }}
+                    title="Klik untuk kembali ke atas"
+                >
+                    <h2 className="ngg-title">Live Preview (Resolusi 1080x1350)</h2>
+                    
+                    {/* Element referensi lebar penuh (100%) untuk kalkulasi skala yang akurat */}
+                    <div ref={wrapperRef} style={{ width: '100%' }}></div>
+                    
+                    <div 
+                        className="ngg-preview-container"
+                        style={{ 
+                            width: `${1080 * scale}px`,
+                            height: `${1350 * scale}px`,
+                            margin: '0 auto'
+                        }}
+                    >
+                        <div 
+                            ref={previewRef}
+                            className={`ngg-preview-canvas pos-${activePage.textPosition}`}
+                            style={{
+                                width: '1080px',
+                                height: '1350px',
+                                transform: `scale(${scale})`,
+                                transformOrigin: 'top left',
+                                backgroundColor: activePage.bgType === 'color' ? (activePage.bgColor || '#1e293b') : (currentImage ? 'transparent' : '#e2e8f0'),
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {/* Layer Gambar Background (Terpisah agar bisa di-zoom/geser tanpa mempengaruhi teks) */}
+                            {activePage.bgType !== 'color' && currentImage && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0, left: 0, right: 0, bottom: 0,
+                                    backgroundImage: `url(${currentImage})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: `${activePage.bgPosX ?? 50}% ${activePage.bgPosY ?? 50}%`,
+                                    transform: `scale(${(activePage.bgZoom ?? 100) / 100})`,
+                                    zIndex: 0
+                                }}></div>
+                            )}
+
+                            {!currentImage && activePage.bgType !== 'color' && <span className="ngg-placeholder-text">Belum ada gambar latar</span>}
+                            
+                            <div 
+                                className="ngg-overlay" 
+                                style={{ opacity: (activePage.overlayStrength !== undefined ? activePage.overlayStrength : 85) / 100 }}
+                            ></div>
+                            
+                            {/* Logo Absolute (Jika tidak bertabrakan dengan teks) */}
+                            {activePage.showLogo !== false && !isLogoCollision && (
+                                <img 
+                                    src="/logo_ukpm_civitas.png" 
+                                    alt="Logo Civitas" 
+                                    style={{
+                                        position: 'absolute',
+                                        width: '135px',
+                                        zIndex: 3,
+                                        filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.7))',
+                                        top: isLogoAtTop ? '60px' : 'auto',
+                                        bottom: isLogoAtBottom ? '60px' : 'auto',
+                                        left: !isLogoAtRight ? '60px' : 'auto',
+                                        right: isLogoAtRight ? '60px' : 'auto',
+                                    }}
+                                />
+                            )}
+                            
+                            {activePageId === 'outro' && (
+                                <div style={{ 
+                                    position: 'absolute', 
+                                    bottom: '80px', 
+                                    left: '80px', 
+                                    right: '80px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between', 
+                                    zIndex: 4 
+                                }}>
+                                    <h2 style={{ 
+                                        color: 'white', 
+                                        fontSize: '40px', 
+                                        fontWeight: '700', 
+                                        width: '450px', 
+                                        lineHeight: '1.2',
+                                        fontFamily: '"Poppins", sans-serif',
+                                        margin: 0
+                                    }}>Baca selengkapnya<br/>di website kami!!</h2>
+                                    
+                                    {activePage.qrImage ? (
+                                        <img 
+                                            src={activePage.qrImage} 
+                                            alt="QR Code" 
+                                            style={{ 
+                                                width: `${activePage.qrSize || 320}px`, 
+                                                height: `${activePage.qrSize || 320}px`, 
+                                                borderRadius: '24px', 
+                                                objectFit: 'cover',
+                                                border: '8px solid white',
+                                                backgroundColor: 'white',
+                                                flexShrink: 0
+                                            }} 
+                                        />
+                                    ) : (
+                                        <div style={{ 
+                                            width: `${activePage.qrSize || 320}px`, 
+                                            height: `${activePage.qrSize || 320}px`, 
+                                            backgroundColor: '#f1f5f9', 
+                                            borderRadius: '24px', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            color: '#64748b', 
+                                            fontSize: '18px', 
+                                            fontWeight: '600',
+                                            border: '8px solid white',
+                                            textAlign: 'center',
+                                            padding: '20px',
+                                            flexShrink: 0
+                                        }}>
+                                            Upload QR Code
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div 
+                                className="ngg-text-container"
+                                style={{
+                                    paddingTop: '60px',
+                                    paddingBottom: textPaddingBottom,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    width: '100%',
+                                    position: 'relative',
+                                    zIndex: 2
+                                }}
+                            >
+                                {/* Logo In-Flow (Jika bertabrakan, logo selalu berada di atas teks) */}
+                                {activePage.showLogo !== false && isLogoCollision && (
+                                    <img 
+                                        src="/logo_ukpm_civitas.png" 
+                                        alt="Logo Civitas" 
+                                        style={{
+                                            width: '135px',
+                                            filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.7))',
+                                            marginBottom: '40px',
+                                            alignSelf: isLogoAtRight ? 'flex-end' : 'flex-start'
+                                        }}
+                                    />
+                                )}
+                                
+                                <div 
+                                    className="tiptap-output" 
+                                    dangerouslySetInnerHTML={{ __html: currentHtml }} 
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p className="ngg-help-text">Hasil download akan selalu konsisten dan beresolusi tinggi di perangkat apa pun.</p>
+                
+                {/* Drone View / Grid View untuk Desktop */}
+                <div className="ngg-card ngg-drone-view">
+                    <h3 className="ngg-drone-title">Semua Halaman</h3>
+                    <div className="ngg-drone-grid">
+                        {pages.map((page, index) => {
+                            const isSelected = page.id === activePageId;
+                            return (
+                                <div 
+                                    key={page.id} 
+                                    className={`ngg-drone-item ${isSelected ? 'active' : ''}`}
+                                    onClick={() => setActivePageId(page.id)}
+                                    title={page.title}
+                                >
+                                    <div className="ngg-drone-thumbnail">
+                                        {page.bgType === 'image' && page.image ? (
+                                            <div style={{
+                                                width: '100%', height: '100%',
+                                                backgroundImage: `url(${page.image})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: `${page.bgPosX ?? 50}% ${page.bgPosY ?? 50}%`,
+                                            }}></div>
+                                        ) : (
+                                            <div style={{
+                                                width: '100%', height: '100%',
+                                                backgroundColor: page.bgColor || '#1e293b'
+                                            }}></div>
+                                        )}
+                                        <div className="ngg-drone-item-overlay"></div>
+                                        <div className="ngg-drone-number">{index + 1}</div>
+                                        {isSelected && <div className="ngg-drone-active-ring"></div>}
+                                    </div>
+                                    <div className="ngg-drone-label">{page.title}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
             <div className="ngg-sidebar">
                 <div className="ngg-card">
                     <h2 className="ngg-title">Pengaturan Grafis</h2>
@@ -591,204 +797,6 @@ export default function NewsGraphicGenerator() {
                         <Download size={18} />
                         {isExporting ? "Memproses..." : "Download Semua"}
                     </button>
-                </div>
-            </div>
-
-            <div className="ngg-preview-area">
-                <div className="ngg-card ngg-preview-wrapper">
-                    <h2 className="ngg-title">Live Preview (Resolusi 1080x1350)</h2>
-                    
-                    {/* Element referensi lebar penuh (100%) untuk kalkulasi skala yang akurat */}
-                    <div ref={wrapperRef} style={{ width: '100%' }}></div>
-                    
-                    <div 
-                        className="ngg-preview-container"
-                        style={{ 
-                            width: `${1080 * scale}px`,
-                            height: `${1350 * scale}px`,
-                            margin: '0 auto'
-                        }}
-                    >
-                        <div 
-                            ref={previewRef}
-                            className={`ngg-preview-canvas pos-${activePage.textPosition}`}
-                            style={{
-                                width: '1080px',
-                                height: '1350px',
-                                transform: `scale(${scale})`,
-                                transformOrigin: 'top left',
-                                backgroundColor: activePage.bgType === 'color' ? (activePage.bgColor || '#1e293b') : (currentImage ? 'transparent' : '#e2e8f0'),
-                                overflow: 'hidden'
-                            }}
-                        >
-                            {/* Layer Gambar Background (Terpisah agar bisa di-zoom/geser tanpa mempengaruhi teks) */}
-                            {activePage.bgType !== 'color' && currentImage && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: 0, left: 0, right: 0, bottom: 0,
-                                    backgroundImage: `url(${currentImage})`,
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: `${activePage.bgPosX ?? 50}% ${activePage.bgPosY ?? 50}%`,
-                                    transform: `scale(${(activePage.bgZoom ?? 100) / 100})`,
-                                    zIndex: 0
-                                }}></div>
-                            )}
-
-                            {!currentImage && activePage.bgType !== 'color' && <span className="ngg-placeholder-text">Belum ada gambar latar</span>}
-                            
-                            <div 
-                                className="ngg-overlay" 
-                                style={{ opacity: (activePage.overlayStrength !== undefined ? activePage.overlayStrength : 85) / 100 }}
-                            ></div>
-                            
-                            {/* Logo Absolute (Jika tidak bertabrakan dengan teks) */}
-                            {activePage.showLogo !== false && !isLogoCollision && (
-                                <img 
-                                    src="/logo_ukpm_civitas.png" 
-                                    alt="Logo Civitas" 
-                                    style={{
-                                        position: 'absolute',
-                                        width: '135px',
-                                        zIndex: 3,
-                                        filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.7))',
-                                        top: isLogoAtTop ? '60px' : 'auto',
-                                        bottom: isLogoAtBottom ? '60px' : 'auto',
-                                        left: !isLogoAtRight ? '60px' : 'auto',
-                                        right: isLogoAtRight ? '60px' : 'auto',
-                                    }}
-                                />
-                            )}
-                            
-                            {activePageId === 'outro' && (
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    bottom: '80px', 
-                                    left: '80px', 
-                                    right: '80px', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'space-between', 
-                                    zIndex: 4 
-                                }}>
-                                    <h2 style={{ 
-                                        color: 'white', 
-                                        fontSize: '40px', 
-                                        fontWeight: '700', 
-                                        width: '450px', 
-                                        lineHeight: '1.2',
-                                        fontFamily: '"Poppins", sans-serif',
-                                        margin: 0
-                                    }}>Baca selengkapnya<br/>di website kami!!</h2>
-                                    
-                                    {activePage.qrImage ? (
-                                        <img 
-                                            src={activePage.qrImage} 
-                                            alt="QR Code" 
-                                            style={{ 
-                                                width: `${activePage.qrSize || 320}px`, 
-                                                height: `${activePage.qrSize || 320}px`, 
-                                                borderRadius: '24px', 
-                                                objectFit: 'cover',
-                                                border: '8px solid white',
-                                                backgroundColor: 'white',
-                                                flexShrink: 0
-                                            }} 
-                                        />
-                                    ) : (
-                                        <div style={{ 
-                                            width: `${activePage.qrSize || 320}px`, 
-                                            height: `${activePage.qrSize || 320}px`, 
-                                            backgroundColor: '#f1f5f9', 
-                                            borderRadius: '24px', 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center', 
-                                            color: '#64748b', 
-                                            fontSize: '18px', 
-                                            fontWeight: '600',
-                                            border: '8px solid white',
-                                            textAlign: 'center',
-                                            padding: '20px',
-                                            flexShrink: 0
-                                        }}>
-                                            Upload QR Code
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div 
-                                className="ngg-text-container"
-                                style={{
-                                    paddingTop: '60px',
-                                    paddingBottom: textPaddingBottom,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    width: '100%',
-                                    position: 'relative',
-                                    zIndex: 2
-                                }}
-                            >
-                                {/* Logo In-Flow (Jika bertabrakan, logo selalu berada di atas teks) */}
-                                {activePage.showLogo !== false && isLogoCollision && (
-                                    <img 
-                                        src="/logo_ukpm_civitas.png" 
-                                        alt="Logo Civitas" 
-                                        style={{
-                                            width: '135px',
-                                            filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.7))',
-                                            marginBottom: '40px',
-                                            alignSelf: isLogoAtRight ? 'flex-end' : 'flex-start'
-                                        }}
-                                    />
-                                )}
-                                
-                                <div 
-                                    className="tiptap-output" 
-                                    dangerouslySetInnerHTML={{ __html: currentHtml }} 
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <p className="ngg-help-text">Hasil download akan selalu konsisten dan beresolusi tinggi di perangkat apa pun.</p>
-                
-                {/* Drone View / Grid View untuk Desktop */}
-                <div className="ngg-card ngg-drone-view">
-                    <h3 className="ngg-drone-title">Semua Halaman</h3>
-                    <div className="ngg-drone-grid">
-                        {pages.map((page, index) => {
-                            const isSelected = page.id === activePageId;
-                            return (
-                                <div 
-                                    key={page.id} 
-                                    className={`ngg-drone-item ${isSelected ? 'active' : ''}`}
-                                    onClick={() => setActivePageId(page.id)}
-                                    title={page.title}
-                                >
-                                    <div className="ngg-drone-thumbnail">
-                                        {page.bgType === 'image' && page.image ? (
-                                            <div style={{
-                                                width: '100%', height: '100%',
-                                                backgroundImage: `url(${page.image})`,
-                                                backgroundSize: 'cover',
-                                                backgroundPosition: `${page.bgPosX ?? 50}% ${page.bgPosY ?? 50}%`,
-                                            }}></div>
-                                        ) : (
-                                            <div style={{
-                                                width: '100%', height: '100%',
-                                                backgroundColor: page.bgColor || '#1e293b'
-                                            }}></div>
-                                        )}
-                                        <div className="ngg-drone-item-overlay"></div>
-                                        <div className="ngg-drone-number">{index + 1}</div>
-                                        {isSelected && <div className="ngg-drone-active-ring"></div>}
-                                    </div>
-                                    <div className="ngg-drone-label">{page.title}</div>
-                                </div>
-                            );
-                        })}
-                    </div>
                 </div>
             </div>
         </div>

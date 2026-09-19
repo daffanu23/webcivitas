@@ -1,14 +1,16 @@
 .ngg-container {
     display: flex;
-    flex-direction: column;
-    gap: 24px;
+    flex-direction: column; 
+    gap: 0; /* Gap dihilangkan di mobile agar bisa overlap */
     width: 100%;
 }
 
 @media (min-width: 768px) {
     .ngg-container {
-        flex-direction: row;
+        flex-direction: row-reverse; /* Desktop: Preview (kanan), Sidebar (kiri) */
+        justify-content: flex-end;
         align-items: flex-start;
+        gap: 24px; /* Kembalikan gap di desktop */
     }
 }
 
@@ -17,18 +19,37 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    /* Efek Bottom Sheet */
+    position: relative;
+    z-index: 10;
+    margin-top: -40px; /* Menimpa preview area */
+    padding-top: 16px; /* Memberi ruang di atas card */
 }
 
 @media (min-width: 768px) {
     .ngg-sidebar {
         width: 350px;
         flex-shrink: 0;
+        margin-top: 0;
+        padding-top: 0;
     }
 }
 
 .ngg-preview-area {
     flex-grow: 1;
     width: 100%;
+    /* Sticky Preview di Mobile */
+    position: sticky;
+    top: 0;
+    z-index: 1; 
+    padding-bottom: 60px; /* Ruang agar bagian bawah gambar tertutup dengan mulus */
+}
+
+@media (min-width: 768px) {
+    .ngg-preview-area {
+        position: static; /* Matikan sticky di desktop */
+        padding-bottom: 0;
+    }
 }
 
 .ngg-card {
@@ -37,6 +58,14 @@
     padding: 24px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid var(--border);
+}
+
+/* Modifikasi border-radius khusus untuk card di sidebar pada mobile */
+@media (max-width: 767px) {
+    .ngg-sidebar .ngg-card:first-child {
+        border-radius: 24px 24px 0 0;
+        box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.2);
+    }
 }
 
 .ngg-title {
@@ -249,6 +278,12 @@
 .ngg-preview-wrapper {
     display: flex;
     flex-direction: column;
+}
+
+@media (max-width: 767px) {
+    .ngg-preview-wrapper {
+        cursor: pointer;
+    }
 }
 
 /* KOTAK PREVIEW UTAMA YANG AKAN DIFOTO */
