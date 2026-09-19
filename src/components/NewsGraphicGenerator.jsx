@@ -161,9 +161,12 @@ export default function NewsGraphicGenerator() {
 
     const addPage = () => {
         const newId = `content-${Date.now()}`;
+        // Menghitung jumlah halaman konten (selain cover dan outro)
+        const contentPagesCount = pages.filter(p => p.id !== 'cover' && p.id !== 'outro').length;
+        
         const newPage = {
             id: newId,
-            title: `Isi Berita ${pages.length}`,
+            title: `Isi Berita ${contentPagesCount + 1}`,
             image: null,
             bgType: 'image',
             bgColor: '#1e293b',
@@ -176,7 +179,17 @@ export default function NewsGraphicGenerator() {
             textPosition: 'bottom',
             html: defaultContentHtml
         };
-        setPages(prev => [...prev, newPage]);
+        
+        setPages(prev => {
+            const outroIndex = prev.findIndex(p => p.id === 'outro');
+            if (outroIndex !== -1) {
+                // Sisipkan sebelum halaman outro
+                const newPages = [...prev];
+                newPages.splice(outroIndex, 0, newPage);
+                return newPages;
+            }
+            return [...prev, newPage];
+        });
         setActivePageId(newId);
     };
 
@@ -220,7 +233,16 @@ export default function NewsGraphicGenerator() {
         const updateScale = () => {
             if (wrapperRef.current) {
                 const wrapperWidth = wrapperRef.current.offsetWidth;
-                setScale(wrapperWidth / 1080);
+                let maxScaleByHeight = 1;
+                
+                // Pada layar desktop, batasi tinggi maksimal agar tidak scroll berlebihan
+                if (window.innerWidth >= 768) {
+                    const maxHeight = window.innerHeight * 0.55; // 55% dari tinggi layar
+                    maxScaleByHeight = maxHeight / 1350;
+                }
+                
+                const scaleByWidth = wrapperWidth / 1080;
+                setScale(Math.min(scaleByWidth, maxScaleByHeight));
             }
         };
         updateScale();
@@ -262,7 +284,8 @@ export default function NewsGraphicGenerator() {
                 pixelRatio: 1, 
                 style: {
                     transform: 'scale(1)',
-                    transformOrigin: 'top left'
+                    transformOrigin: 'top left',
+                    margin: 0
                 }
             });
             const link = document.createElement('a');
@@ -296,7 +319,8 @@ export default function NewsGraphicGenerator() {
                     pixelRatio: 1, 
                     style: {
                         transform: 'scale(1)',
-                        transformOrigin: 'top left'
+                        transformOrigin: 'top left',
+                        margin: 0
                     }
                 });
                 
@@ -574,10 +598,16 @@ export default function NewsGraphicGenerator() {
                 <div className="ngg-card ngg-preview-wrapper">
                     <h2 className="ngg-title">Live Preview (Resolusi 1080x1350)</h2>
                     
+                    {/* Element referensi lebar penuh (100%) untuk kalkulasi skala yang akurat */}
+                    <div ref={wrapperRef} style={{ width: '100%' }}></div>
+                    
                     <div 
-                        ref={wrapperRef} 
                         className="ngg-preview-container"
-                        style={{ height: `${1350 * scale}px` }}
+                        style={{ 
+                            width: `${1080 * scale}px`,
+                            height: `${1350 * scale}px`,
+                            margin: '0 auto'
+                        }}
                     >
                         <div 
                             ref={previewRef}
@@ -720,7 +750,45 @@ export default function NewsGraphicGenerator() {
                             </div>
                         </div>
                     </div>
-                    <p className="ngg-help-text">Hasil download akan selalu konsisten dan beresolusi tinggi di perangkat apa pun.</p>
+                </div>
+                <p className="ngg-help-text">Hasil download akan selalu konsisten dan beresolusi tinggi di perangkat apa pun.</p>
+                
+                {/* Drone View / Grid View untuk Desktop */}
+                <div className="ngg-card ngg-drone-view">
+                    <h3 className="ngg-drone-title">Semua Halaman</h3>
+                    <div className="ngg-drone-grid">
+                        {pages.map((page, index) => {
+                            const isSelected = page.id === activePageId;
+                            return (
+                                <div 
+                                    key={page.id} 
+                                    className={`ngg-drone-item ${isSelected ? 'active' : ''}`}
+                                    onClick={() => setActivePageId(page.id)}
+                                    title={page.title}
+                                >
+                                    <div className="ngg-drone-thumbnail">
+                                        {page.bgType === 'image' && page.image ? (
+                                            <div style={{
+                                                width: '100%', height: '100%',
+                                                backgroundImage: `url(${page.image})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: `${page.bgPosX ?? 50}% ${page.bgPosY ?? 50}%`,
+                                            }}></div>
+                                        ) : (
+                                            <div style={{
+                                                width: '100%', height: '100%',
+                                                backgroundColor: page.bgColor || '#1e293b'
+                                            }}></div>
+                                        )}
+                                        <div className="ngg-drone-item-overlay"></div>
+                                        <div className="ngg-drone-number">{index + 1}</div>
+                                        {isSelected && <div className="ngg-drone-active-ring"></div>}
+                                    </div>
+                                    <div className="ngg-drone-label">{page.title}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>

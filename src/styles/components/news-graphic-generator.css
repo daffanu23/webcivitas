@@ -364,4 +364,105 @@
     text-align: center;
 }
 
+/* Drone View (Desktop Only) */
+.ngg-drone-view {
+    display: none; /* Sembunyikan di mobile */
+    margin-top: 24px;
+}
 
+@media (min-width: 768px) {
+    .ngg-drone-view {
+        display: block; /* Tampilkan di desktop */
+    }
+}
+
+.ngg-drone-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+    margin-top: 0;
+}
+
+.ngg-drone-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: flex-start;
+}
+
+.ngg-drone-item {
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.ngg-drone-item:hover {
+    transform: translateY(-2px);
+}
+
+.ngg-drone-thumbnail {
+    width: 100%;
+    aspect-ratio: 4/5; /* Rasio 1080x1350 */
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    border: 2px solid var(--border-muted);
+    background-color: #f1f5f9;
+}
+
+.ngg-drone-item-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s;
+}
+
+.ngg-drone-item:hover .ngg-drone-item-overlay {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.ngg-drone-number {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background-color: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.ngg-drone-item.active .ngg-drone-thumbnail {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.ngg-drone-active-ring {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 3px solid #3b82f6;
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+.ngg-drone-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ngg-drone-item.active .ngg-drone-label {
+    color: #3b82f6;
+    font-weight: 600;
+}
